@@ -23,17 +23,17 @@ class Cube:
     with for composing `Scene`s.
     """
     faces: np.ndarray
-    face_colour: ColourPoint | None = None
-    line_width: float = 0.1
-    edge_colour: str = 'black'
+    facecolor: ColourPoint | None = None
+    linewidths: float = 0.1
+    edgecolor: str = 'black'
     alpha: float = 0.0
 
     def __init__(
             self,
             points: np.ndarray,
-            face_colour: ColourPoint | None = None,
-            line_width: float = 0.1,
-            edge_colour: str = 'black',
+            facecolor: ColourPoint | None = None,
+            linewidths: float = 0.1,
+            edgecolor: str = 'black',
             alpha: float = 0.0
     ) -> None:
         # Check dimensions are valid - either 4 points, defined as the three
@@ -50,9 +50,9 @@ class Cube:
         full_points = self._construct_points(points, using_shorthand)
 
         self.faces = self._construct_faces(full_points)
-        self.face_colour = face_colour
-        self.line_width = line_width
-        self.edge_colour = edge_colour
+        self.face_colour = facecolor
+        self.line_width = linewidths
+        self.edge_colour = edgecolor
         self.alpha = alpha
 
     def points(self) -> np.ndarray:
@@ -60,9 +60,9 @@ class Cube:
 
     def get_visual_metadata(self) -> dict[str, Any]:
         return {
-            'face_colour': self.face_colour,
-            'line_width': self.line_width,
-            'edge_colour': self.edge_colour,
+            'facecolor': self.facecolor,
+            'linewidths': self.linewidths,
+            'edgecolor': self.edgecolor,
             'alpha': self.alpha,
         }
 
@@ -113,16 +113,15 @@ class Cube:
         ]).reshape((6, 4, 3))
 
 
-test_points = np.array([(0, 0, 0), (0, 1, 0), (1, 0, 0), (0, 0, 1)]).reshape((4, 3))
-test_cube = Cube(test_points)
-poly = Poly3DCollection(test_cube.faces)
+# test_points = np.array([(0, 0, 0), (0, 1, 0), (1, 0, 0), (0, 0, 1)]).reshape((4, 3))
+# test_cube = Cube(test_points)
+# poly = Poly3DCollection(test_cube.faces)
 
 
 def test_plot():
     fig = plt.figure(figsize=(12, 10))
     fig.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=None, hspace=None)
     ax = fig.add_subplot(111, projection='3d')
-    ax = fig.gca(projection='3d')
     ax.set_xlabel('x')
     ax.set_ylabel('y')
     ax.set_zlabel('z')
@@ -197,10 +196,10 @@ class Space:
     For deletion:
         - Complement of addition, see above.
     """
-    dims: np.ndarray
+    dims: np.ndarray | None
     mean: np.ndarray
     total: np.ndarray
-    num_objs: np.ndarray
+    num_objs: int
     # All the FUN stuff.
     cuboid_coordinates: np.ndarray
     cuboid_visual_metadata: dict[str, list]
@@ -275,6 +274,47 @@ class Space:
 
     def snapshot(self) -> None:
         self.scene_counter += 1
+
+    # TODO: Decide whether passing the Axes or having it be fully constructed by
+    # legoland is a good idea.
+    # TODO: It seems controlling the azimuth and elevation parameters (which are
+    # handily configurable!) is what you need for adjusting the camera.
+    def render(self) -> tuple[plt.Figure, plt.Axes]:
+        fig = plt.figure(figsize=(10, 8))
+        fig.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=None, hspace=None)
+        ax = fig.add_subplot(111, projection='3d')
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_zlabel('z')
+
+
+        for timestep in range(self.time_step):
+            # Create the object for matplotlib ingestion.
+            matplotlib_like_cube = Poly3DCollection(
+                self.cuboid_coordinates[timestep]
+            )
+            # Set the visual properties first - check if these can be moved into
+            # the Poly3DCollection constructor instead.
+            visual_properties = {
+                k: self.cuboid_visual_metadata[k][timestep]
+                for k in self.cuboid_visual_metadata.keys()
+            }
+            matplotlib_like_cube.set_facecolor(visual_properties['facecolor'])
+            matplotlib_like_cube.set_linewidths(visual_properties['linewidths'])
+            matplotlib_like_cube.set_edgecolor(visual_properties['edgecolor'])
+            matplotlib_like_cube.set_alpha(visual_properties['alpha'])
+            ax.add_collection3d(matplotlib_like_cube)
+
+        bounds = self.dims
+
+        bound_max = np.max(bounds)
+
+        # Does this always work? Does this ever work?
+        # ax.set_xlim(-bound_max / 8, bound_max * 1)
+        # ax.set_ylim(-bound_max / 4, bound_max * 0.75)
+        # ax.set_zlim(-bound_max / 4, bound_max * 0.75)
+
+        return fig, ax
 
         # Ideally you'd have a numpy array for all the cubes (cube_data),
         # a pandas dataframe for the polycollection metadata (cube_metadata),
@@ -374,97 +414,19 @@ def get_bounding_box(cube: Cube) -> np.ndarray:
     ]).reshape((3, 2))
 
 
-s = Space()
-s.add_cube(test_cube)
-s.add_cube(test_cube)
-s.add_cube(test_cube)
-s.add_cube(test_cube)
-s.add_cube(test_cube)
-s.add_cube(test_cube)
-s.add_cube(test_cube)
-s.add_cube(test_cube)
-s.add_cube(test_cube)
-s.add_cube(test_cube)
-s.add_cube(test_cube)
-s.snapshot()
+# fig = plt.figure(figsize=(12, 10))
+# fig.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=None, hspace=None)
+# ax = fig.add_subplot(111, projection='3d')
+# ax.set_xlabel('x')
+# ax.set_ylabel('y')
+# ax.set_zlabel('z')
 
-
-
-# class OldCube:
-#     def __init__(self, points):
-#         ...
-#         self._polycollection = Poly3DCollection(self._faces)
-
-# def format_cube(cube, facecolours=None, linewidths=None, edgecolours=None, alpha=None):
-#     """
-#     Make the cube pretty and the tings.
-#     """
-#     polycollection = cube.get_polycollection()
-
-#     polycollection.set_facecolor(facecolours)
-#     polycollection.set_linewidths(linewidths)
-#     polycollection.set_edgecolor(edgecolours)
-#     polycollection.set_alpha(alpha)
-
-#     return cube
-
-
-# class Space:
-#     """
-#     Representation of a 3D cartesian coordinate space.
-#     This class contains geometric objects for plotting, and
-#     acts as a wrapper around matplotlib's axes object.
-#     """
-
-#     def __init__(self, ax, dims):
-#         self._ax = ax
-#         self._dims = dims
-#         self._mean = np.array((0.0, 0.0, 0.0)).reshape((3, 1))
-#         self._total = np.array((0.0, 0.0, 0.0)).reshape((3, 1))
-#         self._num_objs = 0
-
-#     def add_cube(self, cube):
-#         """
-#         Make sure the space is large enough to encompass all objects in it.
-#         This is achieved by ensuring the space is centred around the
-#         geometric mean of the objects within it.
-#         """
-#         bounding_box = get_bounding_box(cube.get_points())
-#         box_mean = cube.get_mean()
-
-#         self._total += box_mean
-#         self._num_objs += 1
-
-#         if self._dims == [None, None, None]:
-#             dim = [bounding_box[0], bounding_box[1], bounding_box[2]]
-#         else:
-#             # Since there are multiple objects, ensure the resulting dimensions
-#             # of the surrounding box are centred around the mean.
-#             dim = [[min(self._dims[i][0], bounding_box[i][0]),
-#                     max(self._dims[i][1], bounding_box[i][1])] for i in range(len(bounding_box))]
-
-#         self._dims = dim
-
-#         self._ax.add_collection3d(cube.get_polycollection())
-
-#     def orient(self):
-#         self._mean = self._total / self._num_objs
-#         for idx, dim in enumerate(self._dims):
-#             i, j = dim
-#             L = max(i, j) - min(i, j)
-#             upper = self._mean[idx] + (L / 2.0)
-#             lower = self._mean[idx] - (L / 2.0)
-#             self._dims[idx] = [lower, upper]
-
-#     def get_ax(self):
-#         return self._ax
-
-#     def get_dims(self):
-#         """
-#         Assumes that requesting the dims is a request for the dims to be centred around the mean
-#         """
-#         self.orient()
-#         return np.array(self._dims).reshape((3, 2))
+# s = Space()
+# s.add_cube(test_cube)
+# s.snapshot()
+# fig, ax = s.render()
+# ax.set_axis_off()
+# plt.show()
 
 
 # # Let's start with adding a few objects to our space!

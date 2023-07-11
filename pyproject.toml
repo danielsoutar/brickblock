@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "legoland"
+version = "0.1.0"
+description = "A fun visualisation library for those that like boxes"
+authors = ["Daniel Soutar <danielsoutar144@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+matplotlib = "^3.7.2"
+numpy = "^1.25.1"
+pytest = "^7.4.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+pythonpath = [
+  "legoland"
+]

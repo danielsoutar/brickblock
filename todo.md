@@ -4,10 +4,16 @@ V1
 
 DOD for each of these: unit tests (visualisation involves manually checking in matplotlib)
 
+`~` means in progress
+
+`>` means source written but not tested yet
+
+`X` obviously means fully done (checkbox)
+
 - [X] Create basic `Cube` object
 - [X] Correctly visualise a `Cube` in matplotlib
 - [X] Create basic `Space` object
-- [ ] Correctly visualise a single-scene `Space` in matplotlib (single `Cube`)
+- [>] Correctly visualise a single-scene `Space` in matplotlib (single `Cube`)
 - [ ] Release as pip package (first use the test pypi index)
 - [ ] Add multiple scenes to a `Space` (via `snapshot`)
 - [ ] Correctly visualise a multi-scene `Space` in matplotlib (multiple `Cube`s, one per scene)

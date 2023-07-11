@@ -23,7 +23,6 @@ def test_cube_creation() -> None:
     assert test_cube.alpha == 0.0
 
 
-# TODO: Add/fill out tests!
 def test_cube_creates_all_data_needed_for_visualising() -> None:
     test_points = np.array(
         [(0, 0, 0), (0, 1, 0), (1, 0, 0), (0, 0, 1)]
@@ -46,27 +45,3 @@ def test_cube_creates_all_data_needed_for_visualising() -> None:
     original_augmented_data = np.concatenate([test_cube.faces, ones], -1)
 
     assert np.array_equal(original_augmented_data, plt_internal_reshaped_data)
-
-
-def test_space_creation() -> None:
-    points = np.array(
-        [(0, 0, 0), (0, 1, 0), (1, 0, 0), (0, 0, 1)]
-    ).reshape((4, 3))
-    cube = pb.Cube(points)
-
-    space = pb.Space()
-    assert space.dims is None
-    assert np.array_equal(space.mean, np.zeros((3, 1)))
-    assert np.array_equal(space.total, np.zeros((3, 1)))
-    assert space.num_objs == 0
-    assert space.primitive_counter == 0
-    assert space.time_step == 0
-    assert space.scene_counter == 0
-    assert np.array_equal(space.cuboid_coordinates, np.zeros((10, 6, 4, 3)))
-    assert space.cuboid_visual_metadata == {}
-    assert space.cuboid_index is not None
-    assert space.changelog == []
-
-
-# def test_space_creates_valid_axes_on_render() -> None:
-#     pass

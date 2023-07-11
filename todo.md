@@ -13,7 +13,7 @@ DOD for each of these: unit tests (visualisation involves manually checking in m
 - [X] Create basic `Cube` object
 - [X] Correctly visualise a `Cube` in matplotlib
 - [X] Create basic `Space` object
-- [>] Correctly visualise a single-scene `Space` in matplotlib (single `Cube`)
+- [X] Correctly visualise a single-scene `Space` in matplotlib (single `Cube`)
 - [ ] Release as pip package (first use the test pypi index)
 - [ ] Add multiple scenes to a `Space` (via `snapshot`)
 - [ ] Correctly visualise a multi-scene `Space` in matplotlib (multiple `Cube`s, one per scene)

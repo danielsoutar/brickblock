@@ -287,6 +287,17 @@ class Space:
         ax.set_ylabel('y')
         ax.set_zlabel('z')
 
+        # This was done *after* adding the polycollections in the original
+        # notebook, but you've always conceptualised it as being before.
+        # Maybe you did do that, but it means less flexibility in the plots? Who
+        # knows...
+        # bounds = self.dims
+        # bound_max = np.max(bounds)
+
+        # Does this always work? Does this ever work?
+        # ax.set_xlim(-bound_max / 8, bound_max * 1)
+        # ax.set_ylim(-bound_max / 4, bound_max * 0.75)
+        # ax.set_zlim(-bound_max / 4, bound_max * 0.75)
 
         for timestep in range(self.time_step):
             # Create the object for matplotlib ingestion.
@@ -304,15 +315,6 @@ class Space:
             matplotlib_like_cube.set_edgecolor(visual_properties['edgecolor'])
             matplotlib_like_cube.set_alpha(visual_properties['alpha'])
             ax.add_collection3d(matplotlib_like_cube)
-
-        bounds = self.dims
-
-        bound_max = np.max(bounds)
-
-        # Does this always work? Does this ever work?
-        # ax.set_xlim(-bound_max / 8, bound_max * 1)
-        # ax.set_ylim(-bound_max / 4, bound_max * 0.75)
-        # ax.set_zlim(-bound_max / 4, bound_max * 0.75)
 
         return fig, ax
 

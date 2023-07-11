@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "legoland"
+name = "postbox"
 version = "0.1.0"
 description = "A fun visualisation library for those that like boxes"
 authors = ["Daniel Soutar <danielsoutar144@gmail.com>"]
@@ -18,5 +18,5 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.pytest.ini_options]
 pythonpath = [
-  "legoland"
+  "postbox"
 ]

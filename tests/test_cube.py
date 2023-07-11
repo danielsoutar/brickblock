@@ -6,7 +6,7 @@ from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import numpy as np
 
-import legoland.space as lg
+import postbox.space as pb
 
 
 def test_cube_creation() -> None:
@@ -14,7 +14,7 @@ def test_cube_creation() -> None:
         [(0, 0, 0), (0, 1, 0), (1, 0, 0), (0, 0, 1)]
     ).reshape((4, 3))
 
-    test_cube = lg.Cube(test_points)
+    test_cube = pb.Cube(test_points)
 
     assert test_cube.faces.shape == (6, 4, 3)
     assert test_cube.facecolor == None
@@ -28,7 +28,7 @@ def test_cube_creates_all_data_needed_for_visualising() -> None:
     test_points = np.array(
         [(0, 0, 0), (0, 1, 0), (1, 0, 0), (0, 0, 1)]
     ).reshape((4, 3))
-    test_cube = lg.Cube(test_points)
+    test_cube = pb.Cube(test_points)
     poly = Poly3DCollection(test_cube.faces)
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
@@ -52,9 +52,9 @@ def test_space_creation() -> None:
     points = np.array(
         [(0, 0, 0), (0, 1, 0), (1, 0, 0), (0, 0, 1)]
     ).reshape((4, 3))
-    cube = lg.Cube(points)
+    cube = pb.Cube(points)
 
-    space = lg.Space()
+    space = pb.Space()
     assert space.dims is None
     assert np.array_equal(space.mean, np.zeros((3, 1)))
     assert np.array_equal(space.total, np.zeros((3, 1)))

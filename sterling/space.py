@@ -276,7 +276,7 @@ class Space:
         self.scene_counter += 1
 
     # TODO: Decide whether passing the Axes or having it be fully constructed by
-    # postbox is a good idea.
+    # sterling is a good idea.
     # TODO: It seems controlling the azimuth and elevation parameters (which are
     # handily configurable!) is what you need for adjusting the camera.
     def render(self) -> tuple[plt.Figure, plt.Axes]:

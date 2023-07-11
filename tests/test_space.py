@@ -6,11 +6,11 @@ from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import numpy as np
 
-import postbox.space as pb
+import sterling.space as archer
 
 
 def test_space_creation() -> None:
-    space = pb.Space()
+    space = archer.Space()
     assert space.dims is None
     assert np.array_equal(space.mean, np.zeros((3, 1)))
     assert np.array_equal(space.total, np.zeros((3, 1)))
@@ -28,9 +28,9 @@ def test_space_creates_valid_axes_on_render() -> None:
     points = np.array(
         [(0, 0, 0), (0, 1, 0), (1, 0, 0), (0, 0, 1)]
     ).reshape((4, 3))
-    cube = pb.Cube(points)
+    cube = archer.Cube(points)
 
-    space = pb.Space()
+    space = archer.Space()
     space.add_cube(cube)
     fig, ax = space.render()
     plt_internal_data = np.array([ax.collections[0]._vec])

@@ -3,6 +3,7 @@ from typing import Any
 
 import numpy as np
 
+
 ColourPoint = tuple[float, float, float]
 
 @dataclass
@@ -56,6 +57,35 @@ class Cube:
             'edgecolor': self.edgecolor,
             'alpha': self.alpha,
         }
+
+
+    def get_bounding_box(self) -> np.ndarray:
+        """
+        Get the bounding box around the cube's `points`.
+
+        The output is a 3x2 matrix, with rows in WHD order (xs, ys, zs)
+        corresponding to the minimum and maximum per dimension respectively.
+        """
+        points = np.array([self.faces[0], self.faces[-1]]).reshape((8, 3))
+        x_min = np.min(points[:, 0])
+        x_max = np.max(points[:, 0])
+        y_min = np.min(points[:, 1])
+        y_max = np.max(points[:, 1])
+        z_min = np.min(points[:, 2])
+        z_max = np.max(points[:, 2])
+
+        max_range = np.array(
+            [x_max-x_min, y_max-y_min, z_max-z_min]).max() / 2.0
+
+        mid_x = (x_max+x_min) * 0.5
+        mid_y = (y_max+y_min) * 0.5
+        mid_z = (z_max+z_min) * 0.5
+
+        return np.array([
+            [mid_x - max_range, mid_x + max_range],
+            [mid_y - max_range, mid_y + max_range],
+            [mid_z - max_range, mid_z + max_range]
+        ]).reshape((3, 2))
 
     def _construct_points(self, points: np.ndarray, using_shorthand: bool) -> np.ndarray:
         """

@@ -4,22 +4,19 @@ V1
 
 DOD for each of these: unit tests (visualisation involves manually checking in matplotlib)
 
-`~` means in progress
-
-`>` means source written but not tested yet
-
-`X` obviously means fully done (checkbox)
+7/24 done
 
 - [X] Create basic `Cube` object
 - [X] Correctly visualise a `Cube` in matplotlib
 - [X] Create basic `Space` object
 - [X] Correctly visualise a single-scene `Space` in matplotlib (single `Cube`)
 - [X] Release as pip package (first use the test pypi index)
-- [ ] Add multiple scenes to a `Space` (via `snapshot`)
-- [ ] Correctly visualise a multi-scene `Space` in matplotlib (multiple `Cube`s, one per scene)
+- [X] Add multiple scenes to a `Space` (via `snapshot`)
+- [X] Correctly visualise a multi-scene `Space` in matplotlib (multiple `Cube`s, one per scene)
 - [ ] Add multiple `Cube`s in a single scene
 - [ ] Correctly visualise a single-scene `Space` in matplotlib (multiple `Cube`s)
 - [ ] Correctly visualise a multi-scene `Space` in matplotlib (multiple `Cube`s)
+- [ ] Have `render` imply the current timestep as a `Scene`, if not already marked as such.
   - Need only visualise individual frames with matplotlib for now.
 - [ ] Add support for visual customisations (i.e. updating `cuboid_visual_metadata` and forwarding args)
 - [ ] Add support for composite objects (multiple cubes in a single timestep)
@@ -30,6 +27,7 @@ DOD for each of these: unit tests (visualisation involves manually checking in m
 - [ ] Allow deleting multiple objects (by scene ID)
   - As above
 - [ ] Allow mutating an object's visual metadata (by coordinate, name, timestep ID, scene ID)
+- [ ] Work out a way of positioning the camera better
 - [ ] Allow creating a object by offset from a given object (by coordinate, name, timestep ID)
   - If allowing by scene ID, that implies multiple objects in a single timestep. Unless you offset each object in terms of timestep as well.
 - [ ] Allow mutating an object by affine transform (by name, timestep ID, scene ID)

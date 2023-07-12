@@ -1,30 +1,14 @@
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any
-import numpy as np
-import pandas as pd
-# import imageio
+
 import matplotlib.pyplot as plt
 # This import registers the 3D projection, but is otherwise unused.
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
-
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+import numpy as np
 
-
-# test_points = np.array([(0, 0, 0), (0, 1, 0), (1, 0, 0), (0, 0, 1)]).reshape((4, 3))
-# test_cube = Cube(test_points)
-# poly = Poly3DCollection(test_cube.faces)
-
-
-def test_plot():
-    fig = plt.figure(figsize=(12, 10))
-    fig.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=None, hspace=None)
-    ax = fig.add_subplot(111, projection='3d')
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
-    ax.set_zlabel('z')
-
-    return fig, ax
+from brickblock.cube import Cube
 
 
 class SpaceStateChange:
@@ -94,19 +78,21 @@ class Space:
     For deletion:
         - Complement of addition, see above.
     """
-    dims: np.ndarray | None
+    dims: np.ndarray
     mean: np.ndarray
     total: np.ndarray
     num_objs: int
-    # All the FUN stuff.
+    primitive_counter: int
+    time_step: int
+    scene_counter: int
     cuboid_coordinates: np.ndarray
     cuboid_visual_metadata: dict[str, list]
-    cuboid_index: dict[str, dict[str, dict]]
+    cuboid_index: dict[int, dict[int, list[int]]]
     changelog: list[SpaceStateChange]
 
 
-    def __init__(self, dims: np.ndarray | None = None) -> None:
-        self.dims = dims
+    def __init__(self) -> None:
+        self.dims = np.zeros((3, 2))
         self.mean = np.zeros((3, 1))
         self.total = np.zeros((3, 1))
         self.num_objs = 0
@@ -115,23 +101,22 @@ class Space:
         self.scene_counter = 0
         self.cuboid_coordinates = np.zeros((10, 6, 4, 3))
         self.cuboid_visual_metadata = {}
-        self.cuboid_index = defaultdict(lambda: defaultdict(None))
+        self.cuboid_index = {0: {}}
         self.changelog = []
 
 
     def add_cube(self, cube: Cube) -> None:
         """
-        Make sure the space is large enough to encompass all objects in it.
-        This is achieved by ensuring the space is centred around the
-        geometric mean of the objects within it.
+        TODO: Fill in.
         """
-        cube_bounding_box = get_bounding_box(cube)
+        cube_bounding_box = cube.get_bounding_box()
         cube_mean = np.mean(cube.points(), axis=0).reshape((3, 1))
 
         self.total += cube_mean
         self.num_objs += 1
+        self.mean = self.total / self.num_objs
 
-        if self.dims is None:
+        if self.num_objs == 1:
             dim = cube_bounding_box
         else:
             # Since there are multiple objects, ensure the resulting dimensions
@@ -161,6 +146,15 @@ class Space:
             else:
                 self.cuboid_visual_metadata[key] = [value]
 
+        def add_key_to_nested_dict(d, keys):
+            for key in keys:
+                if key not in d:
+                    d[key] = {}
+                d = d[key]
+            d.setdefault(keys[-1], -1)
+
+        keys = [self.scene_counter, self.time_step]
+        add_key_to_nested_dict(self.cuboid_index, keys)
         self.cuboid_index[self.scene_counter][self.time_step] = [
             self.primitive_counter
         ]
@@ -171,6 +165,11 @@ class Space:
         self.time_step += 1
 
     def snapshot(self) -> None:
+        if self.scene_counter not in self.cuboid_index.keys():
+            raise Exception(
+                "A snapshot must include at least one addition, mutation, or "
+                "deletion in the given scene."
+            )
         self.scene_counter += 1
 
     # TODO: Decide whether passing the Axes or having it be fully constructed by
@@ -181,9 +180,8 @@ class Space:
         fig = plt.figure(figsize=(10, 8))
         fig.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=None, hspace=None)
         ax = fig.add_subplot(111, projection='3d')
-        ax.set_xlabel('x')
-        ax.set_ylabel('y')
-        ax.set_zlabel('z')
+        # Remove everything except the objects to display.
+        ax.set_axis_off()
 
         # This was done *after* adding the polycollections in the original
         # notebook, but you've always conceptualised it as being before.
@@ -280,38 +278,6 @@ class Space:
         # representing changes to the internal data. The advantage of the
         # changelog is that you can group various transforms together and
         # batch-execute them between scenes.
-
-
-def get_bounding_box(cube: Cube) -> np.ndarray:
-    """
-    Get the bounding box around the given cuboid's `points`.
-
-    The input should be (M x 3), where M is the number of points. Each point
-    should be in WHD order (xs, ys, zs).
-
-    The output should be (3, 2), with each row (in WHD order) corresponding to
-    the minimum and maximum of the given dimension. 
-    """
-    points = cube.points()
-    x_min = np.min(points[:, 0])
-    x_max = np.max(points[:, 0])
-    y_min = np.min(points[:, 1])
-    y_max = np.max(points[:, 1])
-    z_min = np.min(points[:, 2])
-    z_max = np.max(points[:, 2])
-
-    max_range = np.array(
-        [x_max-x_min, y_max-y_min, z_max-z_min]).max() / 2.0
-
-    mid_x = (x_max+x_min) * 0.5
-    mid_y = (y_max+y_min) * 0.5
-    mid_z = (z_max+z_min) * 0.5
-
-    return np.array([
-        [mid_x - max_range, mid_x + max_range],
-        [mid_y - max_range, mid_y + max_range],
-        [mid_z - max_range, mid_z + max_range]
-    ]).reshape((3, 2))
 
 
 # fig = plt.figure(figsize=(12, 10))

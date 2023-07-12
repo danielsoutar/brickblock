@@ -42,6 +42,7 @@ def mock_coordinates_entry() -> np.ndarray:
 
 def test_space_creation() -> None:
     space = bb.Space()
+
     assert np.array_equal(space.dims, np.zeros((3, 2)))
     assert np.array_equal(space.mean, np.zeros((3, 1)))
     assert np.array_equal(space.total, np.zeros((3, 1)))
@@ -56,11 +57,12 @@ def test_space_creation() -> None:
 
 
 def test_space_snapshot_creates_a_scene() -> None:
+    space = bb.Space()
+
     points = np.array(
         [(0, 0, 0), (0, 1, 0), (1, 0, 0), (0, 0, 1)]
     ).reshape((4, 3))
     cube = bb.Cube(points)
-    space = bb.Space()
     space.add_cube(cube)
     space.snapshot()
 
@@ -93,11 +95,12 @@ def test_space_snapshot_creates_a_scene() -> None:
 
 
 def test_space_multiple_snapshots_create_multiple_scenes() -> None:
+    space = bb.Space()
+
     points = np.array(
         [(0, 0, 0), (0, 1, 0), (1, 0, 0), (0, 0, 1)]
     ).reshape((4, 3))
     cube = bb.Cube(points)
-    space = bb.Space()
     space.add_cube(cube)
     space.snapshot()
 
@@ -141,11 +144,12 @@ def test_space_multiple_snapshots_create_multiple_scenes() -> None:
 
 
 def test_space_creates_distinct_scenes_only() -> None:
+    space = bb.Space()
+
     points = np.array(
         [(0, 0, 0), (0, 1, 0), (1, 0, 0), (0, 0, 1)]
     ).reshape((4, 3))
     cube = bb.Cube(points)
-    space = bb.Space()
     space.add_cube(cube)
     space.snapshot()
 
@@ -158,17 +162,17 @@ def test_space_creates_distinct_scenes_only() -> None:
 
 
 def test_space_creates_valid_axes_on_render() -> None:
+    space = bb.Space()
+
     points = np.array(
         [(0, 0, 0), (0, 1, 0), (1, 0, 0), (0, 0, 1)]
     ).reshape((4, 3))
     cube = bb.Cube(points)
-
-    space = bb.Space()
     space.add_cube(cube)
     space.snapshot()
     _, ax = space.render()
-    plt_internal_data = ax.collections[0]._vec
 
+    plt_internal_data = ax.collections[0]._vec
     plt_internal_reshaped_data = plt_internal_data.T.reshape((6, 4, 4))
 
     # Add the implicit 4th dimension to the original data - all ones.
@@ -216,3 +220,49 @@ def test_space_creates_valid_axes_on_render_multiple_scenes() -> None:
     )
 
     assert np.array_equal(expected_data, plt_internal_reshaped_data)
+
+
+def test_space_add_multiple_cubes_in_single_scene() -> None:
+    space = bb.Space()
+
+    points = np.array(
+        [(0, 0, 0), (0, 1, 0), (1, 0, 0), (0, 0, 1)]
+    ).reshape((4, 3))
+    cube = bb.Cube(points)
+    other_points = np.array(
+        [(3, 3, 3), (0, 1, 0), (1, 0, 0), (0, 0, 1)]
+    ).reshape((4, 3))
+    second_cube = bb.Cube(other_points)
+
+    space.add_cube(cube)
+    space.add_cube(second_cube)
+    space.snapshot()
+
+    assert space.num_objs == 2
+    assert space.primitive_counter == 2
+    assert space.time_step == 2
+    assert space.scene_counter == 1
+
+    expected_num_entries = 10
+    assert np.array_equal(
+        space.cuboid_coordinates,
+        np.concatenate(
+            (
+                mock_coordinates_entry(),
+                mock_coordinates_entry() + 3,
+                np.zeros((expected_num_entries-2, 6, 4, 3)),
+            ),
+            axis=0,
+        ),
+    )
+    assert space.cuboid_visual_metadata == {
+        'facecolor': [None, None],
+        'linewidths': [0.1, 0.1],
+        'edgecolor': ['black', 'black'],
+        'alpha': [0.0, 0.0],
+    }
+    assert space.cuboid_index == {0: {0: [0], 1: [1]}}
+    assert space.changelog == [
+        bb.Addition(timestep_id=0, name=None),
+        bb.Addition(timestep_id=1, name=None),
+    ]

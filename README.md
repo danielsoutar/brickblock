@@ -1,14 +1,14 @@
-# Sterling: A fun visualisation library for those that like boxes
+# Brickblock: A fun visualisation library for those that like boxes
 
 This is a small library that uses blocks in matplotlib's visually appealing 3D extension - and aims to be the 'seaborn of matplotlib-3D', if you will.
 
 ## Core abstractions
 
-At the centre of Sterling is the `Space`. A `Space` contains objects, and when a user wants a visualisation, they render the current state of the `Space` - the rendered state is known as a `Scene`.
+At the centre of BrickBlock is the `Space`. A `Space` contains objects, and when a user wants a visualisation, they render the current state of the `Space` - the rendered state is known as a `Scene`.
 
-Currently there is one object used for composing visualisations in Sterling: the `Cube`. `Cube` objects can be added into the `Space` with a degree of control over their visual presentation: transparency, colour, line widths.
+Currently there is one object used for composing visualisations in BrickBlock: the `Cube`. `Cube` objects can be added into the `Space` with a degree of control over their visual presentation: transparency, colour, line widths.
 
-Sterling also supports `Transition`s and `Transform`s:
+BrickBlock also supports `Transition`s and `Transform`s:
 
 * A `Transform` is simply any change to the space like adding one or more `Cube` objects. It does not produce a `Scene`. These are useful when you are just iteratively building up to a complex `Scene`.
 * A `Transition`, by contrast, is a transform between two `Scene`s. These are useful for generating sequences of `Scene`s - the `Space` will keep track of its state over time, as well as which states are `Scene`s. A `Transition` can be defined by one or more `Transform`s.

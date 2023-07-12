@@ -9,7 +9,7 @@ README_MD = open(join(dirname(abspath(__file__)), "README.md")).read()
 # places...
 setup(
     # REQUIRED
-    name="sterling",
+    name="brickblock",
     # REQUIRED
     version="0.1.0",
     # Not sure?
@@ -21,7 +21,7 @@ setup(
     # OPTIONAL
     long_description_content_type="text/markdown",
     # OPTIONAL
-    url="https://github.com/danielsoutar/sterling",
+    url="https://github.com/danielsoutar/brickblock",
     # OPTIONAL
     author_name="Daniel Soutar",
     # OPTIONAL
@@ -35,7 +35,7 @@ setup(
     ],
     # Keywords are tags that identify your project and help searching for it
     # OPTIONAL
-    keywords="sterling, 3D, visualisations",
+    keywords="brickblock, 3D, visualisations",
     # For additional fields, check:
     # https://github.com/pypa/sampleproject/blob/master/setup.py
 )

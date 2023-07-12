@@ -16,31 +16,31 @@ Sterling also supports `Transition`s and `Transform`s:
 Having these abstractions allows programmers to create animated visualisations like GIFs. You define a `Space`, using `Transform`s and `Transition`s to evolve the state, and the `Scene` objects are persisted to enable sequences of images for use in GIFs.
 
 ```python
-import sterling as archer
+import brickblock as bb
 
 
 # Let's start with adding a few objects to our space!
 cuboid_base = np.array((0, 0, 0))
 cuboid_dims = np.array((4, 3, 4))
 cuboid_opts = {'color': None, 'alpha': 0}
-input_cube = archer.Cuboid(base, cuboid_dims, **cuboid_opts)
+input_cube = bb.Cuboid(base, cuboid_dims, **cuboid_opts)
 
 filter_base = np.array((0, 0, 1))
 filter_dims = np.array((3, 3, 3))
 filter_opts = {'color': (1., 1., 0.5), 'alpha': 0.3, 'linewidths': 0.3}
-filter_cube = archer.Cube(filter_base, filter_dims, **filter_opts)
+filter_cube = bb.Cube(filter_base, filter_dims, **filter_opts)
 
-s = archer.Space()
+s = bb.Space()
 # Add a 4x3x4 rectangular cuboid to the space.
-s = archer.add_transform(s, input_cube)
+s = bb.add_transform(s, input_cube)
 # Add a 3x3x3 filter to the space with a single cube.
-s = archer.add_transform(s, filter_cube)
+s = bb.add_transform(s, filter_cube)
 
 # Render the state as a scene and use in a plot-like way...
-fig, ax = archer.render(s)
+fig, ax = bb.render(s)
 # Or take a snapshot to indicate that this is a scene...
-state_history = archer.snapshot(s)
+state_history = bb.snapshot(s)
 # Do more stuff...
 # And then when you're ready, generate a GIF-like output...
-gif_filename = archer.stream(s, "gif", path_to_file))
+gif_filename = bb.stream(s, "gif", path_to_file))
 ```

@@ -1,1 +1,0 @@
-from sterling.space import *

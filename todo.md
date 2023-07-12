@@ -4,7 +4,7 @@ V1
 
 DOD for each of these: unit tests (visualisation involves manually checking in matplotlib)
 
-8/24 done
+9/24 done
 
 - [X] Create basic `Cube` object
 - [X] Correctly visualise a `Cube` in matplotlib
@@ -14,7 +14,7 @@ DOD for each of these: unit tests (visualisation involves manually checking in m
 - [X] Add multiple scenes to a `Space` (via `snapshot`)
 - [X] Correctly visualise a multi-scene `Space` in matplotlib (multiple `Cube`s, one per scene)
 - [X] Add multiple `Cube`s in a single scene
-- [ ] Correctly visualise a single-scene `Space` in matplotlib (multiple `Cube`s)
+- [X] Correctly visualise a single-scene `Space` in matplotlib (multiple `Cube`s)
 - [ ] Correctly visualise a multi-scene `Space` in matplotlib (multiple `Cube`s)
 - [ ] Have `render` imply the current timestep as a `Scene`, if not already marked as such.
   - Need only visualise individual frames with matplotlib for now.

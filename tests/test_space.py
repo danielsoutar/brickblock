@@ -266,3 +266,40 @@ def test_space_add_multiple_cubes_in_single_scene() -> None:
         bb.Addition(timestep_id=0, name=None),
         bb.Addition(timestep_id=1, name=None),
     ]
+
+
+def test_space_creates_valid_axes_on_render_multiple_cubes_single_scene() -> None:
+    space = bb.Space()
+
+    points = np.array(
+        [(0, 0, 0), (0, 1, 0), (1, 0, 0), (0, 0, 1)]
+    ).reshape((4, 3))
+    cube = bb.Cube(points)
+    other_points = np.array(
+        [(3, 3, 3), (0, 1, 0), (1, 0, 0), (0, 0, 1)]
+    ).reshape((4, 3))
+    second_cube = bb.Cube(other_points)
+
+    space.add_cube(cube)
+    space.add_cube(second_cube)
+    space.snapshot()
+    _, ax2 = space.render()
+
+    plt_internal_data_for_first_cube = ax2.collections[0]._vec.T
+    plt_internal_data_for_second_cube = ax2.collections[1]._vec.T
+    plt_internal_reshaped_data = np.concatenate(
+        [plt_internal_data_for_first_cube, plt_internal_data_for_second_cube],
+        axis=0
+    ).reshape((2, 6, 4, 4))
+
+    # Add the implicit 4th dimension to the original data - all ones.
+    ones = np.ones((6, 4, 1))
+    original_augmented_first_cube = np.concatenate([cube.faces, ones], -1)
+    original_augmented_second_cube = np.concatenate([second_cube.faces, ones], -1)
+
+    expected_data = np.stack(
+        [original_augmented_first_cube, original_augmented_second_cube],
+        axis=0
+    )
+
+    assert np.array_equal(expected_data, plt_internal_reshaped_data)

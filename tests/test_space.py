@@ -59,7 +59,7 @@ def test_space_creation() -> None:
 def test_space_snapshot_creates_a_scene() -> None:
     space = bb.Space()
 
-    cube = bb.Cube(base_vector=np.array([0, 0, 0]), h=1.0, w=1.0, d=1.0)
+    cube = bb.Cube(base_vector=np.array([0, 0, 0]), scale=1.0)
     space.add_cube(cube)
     space.snapshot()
 
@@ -83,7 +83,7 @@ def test_space_snapshot_creates_a_scene() -> None:
     )
     assert space.cuboid_visual_metadata == {
         'facecolor': [None],
-        'linewidths': [0.1],
+        'linewidth': [0.1],
         'edgecolor': ['black'],
         'alpha': [0.0],
     }
@@ -94,11 +94,11 @@ def test_space_snapshot_creates_a_scene() -> None:
 def test_space_multiple_snapshots_create_multiple_scenes() -> None:
     space = bb.Space()
 
-    cube = bb.Cube(base_vector=np.array([0, 0, 0]), h=1.0, w=1.0, d=1.0)
+    cube = bb.Cube(base_vector=np.array([0, 0, 0]), scale=1.0)
     space.add_cube(cube)
     space.snapshot()
 
-    second_cube = bb.Cube(base_vector=np.array([3, 3, 3]), h=1.0, w=1.0, d=1.0)
+    second_cube = bb.Cube(base_vector=np.array([3, 3, 3]), scale=1.0)
     space.add_cube(second_cube)
     space.snapshot()
 
@@ -123,7 +123,7 @@ def test_space_multiple_snapshots_create_multiple_scenes() -> None:
     )
     assert space.cuboid_visual_metadata == {
         'facecolor': [None, None],
-        'linewidths': [0.1, 0.1],
+        'linewidth': [0.1, 0.1],
         'edgecolor': ['black', 'black'],
         'alpha': [0.0, 0.0],
     }
@@ -137,7 +137,7 @@ def test_space_multiple_snapshots_create_multiple_scenes() -> None:
 def test_space_creates_distinct_scenes_only() -> None:
     space = bb.Space()
 
-    cube = bb.Cube(base_vector=np.array([0, 0, 0]), h=1.0, w=1.0, d=1.0)
+    cube = bb.Cube(base_vector=np.array([0, 0, 0]), scale=1.0)
     space.add_cube(cube)
     space.snapshot()
 
@@ -152,7 +152,7 @@ def test_space_creates_distinct_scenes_only() -> None:
 def test_space_creates_valid_axes_on_render() -> None:
     space = bb.Space()
 
-    cube = bb.Cube(base_vector=np.array([0, 0, 0]), h=1.0, w=1.0, d=1.0)
+    cube = bb.Cube(base_vector=np.array([0, 0, 0]), scale=1.0)
     space.add_cube(cube)
     space.snapshot()
     _, ax = space.render()
@@ -170,13 +170,13 @@ def test_space_creates_valid_axes_on_render() -> None:
 def test_space_creates_valid_axes_on_render_multiple_scenes() -> None:
     space = bb.Space()
 
-    cube = bb.Cube(base_vector=np.array([0, 0, 0]), h=1.0, w=1.0, d=1.0)
+    cube = bb.Cube(base_vector=np.array([0, 0, 0]), scale=1.0)
     space.add_cube(cube)
     space.snapshot()
     # Check this runs without issues, but we don't need the fig for this test.
     space.render()
 
-    second_cube = bb.Cube(base_vector=np.array([3, 3, 3]), h=1.0, w=1.0, d=1.0)
+    second_cube = bb.Cube(base_vector=np.array([3, 3, 3]), scale=1.0)
     space.add_cube(second_cube)
     space.snapshot()
     _, ax2 = space.render()
@@ -204,8 +204,8 @@ def test_space_creates_valid_axes_on_render_multiple_scenes() -> None:
 def test_space_add_multiple_cubes_in_single_scene() -> None:
     space = bb.Space()
 
-    cube = bb.Cube(base_vector=np.array([0, 0, 0]), h=1.0, w=1.0, d=1.0)
-    second_cube = bb.Cube(base_vector=np.array([3, 3, 3]), h=1.0, w=1.0, d=1.0)
+    cube = bb.Cube(base_vector=np.array([0, 0, 0]), scale=1.0)
+    second_cube = bb.Cube(base_vector=np.array([3, 3, 3]), scale=1.0)
 
     space.add_cube(cube)
     space.add_cube(second_cube)
@@ -230,7 +230,7 @@ def test_space_add_multiple_cubes_in_single_scene() -> None:
     )
     assert space.cuboid_visual_metadata == {
         'facecolor': [None, None],
-        'linewidths': [0.1, 0.1],
+        'linewidth': [0.1, 0.1],
         'edgecolor': ['black', 'black'],
         'alpha': [0.0, 0.0],
     }
@@ -244,8 +244,8 @@ def test_space_add_multiple_cubes_in_single_scene() -> None:
 def test_space_creates_valid_axes_on_render_multiple_cubes_single_scene() -> None:
     space = bb.Space()
 
-    cube = bb.Cube(base_vector=np.array([0, 0, 0]), h=1.0, w=1.0, d=1.0)
-    second_cube = bb.Cube(base_vector=np.array([3, 3, 3]), h=1.0, w=1.0, d=1.0)
+    cube = bb.Cube(base_vector=np.array([0, 0, 0]), scale=1.0)
+    second_cube = bb.Cube(base_vector=np.array([3, 3, 3]), scale=1.0)
 
     space.add_cube(cube)
     space.add_cube(second_cube)
@@ -275,10 +275,10 @@ def test_space_creates_valid_axes_on_render_multiple_cubes_single_scene() -> Non
 def test_space_creates_valid_axes_on_render_multiple_cubes_scenes() -> None:
     space = bb.Space()
 
-    cube = bb.Cube(base_vector=np.array([0, 0, 0]), h=1.0, w=1.0, d=1.0)
-    second_cube = bb.Cube(base_vector=np.array([3, 3, 3]), h=1.0, w=1.0, d=1.0)
-    third_cube = bb.Cube(base_vector=np.array([1, 1, 1]), h=1.0, w=1.0, d=1.0)
-    fourth_cube = bb.Cube(base_vector=np.array([2, 2, 2]), h=1.0, w=1.0, d=1.0)
+    cube = bb.Cube(base_vector=np.array([0, 0, 0]), scale=1.0)
+    second_cube = bb.Cube(base_vector=np.array([3, 3, 3]), scale=1.0)
+    third_cube = bb.Cube(base_vector=np.array([1, 1, 1]), scale=1.0)
+    fourth_cube = bb.Cube(base_vector=np.array([2, 2, 2]), scale=1.0)
 
     space.add_cube(cube)
     space.add_cube(second_cube)
@@ -307,3 +307,43 @@ def test_space_creates_valid_axes_on_render_multiple_cubes_scenes() -> None:
     expected_data = np.stack(original_augmented_cubes, axis=0)
 
     assert np.array_equal(expected_data, plt_internal_reshaped_data)
+
+
+def test_space_can_customise_cube_visual_properties() -> None:
+    space = bb.Space()
+
+    red, green, blue = 1.0, 0.1569, 0.0
+    alpha = 0.1
+    linewidth = 0.5
+
+    cube = bb.Cube(
+        base_vector=np.array([0, 0, 0]),
+        scale=1.0,
+        facecolor=(red, green, blue),
+        linewidth=linewidth,
+        alpha=alpha,
+    )
+    space.add_cube(cube)
+    assert space.cuboid_visual_metadata == {
+        'facecolor': [(red, green, blue)],
+        'linewidth': [linewidth],
+        'edgecolor': ['black'],
+        'alpha': [alpha],
+    }
+
+    fig, ax = space.render()
+
+    plt_collection = ax.axes.collections[0]
+
+    # Check colours
+    expected_rgba = np.array([red, green, blue, alpha]).reshape((1, 4))
+    actual_rgba = plt_collection._facecolor3d
+    assert np.array_equal(expected_rgba, actual_rgba)
+
+    # Check lines
+    expected_linewidths = np.array([linewidth])
+    actual_linewidths = plt_collection._linewidths
+    assert np.array_equal(expected_linewidths, actual_linewidths)
+    expected_edgecolors = np.array([0.0, 0.0, 0.0, alpha]).reshape((1, 4))
+    actual_edgecolors = plt_collection._edgecolors
+    assert np.array_equal(expected_edgecolors, actual_edgecolors)

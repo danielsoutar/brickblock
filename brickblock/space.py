@@ -209,7 +209,7 @@ class Space:
                 for k in self.cuboid_visual_metadata.keys()
             }
             matplotlib_like_cube.set_facecolor(visual_properties['facecolor'])
-            matplotlib_like_cube.set_linewidths(visual_properties['linewidths'])
+            matplotlib_like_cube.set_linewidths(visual_properties['linewidth'])
             matplotlib_like_cube.set_edgecolor(visual_properties['edgecolor'])
             matplotlib_like_cube.set_alpha(visual_properties['alpha'])
             ax.add_collection3d(matplotlib_like_cube)

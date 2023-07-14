@@ -4,8 +4,6 @@ from typing import Any
 import numpy as np
 
 
-ColourPoint = tuple[float, float, float]
-
 @dataclass
 class Cube:
     """
@@ -15,19 +13,17 @@ class Cube:
     with for composing `Scene`s.
     """
     faces: np.ndarray
-    facecolor: ColourPoint | None = None
-    linewidths: float = 0.1
+    facecolor: tuple[float, float, float] | None = None
+    linewidth: float = 0.1
     edgecolor: str = 'black'
     alpha: float = 0.0
 
     def __init__(
             self,
             base_vector: np.ndarray,
-            h: float = 1.0,
-            w: float = 1.0,
-            d: float = 1.0,
-            facecolor: ColourPoint | None = None,
-            linewidths: float = 0.1,
+            scale: float = 1.0,
+            facecolor: tuple[float, float, float] | None = None,
+            linewidth: float = 0.1,
             edgecolor: str = 'black',
             alpha: float = 0.0
     ) -> None:
@@ -45,17 +41,17 @@ class Cube:
 
         points = np.array([
             base_vector,
-            h * height_basis_vector,
-            w * width_basis_vector,
-            d * depth_basis_vector,
+            scale * height_basis_vector,
+            scale * width_basis_vector,
+            scale * depth_basis_vector,
         ]).reshape((4, 3))
 
         full_points = self._construct_points(points)
 
         self.faces = self._construct_faces(full_points)
-        self.face_colour = facecolor
-        self.line_width = linewidths
-        self.edge_colour = edgecolor
+        self.facecolor = facecolor
+        self.linewidth = linewidth
+        self.edgecolor = edgecolor
         self.alpha = alpha
 
     def points(self) -> np.ndarray:
@@ -64,7 +60,7 @@ class Cube:
     def get_visual_metadata(self) -> dict[str, Any]:
         return {
             'facecolor': self.facecolor,
-            'linewidths': self.linewidths,
+            'linewidth': self.linewidth,
             'edgecolor': self.edgecolor,
             'alpha': self.alpha,
         }

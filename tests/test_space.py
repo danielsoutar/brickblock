@@ -59,10 +59,7 @@ def test_space_creation() -> None:
 def test_space_snapshot_creates_a_scene() -> None:
     space = bb.Space()
 
-    points = np.array(
-        [(0, 0, 0), (0, 1, 0), (1, 0, 0), (0, 0, 1)]
-    ).reshape((4, 3))
-    cube = bb.Cube(points)
+    cube = bb.Cube(base_vector=np.array([0, 0, 0]), h=1.0, w=1.0, d=1.0)
     space.add_cube(cube)
     space.snapshot()
 
@@ -97,17 +94,11 @@ def test_space_snapshot_creates_a_scene() -> None:
 def test_space_multiple_snapshots_create_multiple_scenes() -> None:
     space = bb.Space()
 
-    points = np.array(
-        [(0, 0, 0), (0, 1, 0), (1, 0, 0), (0, 0, 1)]
-    ).reshape((4, 3))
-    cube = bb.Cube(points)
+    cube = bb.Cube(base_vector=np.array([0, 0, 0]), h=1.0, w=1.0, d=1.0)
     space.add_cube(cube)
     space.snapshot()
 
-    other_points = np.array(
-        [(3, 3, 3), (0, 1, 0), (1, 0, 0), (0, 0, 1)]
-    ).reshape((4, 3))
-    second_cube = bb.Cube(other_points)
+    second_cube = bb.Cube(base_vector=np.array([3, 3, 3]), h=1.0, w=1.0, d=1.0)
     space.add_cube(second_cube)
     space.snapshot()
 
@@ -146,10 +137,7 @@ def test_space_multiple_snapshots_create_multiple_scenes() -> None:
 def test_space_creates_distinct_scenes_only() -> None:
     space = bb.Space()
 
-    points = np.array(
-        [(0, 0, 0), (0, 1, 0), (1, 0, 0), (0, 0, 1)]
-    ).reshape((4, 3))
-    cube = bb.Cube(points)
+    cube = bb.Cube(base_vector=np.array([0, 0, 0]), h=1.0, w=1.0, d=1.0)
     space.add_cube(cube)
     space.snapshot()
 
@@ -164,10 +152,7 @@ def test_space_creates_distinct_scenes_only() -> None:
 def test_space_creates_valid_axes_on_render() -> None:
     space = bb.Space()
 
-    points = np.array(
-        [(0, 0, 0), (0, 1, 0), (1, 0, 0), (0, 0, 1)]
-    ).reshape((4, 3))
-    cube = bb.Cube(points)
+    cube = bb.Cube(base_vector=np.array([0, 0, 0]), h=1.0, w=1.0, d=1.0)
     space.add_cube(cube)
     space.snapshot()
     _, ax = space.render()
@@ -185,19 +170,13 @@ def test_space_creates_valid_axes_on_render() -> None:
 def test_space_creates_valid_axes_on_render_multiple_scenes() -> None:
     space = bb.Space()
 
-    points = np.array(
-        [(0, 0, 0), (0, 1, 0), (1, 0, 0), (0, 0, 1)]
-    ).reshape((4, 3))
-    cube = bb.Cube(points)
+    cube = bb.Cube(base_vector=np.array([0, 0, 0]), h=1.0, w=1.0, d=1.0)
     space.add_cube(cube)
     space.snapshot()
     # Check this runs without issues, but we don't need the fig for this test.
     space.render()
 
-    other_points = np.array(
-        [(3, 3, 3), (0, 1, 0), (1, 0, 0), (0, 0, 1)]
-    ).reshape((4, 3))
-    second_cube = bb.Cube(other_points)
+    second_cube = bb.Cube(base_vector=np.array([3, 3, 3]), h=1.0, w=1.0, d=1.0)
     space.add_cube(second_cube)
     space.snapshot()
     _, ax2 = space.render()
@@ -225,14 +204,8 @@ def test_space_creates_valid_axes_on_render_multiple_scenes() -> None:
 def test_space_add_multiple_cubes_in_single_scene() -> None:
     space = bb.Space()
 
-    points = np.array(
-        [(0, 0, 0), (0, 1, 0), (1, 0, 0), (0, 0, 1)]
-    ).reshape((4, 3))
-    cube = bb.Cube(points)
-    other_points = np.array(
-        [(3, 3, 3), (0, 1, 0), (1, 0, 0), (0, 0, 1)]
-    ).reshape((4, 3))
-    second_cube = bb.Cube(other_points)
+    cube = bb.Cube(base_vector=np.array([0, 0, 0]), h=1.0, w=1.0, d=1.0)
+    second_cube = bb.Cube(base_vector=np.array([3, 3, 3]), h=1.0, w=1.0, d=1.0)
 
     space.add_cube(cube)
     space.add_cube(second_cube)
@@ -271,14 +244,8 @@ def test_space_add_multiple_cubes_in_single_scene() -> None:
 def test_space_creates_valid_axes_on_render_multiple_cubes_single_scene() -> None:
     space = bb.Space()
 
-    points = np.array(
-        [(0, 0, 0), (0, 1, 0), (1, 0, 0), (0, 0, 1)]
-    ).reshape((4, 3))
-    cube = bb.Cube(points)
-    other_points = np.array(
-        [(3, 3, 3), (0, 1, 0), (1, 0, 0), (0, 0, 1)]
-    ).reshape((4, 3))
-    second_cube = bb.Cube(other_points)
+    cube = bb.Cube(base_vector=np.array([0, 0, 0]), h=1.0, w=1.0, d=1.0)
+    second_cube = bb.Cube(base_vector=np.array([3, 3, 3]), h=1.0, w=1.0, d=1.0)
 
     space.add_cube(cube)
     space.add_cube(second_cube)
@@ -308,22 +275,10 @@ def test_space_creates_valid_axes_on_render_multiple_cubes_single_scene() -> Non
 def test_space_creates_valid_axes_on_render_multiple_cubes_scenes() -> None:
     space = bb.Space()
 
-    points = np.array(
-        [(0, 0, 0), (0, 1, 0), (1, 0, 0), (0, 0, 1)]
-    ).reshape((4, 3))
-    cube = bb.Cube(points)
-    other_points = np.array(
-        [(3, 3, 3), (0, 1, 0), (1, 0, 0), (0, 0, 1)]
-    ).reshape((4, 3))
-    second_cube = bb.Cube(other_points)
-    more_points = np.array(
-        [(1, 1, 1), (0, 1, 0), (1, 0, 0), (0, 0, 1)]
-    ).reshape((4, 3))
-    third_cube = bb.Cube(more_points)
-    yet_more_points = np.array(
-        [(2, 2, 2), (0, 1, 0), (1, 0, 0), (0, 0, 1)]
-    )
-    fourth_cube = bb.Cube(yet_more_points)
+    cube = bb.Cube(base_vector=np.array([0, 0, 0]), h=1.0, w=1.0, d=1.0)
+    second_cube = bb.Cube(base_vector=np.array([3, 3, 3]), h=1.0, w=1.0, d=1.0)
+    third_cube = bb.Cube(base_vector=np.array([1, 1, 1]), h=1.0, w=1.0, d=1.0)
+    fourth_cube = bb.Cube(base_vector=np.array([2, 2, 2]), h=1.0, w=1.0, d=1.0)
 
     space.add_cube(cube)
     space.add_cube(second_cube)

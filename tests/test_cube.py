@@ -10,11 +10,7 @@ import brickblock as bb
 
 
 def test_cube_creation() -> None:
-    test_points = np.array(
-        [(0, 0, 0), (0, 1, 0), (1, 0, 0), (0, 0, 1)]
-    ).reshape((4, 3))
-
-    test_cube = bb.Cube(test_points)
+    test_cube = bb.Cube(base_vector=np.array([0, 0, 0]), h=1.0, w=1.0, d=1.0)
 
     assert test_cube.faces.shape == (6, 4, 3)
     assert test_cube.facecolor == None
@@ -23,11 +19,18 @@ def test_cube_creation() -> None:
     assert test_cube.alpha == 0.0
 
 
+def test_invalid_base_throws_exception_making_cube() -> None:
+    invalid_base_vector = np.array([0.0, 0.0])
+
+    expected_err_msg = (
+        "Cube objects are three-dimensional, the base vector should be 3D."
+    )
+    with pytest.raises(ValueError, match=expected_err_msg):
+        bb.Cube(invalid_base_vector, h=1.0, w=1.0, d=1.0)
+
+
 def test_cube_creates_all_data_needed_for_visualising() -> None:
-    test_points = np.array(
-        [(0, 0, 0), (0, 1, 0), (1, 0, 0), (0, 0, 1)]
-    ).reshape((4, 3))
-    test_cube = bb.Cube(test_points)
+    test_cube = bb.Cube(base_vector=np.array([0, 0, 0]), h=1.0, w=1.0, d=1.0)
     poly = Poly3DCollection(test_cube.faces)
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')

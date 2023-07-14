@@ -22,24 +22,35 @@ class Cube:
 
     def __init__(
             self,
-            points: np.ndarray,
+            base_vector: np.ndarray,
+            h: float = 1.0,
+            w: float = 1.0,
+            d: float = 1.0,
             facecolor: ColourPoint | None = None,
             linewidths: float = 0.1,
             edgecolor: str = 'black',
             alpha: float = 0.0
     ) -> None:
-        # Check dimensions are valid - either 4 points, defined as the three
-        # basis vectors from the base point (a 'cube'), or 8 points fully
-        # defining the cube.
-        using_shorthand = len(points) == 4
-        if not using_shorthand and len(points) != 8:
+        # Check base_vector is 3D.
+        is_3d = base_vector.flatten().shape == (3,)
+        if not is_3d:
             raise ValueError(
-                "Cube objects require either 4 points (a base and three basis "
-                "vectors) or 8 points defining the vertices."
+                "Cube objects are three-dimensional, the base vector should be "
+                "3D."
             )
-        # If using 'shorthands' (i.e. implicitly defining by 3 vectors), expand
-        # and construct the full cuboid.
-        full_points = self._construct_points(points, using_shorthand)
+
+        height_basis_vector = np.array([0, 1, 0])
+        width_basis_vector = np.array([1, 0, 0])
+        depth_basis_vector = np.array([0, 0, 1])
+
+        points = np.array([
+            base_vector,
+            h * height_basis_vector,
+            w * width_basis_vector,
+            d * depth_basis_vector,
+        ]).reshape((4, 3))
+
+        full_points = self._construct_points(points)
 
         self.faces = self._construct_faces(full_points)
         self.face_colour = facecolor
@@ -87,39 +98,36 @@ class Cube:
             [mid_z - max_range, mid_z + max_range]
         ]).reshape((3, 2))
 
-    def _construct_points(self, points: np.ndarray, using_shorthand: bool) -> np.ndarray:
+    def _construct_points(self, points: np.ndarray) -> np.ndarray:
         """
-        Construct the full set of points from a possibly partial set of points.
+        Construct the full set of points from a partial set of points.
         """
-        if using_shorthand:
-            # Shorthand convention is to have the 'bottom-left-front' point as
-            # the base, with points defining height/width/depth of the cube
-            # after (using the left-hand rule).
-            # NB: in the 'xyz' axes, we have width-height-depth (WHD) for the coordinates.
-            base, h, w, d = points
-            # Note: the ordering of points matters.
-            full_points = np.array(
-                [
-                    # bottom-left-front
-                    base,
-                    # bottom-left-back
-                    base + d,
-                    # bottom-right-back
-                    base + w + d,
-                    # bottom-right-front
-                    base + w,
-                    # top-left-front
-                    base + h,
-                    # top-left-back
-                    base + h + d,
-                    # top-left-back
-                    base + h + w + d,
-                    # top-right-front
-                    base + h + w,
-                ]
-            )
-        else:
-            full_points = points
+        # Shorthand convention is to have the 'bottom-left-front' point as
+        # the base, with points defining height/width/depth of the cube
+        # after (using the left-hand rule).
+        # NB: in the 'xyz' axes, we have width-height-depth (WHD) for the coordinates.
+        base, h, w, d = points
+        # Note: the ordering of points matters.
+        full_points = np.array(
+            [
+                # bottom-left-front
+                base,
+                # bottom-left-back
+                base + d,
+                # bottom-right-back
+                base + w + d,
+                # bottom-right-front
+                base + w,
+                # top-left-front
+                base + h,
+                # top-left-back
+                base + h + d,
+                # top-left-back
+                base + h + w + d,
+                # top-right-front
+                base + h + w,
+            ]
+        )
 
         return full_points.reshape((8, 3))
 

@@ -283,10 +283,10 @@ def test_space_creates_valid_axes_on_render_multiple_cubes_single_scene() -> Non
     space.add_cube(cube)
     space.add_cube(second_cube)
     space.snapshot()
-    _, ax2 = space.render()
+    _, ax = space.render()
 
-    plt_internal_data_for_first_cube = ax2.collections[0]._vec.T
-    plt_internal_data_for_second_cube = ax2.collections[1]._vec.T
+    plt_internal_data_for_first_cube = ax.collections[0]._vec.T
+    plt_internal_data_for_second_cube = ax.collections[1]._vec.T
     plt_internal_reshaped_data = np.concatenate(
         [plt_internal_data_for_first_cube, plt_internal_data_for_second_cube],
         axis=0
@@ -301,5 +301,54 @@ def test_space_creates_valid_axes_on_render_multiple_cubes_single_scene() -> Non
         [original_augmented_first_cube, original_augmented_second_cube],
         axis=0
     )
+
+    assert np.array_equal(expected_data, plt_internal_reshaped_data)
+
+
+def test_space_creates_valid_axes_on_render_multiple_cubes_scenes() -> None:
+    space = bb.Space()
+
+    points = np.array(
+        [(0, 0, 0), (0, 1, 0), (1, 0, 0), (0, 0, 1)]
+    ).reshape((4, 3))
+    cube = bb.Cube(points)
+    other_points = np.array(
+        [(3, 3, 3), (0, 1, 0), (1, 0, 0), (0, 0, 1)]
+    ).reshape((4, 3))
+    second_cube = bb.Cube(other_points)
+    more_points = np.array(
+        [(1, 1, 1), (0, 1, 0), (1, 0, 0), (0, 0, 1)]
+    ).reshape((4, 3))
+    third_cube = bb.Cube(more_points)
+    yet_more_points = np.array(
+        [(2, 2, 2), (0, 1, 0), (1, 0, 0), (0, 0, 1)]
+    )
+    fourth_cube = bb.Cube(yet_more_points)
+
+    space.add_cube(cube)
+    space.add_cube(second_cube)
+    space.snapshot()
+    # Check this runs without issues, but we don't need the fig for this test.
+    space.render()
+    space.add_cube(third_cube)
+    space.add_cube(fourth_cube)
+
+    space.snapshot()
+    fig, ax = space.render()
+
+    plt_internal_data_for_cubes = [ax.collections[i]._vec.T for i in range(4)]
+    plt_internal_reshaped_data = np.concatenate(
+        plt_internal_data_for_cubes,
+        axis=0
+    ).reshape((4, 6, 4, 4))
+
+    # Add the implicit 4th dimension to the original data - all ones.
+    ones = np.ones((6, 4, 1))
+    original_augmented_cubes = [
+        np.concatenate([c.faces, ones], -1)
+        for c in [cube, second_cube, third_cube, fourth_cube]
+    ]
+
+    expected_data = np.stack(original_augmented_cubes, axis=0)
 
     assert np.array_equal(expected_data, plt_internal_reshaped_data)

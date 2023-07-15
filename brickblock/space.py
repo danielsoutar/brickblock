@@ -8,7 +8,7 @@ from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import numpy as np
 
-from brickblock.cube import Cube
+from brickblock.cube import Cube, CompositeCube
 
 
 class SpaceStateChange:
@@ -109,6 +109,62 @@ class Space:
         """
         TODO: Fill in.
         """
+        cube_bounding_box = cube.get_bounding_box()
+        cube_mean = np.mean(cube.points(), axis=0).reshape((3, 1))
+
+        self.total += cube_mean
+        self.num_objs += 1
+        self.mean = self.total / self.num_objs
+
+        if self.num_objs == 1:
+            dim = cube_bounding_box
+        else:
+            # Since there are multiple objects, ensure the resulting dimensions
+            # of the surrounding box are centred around the mean.
+            dim = np.array([
+                [
+                    min(self.dims[i][0], cube_bounding_box[i][0]),
+                    max(self.dims[i][1], cube_bounding_box[i][1])
+                ] for i in range(len(cube_bounding_box))
+            ]).reshape((3, 2))
+
+        self.dims = dim
+
+        current_no_of_entries = self.cuboid_coordinates.shape[0]
+        if self.primitive_counter >= current_no_of_entries:
+            # refcheck set to False since this avoids issues with the debugger
+            # referencing the array!
+            self.cuboid_coordinates.resize(
+                (2 * current_no_of_entries, *self.cuboid_coordinates.shape[1:]),
+                refcheck=False,
+            )
+
+        self.cuboid_coordinates[self.primitive_counter] = cube.faces
+        for (key, value) in cube.get_visual_metadata().items():
+            if key in self.cuboid_visual_metadata.keys():
+                self.cuboid_visual_metadata[key].append(value)
+            else:
+                self.cuboid_visual_metadata[key] = [value]
+
+        def add_key_to_nested_dict(d, keys):
+            for key in keys:
+                if key not in d:
+                    d[key] = {}
+                d = d[key]
+            d.setdefault(keys[-1], -1)
+
+        keys = [self.scene_counter, self.time_step]
+        add_key_to_nested_dict(self.cuboid_index, keys)
+        self.cuboid_index[self.scene_counter][self.time_step] = [
+            self.primitive_counter
+        ]
+
+        self.changelog.append(Addition(self.time_step, None))
+
+        self.primitive_counter += 1
+        self.time_step += 1
+
+    def add_composite(self, composite: CompositeCube) -> None:
         cube_bounding_box = cube.get_bounding_box()
         cube_mean = np.mean(cube.points(), axis=0).reshape((3, 1))
 

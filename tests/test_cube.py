@@ -1,6 +1,7 @@
 import pytest
 
 import matplotlib.pyplot as plt
+
 # This import registers the 3D projection, but is otherwise unused.
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
@@ -13,9 +14,9 @@ def test_cube_creation() -> None:
     test_cube = bb.Cube(base_vector=np.array([0, 0, 0]), scale=1.0)
 
     assert test_cube.faces.shape == (6, 4, 3)
-    assert test_cube.facecolor == None
+    assert test_cube.facecolor is None
     assert test_cube.linewidth == 0.1
-    assert test_cube.edgecolor == 'black'
+    assert test_cube.edgecolor == "black"
     assert test_cube.alpha == 0.0
 
 
@@ -33,11 +34,11 @@ def test_cube_creates_all_data_needed_for_visualising() -> None:
     cube = bb.Cube(base_vector=np.array([0, 0, 0]), scale=1.0)
     poly = Poly3DCollection(cube.faces)
     fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
+    ax = fig.add_subplot(111, projection="3d")
     plt_collection = ax.add_collection3d(poly).axes.collections[0]
     # The internal vector includes all 1s in an the implicit 4th dimension
-    # TODO: Understand why this is necessary. Probably to do with 3D projections
-    # or something like that.
+    # TODO: Understand why this is necessary. Probably to do with 3D
+    # projections or something like that.
     plt_internal_data = np.array([plt_collection._vec])
     plt_internal_reshaped_data = plt_internal_data.T.reshape((6, 4, 4))
 
@@ -66,7 +67,7 @@ def test_cube_visualisation_can_be_customised() -> None:
     poly.set_linewidth(cube.linewidth)
     poly.set_edgecolor(cube.edgecolor)
     fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
+    ax = fig.add_subplot(111, projection="3d")
     plt_collection = ax.add_collection3d(poly).axes.collections[0]
 
     # Check colours

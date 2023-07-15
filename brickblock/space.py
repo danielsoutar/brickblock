@@ -1,8 +1,8 @@
-from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any
 
 import matplotlib.pyplot as plt
+
 # This import registers the 3D projection, but is otherwise unused.
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
@@ -13,6 +13,7 @@ from brickblock.cube import Cube, CompositeCube
 
 class SpaceStateChange:
     ...
+
 
 @dataclass
 class Addition(SpaceStateChange):
@@ -58,7 +59,7 @@ class Space:
     have a `timestep` ID which is unique to each 'full' object added. For
     instance, a composite object consisting of many cuboids might be added, and
     each cuboid within would have the same `timestep` ID. Finally, all cuboids
-    also have a Scene ID, which corresponds to the current scene. 
+    also have a Scene ID, which corresponds to the current scene.
 
     changelog represents the change to state in each transform to the space.
     There are three main categories of changes:
@@ -78,6 +79,7 @@ class Space:
     For deletion:
         - Complement of addition, see above.
     """
+
     dims: np.ndarray
     mean: np.ndarray
     total: np.ndarray
@@ -89,7 +91,6 @@ class Space:
     cuboid_visual_metadata: dict[str, list]
     cuboid_index: dict[int, dict[int, list[int]]]
     changelog: list[SpaceStateChange]
-
 
     def __init__(self) -> None:
         self.dims = np.zeros((3, 2))
@@ -103,7 +104,6 @@ class Space:
         self.cuboid_visual_metadata = {}
         self.cuboid_index = {0: {}}
         self.changelog = []
-
 
     def add_cube(self, cube: Cube) -> None:
         """
@@ -121,12 +121,15 @@ class Space:
         else:
             # Since there are multiple objects, ensure the resulting dimensions
             # of the surrounding box are centred around the mean.
-            dim = np.array([
+            dim = np.array(
                 [
-                    min(self.dims[i][0], cube_bounding_box[i][0]),
-                    max(self.dims[i][1], cube_bounding_box[i][1])
-                ] for i in range(len(cube_bounding_box))
-            ]).reshape((3, 2))
+                    [
+                        min(self.dims[i][0], cube_bounding_box[i][0]),
+                        max(self.dims[i][1], cube_bounding_box[i][1]),
+                    ]
+                    for i in range(len(cube_bounding_box))
+                ]
+            ).reshape((3, 2))
 
         self.dims = dim
 
@@ -140,7 +143,7 @@ class Space:
             )
 
         self.cuboid_coordinates[self.primitive_counter] = cube.faces
-        for (key, value) in cube.get_visual_metadata().items():
+        for key, value in cube.get_visual_metadata().items():
             if key in self.cuboid_visual_metadata.keys():
                 self.cuboid_visual_metadata[key].append(value)
             else:
@@ -177,12 +180,15 @@ class Space:
         else:
             # Since there are multiple objects, ensure the resulting dimensions
             # of the surrounding box are centred around the mean.
-            dim = np.array([
+            dim = np.array(
                 [
-                    min(self.dims[i][0], cube_bounding_box[i][0]),
-                    max(self.dims[i][1], cube_bounding_box[i][1])
-                ] for i in range(len(cube_bounding_box))
-            ]).reshape((3, 2))
+                    [
+                        min(self.dims[i][0], cube_bounding_box[i][0]),
+                        max(self.dims[i][1], cube_bounding_box[i][1]),
+                    ]
+                    for i in range(len(cube_bounding_box))
+                ]
+            ).reshape((3, 2))
 
         self.dims = dim
 
@@ -196,7 +202,7 @@ class Space:
             )
 
         self.cuboid_coordinates[self.primitive_counter] = cube.faces
-        for (key, value) in cube.get_visual_metadata().items():
+        for key, value in cube.get_visual_metadata().items():
             if key in self.cuboid_visual_metadata.keys():
                 self.cuboid_visual_metadata[key].append(value)
             else:
@@ -236,8 +242,10 @@ class Space:
     # only the last one (though it shows the last one first). Can this be fixed?
     def render(self) -> tuple[plt.Figure, plt.Axes]:
         fig = plt.figure(figsize=(10, 8))
-        fig.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=None, hspace=None)
-        ax = fig.add_subplot(111, projection='3d')
+        fig.subplots_adjust(
+            left=0, bottom=0, right=1, top=1, wspace=None, hspace=None
+        )
+        ax = fig.add_subplot(111, projection="3d")
         # Remove everything except the objects to display.
         ax.set_axis_off()
 
@@ -264,10 +272,10 @@ class Space:
                 k: self.cuboid_visual_metadata[k][timestep]
                 for k in self.cuboid_visual_metadata.keys()
             }
-            matplotlib_like_cube.set_facecolor(visual_properties['facecolor'])
-            matplotlib_like_cube.set_linewidths(visual_properties['linewidth'])
-            matplotlib_like_cube.set_edgecolor(visual_properties['edgecolor'])
-            matplotlib_like_cube.set_alpha(visual_properties['alpha'])
+            matplotlib_like_cube.set_facecolor(visual_properties["facecolor"])
+            matplotlib_like_cube.set_linewidths(visual_properties["linewidth"])
+            matplotlib_like_cube.set_edgecolor(visual_properties["edgecolor"])
+            matplotlib_like_cube.set_alpha(visual_properties["alpha"])
             ax.add_collection3d(matplotlib_like_cube)
 
         return fig, ax
@@ -280,12 +288,12 @@ class Space:
         # This is fine for adding objects, but what happens when a user wants to
         # hide/modify/delete an object, for instance?
         # There are a few choices:
-        # 
+        #
         # a) Identify a cube/cuboid by its coordinates (allows duplicates)
         # b) Identify a cube/cuboid by a name (unique)
         # c) Identify a cube/cuboid by timestep (allows duplicates)
         # d) Identify a cube/cuboid by scene (allows duplicates)
-        # 
+        #
         # (a) is easy enough for a cube, you can search cube_data by 'row'. But
         # a composite would be harder - maybe the index or metadata could store
         # overall shape per object inserted. Or even its own thing potentially.
@@ -293,12 +301,11 @@ class Space:
         # or metadata.
         # (c) That should be straightforward - you can just query the index.
         # (d) is easy enough - just range over the scene ID.
-        # 
+        #
         # All of these can be useful. But you can't update in-place naively - in
         # order to preserve history. So you either need a separate data
         # structure for tracking changes, or you need to add a new object to the
         # data structures, possibly marking with a 'scene_id'.
-
 
         # This has all the info needed - the very first point can be taken as
         # the base vector. The first and last faces contain all unique points
@@ -310,7 +317,6 @@ class Space:
         # cuboid would have the same timestep ID for each individual cube within
         # it.
         # self.time_step
-
 
         # When updating/modifying/deleting by coordinates (allows duplicates)
         # A vector that lands on or within any cube/cuboid. Could simplify for
@@ -328,10 +334,12 @@ class Space:
 
         # If I have the dataframes for coordinate data, metadata, and index,
         # how do I keep the old state and the new state?
-        # 
-        # > Add new entries, with a reference to the previous entry (mem cost, track probably nullable column)
-        # > Actually delete the entry (time cost, need to add largely redundant state column)
-        # 
+        #
+        # > Add new entries, with a reference to the previous entry (mem cost,
+        #   track probably nullable column)
+        # > Actually delete the entry (time cost, need to add largely redundant
+        #   state column)
+        #
         # I think it makes sense to only add entries, with a 'changelog'
         # representing changes to the internal data. The advantage of the
         # changelog is that you can group various transforms together and
@@ -339,7 +347,9 @@ class Space:
 
 
 # fig = plt.figure(figsize=(12, 10))
-# fig.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=None, hspace=None)
+# fig.subplots_adjust(
+#   left=0, bottom=0, right=1, top=1, wspace=None, hspace=None
+# )
 # ax = fig.add_subplot(111, projection='3d')
 # ax.set_xlabel('x')
 # ax.set_ylabel('y')

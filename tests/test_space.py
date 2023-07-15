@@ -1,6 +1,7 @@
 import pytest
 
 import matplotlib.pyplot as plt
+
 # This import registers the 3D projection, but is otherwise unused.
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
@@ -10,31 +11,24 @@ import brickblock as bb
 
 
 def mock_coordinates_entry() -> np.ndarray:
+    point0 = np.array([0.0, 0.0, 0.0])
+    point1 = np.array([0.0, 0.0, 1.0])
+    point2 = np.array([1.0, 0.0, 1.0])
+    point3 = np.array([1.0, 0.0, 0.0])
+    point4 = np.array([0.0, 1.0, 0.0])
+    point5 = np.array([0.0, 1.0, 1.0])
+    point6 = np.array([1.0, 1.0, 1.0])
+    point7 = np.array([1.0, 1.0, 0.0])
+
     base = np.array(
-        [[[0., 0., 0.],
-        [0., 0., 1.],
-        [1., 0., 1.],
-        [1., 0., 0.]],
-       [[0., 0., 0.],
-        [0., 1., 0.],
-        [1., 1., 0.],
-        [1., 0., 0.]],
-       [[0., 0., 0.],
-        [0., 0., 1.],
-        [0., 1., 1.],
-        [0., 1., 0.]],
-       [[1., 0., 0.],
-        [1., 1., 0.],
-        [1., 1., 1.],
-        [1., 0., 1.]],
-       [[0., 0., 1.],
-        [0., 1., 1.],
-        [1., 1., 1.],
-        [1., 0., 1.]],
-       [[0., 1., 0.],
-        [0., 1., 1.],
-        [1., 1., 1.],
-        [1., 1., 0.]]]
+        [
+            [point0, point1, point2, point3],
+            [point0, point4, point7, point3],
+            [point0, point1, point5, point4],
+            [point3, point7, point6, point2],
+            [point1, point5, point6, point2],
+            [point4, point5, point6, point7],
+        ]
     ).reshape((1, 6, 4, 3))
 
     return base
@@ -76,16 +70,16 @@ def test_space_snapshot_creates_a_scene() -> None:
         np.concatenate(
             (
                 mock_coordinates_entry(),
-                np.zeros((expected_num_entries-1, 6, 4, 3)),
+                np.zeros((expected_num_entries - 1, 6, 4, 3)),
             ),
             axis=0,
         ),
     )
     assert space.cuboid_visual_metadata == {
-        'facecolor': [None],
-        'linewidth': [0.1],
-        'edgecolor': ['black'],
-        'alpha': [0.0],
+        "facecolor": [None],
+        "linewidth": [0.1],
+        "edgecolor": ["black"],
+        "alpha": [0.0],
     }
     assert space.cuboid_index == {0: {0: [0]}}
     assert space.changelog == [bb.Addition(timestep_id=0, name=None)]
@@ -116,16 +110,16 @@ def test_space_multiple_snapshots_create_multiple_scenes() -> None:
             (
                 mock_coordinates_entry(),
                 mock_coordinates_entry() + 3,
-                np.zeros((expected_num_entries-2, 6, 4, 3)),
+                np.zeros((expected_num_entries - 2, 6, 4, 3)),
             ),
             axis=0,
         ),
     )
     assert space.cuboid_visual_metadata == {
-        'facecolor': [None, None],
-        'linewidth': [0.1, 0.1],
-        'edgecolor': ['black', 'black'],
-        'alpha': [0.0, 0.0],
+        "facecolor": [None, None],
+        "linewidth": [0.1, 0.1],
+        "edgecolor": ["black", "black"],
+        "alpha": [0.0, 0.0],
     }
     assert space.cuboid_index == {0: {0: [0]}, 1: {1: [1]}}
     assert space.changelog == [
@@ -185,17 +179,18 @@ def test_space_creates_valid_axes_on_render_multiple_scenes() -> None:
     plt_internal_data_for_second_cube = ax2.collections[1]._vec.T
     plt_internal_reshaped_data = np.concatenate(
         [plt_internal_data_for_first_cube, plt_internal_data_for_second_cube],
-        axis=0
+        axis=0,
     ).reshape((2, 6, 4, 4))
 
     # Add the implicit 4th dimension to the original data - all ones.
     ones = np.ones((6, 4, 1))
     original_augmented_first_cube = np.concatenate([cube.faces, ones], -1)
-    original_augmented_second_cube = np.concatenate([second_cube.faces, ones], -1)
+    original_augmented_second_cube = np.concatenate(
+        [second_cube.faces, ones], -1
+    )
 
     expected_data = np.stack(
-        [original_augmented_first_cube, original_augmented_second_cube],
-        axis=0
+        [original_augmented_first_cube, original_augmented_second_cube], axis=0
     )
 
     assert np.array_equal(expected_data, plt_internal_reshaped_data)
@@ -223,16 +218,16 @@ def test_space_add_multiple_cubes_in_single_scene() -> None:
             (
                 mock_coordinates_entry(),
                 mock_coordinates_entry() + 3,
-                np.zeros((expected_num_entries-2, 6, 4, 3)),
+                np.zeros((expected_num_entries - 2, 6, 4, 3)),
             ),
             axis=0,
         ),
     )
     assert space.cuboid_visual_metadata == {
-        'facecolor': [None, None],
-        'linewidth': [0.1, 0.1],
-        'edgecolor': ['black', 'black'],
-        'alpha': [0.0, 0.0],
+        "facecolor": [None, None],
+        "linewidth": [0.1, 0.1],
+        "edgecolor": ["black", "black"],
+        "alpha": [0.0, 0.0],
     }
     assert space.cuboid_index == {0: {0: [0], 1: [1]}}
     assert space.changelog == [
@@ -241,7 +236,9 @@ def test_space_add_multiple_cubes_in_single_scene() -> None:
     ]
 
 
-def test_space_creates_valid_axes_on_render_multiple_cubes_single_scene() -> None:
+def test_space_creates_valid_axes_on_render_multiple_cubes_single_scene() -> (
+    None
+):
     space = bb.Space()
 
     cube = bb.Cube(base_vector=np.array([0, 0, 0]), scale=1.0)
@@ -256,17 +253,18 @@ def test_space_creates_valid_axes_on_render_multiple_cubes_single_scene() -> Non
     plt_internal_data_for_second_cube = ax.collections[1]._vec.T
     plt_internal_reshaped_data = np.concatenate(
         [plt_internal_data_for_first_cube, plt_internal_data_for_second_cube],
-        axis=0
+        axis=0,
     ).reshape((2, 6, 4, 4))
 
     # Add the implicit 4th dimension to the original data - all ones.
     ones = np.ones((6, 4, 1))
     original_augmented_first_cube = np.concatenate([cube.faces, ones], -1)
-    original_augmented_second_cube = np.concatenate([second_cube.faces, ones], -1)
+    original_augmented_second_cube = np.concatenate(
+        [second_cube.faces, ones], -1
+    )
 
     expected_data = np.stack(
-        [original_augmented_first_cube, original_augmented_second_cube],
-        axis=0
+        [original_augmented_first_cube, original_augmented_second_cube], axis=0
     )
 
     assert np.array_equal(expected_data, plt_internal_reshaped_data)
@@ -293,8 +291,7 @@ def test_space_creates_valid_axes_on_render_multiple_cubes_scenes() -> None:
 
     plt_internal_data_for_cubes = [ax.collections[i]._vec.T for i in range(4)]
     plt_internal_reshaped_data = np.concatenate(
-        plt_internal_data_for_cubes,
-        axis=0
+        plt_internal_data_for_cubes, axis=0
     ).reshape((4, 6, 4, 4))
 
     # Add the implicit 4th dimension to the original data - all ones.
@@ -325,10 +322,10 @@ def test_space_can_customise_cube_visual_properties() -> None:
     )
     space.add_cube(cube)
     assert space.cuboid_visual_metadata == {
-        'facecolor': [(red, green, blue)],
-        'linewidth': [linewidth],
-        'edgecolor': ['black'],
-        'alpha': [alpha],
+        "facecolor": [(red, green, blue)],
+        "linewidth": [linewidth],
+        "edgecolor": ["black"],
+        "alpha": [alpha],
     }
 
     fig, ax = space.render()

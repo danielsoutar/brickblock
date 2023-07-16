@@ -45,6 +45,7 @@ class Space:
     over the visualisation library.
     """
 
+    # TODO: Clarify dimensions for things being HWD or XYZ (or a mix).
     dims: np.ndarray
     mean: np.ndarray
     total: np.ndarray
@@ -92,6 +93,7 @@ class Space:
             self._add_cube_primitive(cube, is_from_composite=True)
 
         self.changelog.append(Addition(self.time_step, None))
+        self.num_objs += 1
         self.time_step += 1
 
     def _add_cube_primitive(self, cube: Cube, is_from_composite: bool) -> None:
@@ -102,8 +104,11 @@ class Space:
         cube_mean = np.mean(cube.points(), axis=0).reshape((3, 1))
 
         self.total += cube_mean
-        self.num_objs += 1
-        self.mean = self.total / self.num_objs
+
+        if not is_from_composite:
+            self.num_objs += 1
+
+        self.mean = self.total / (self.primitive_counter + 1)
 
         if self.num_objs == 1:
             dim = cube_bounding_box
@@ -143,7 +148,8 @@ class Space:
                 if key not in d:
                     d[key] = {}
                 d = d[key]
-            d[keys[-1]] = []
+            if keys[-1] not in d:
+                d[keys[-1]] = []
 
         keys = [self.scene_counter, self.time_step]
         add_key_to_nested_dict(self.cuboid_index, keys)
@@ -180,21 +186,45 @@ class Space:
         # Remove everything except the objects to display.
         ax.set_axis_off()
 
-        for timestep in range(self.time_step):
-            # Create the object for matplotlib ingestion.
-            matplotlib_like_cube = Poly3DCollection(
-                self.cuboid_coordinates[timestep]
-            )
-            # Set the visual properties first - check if these can be moved into
-            # the Poly3DCollection constructor instead.
-            visual_properties = {
-                k: self.cuboid_visual_metadata[k][timestep]
-                for k in self.cuboid_visual_metadata.keys()
-            }
-            matplotlib_like_cube.set_facecolor(visual_properties["facecolor"])
-            matplotlib_like_cube.set_linewidths(visual_properties["linewidth"])
-            matplotlib_like_cube.set_edgecolor(visual_properties["edgecolor"])
-            matplotlib_like_cube.set_alpha(visual_properties["alpha"])
-            ax.add_collection3d(matplotlib_like_cube)
+        for scene_id in sorted(self.cuboid_index.keys()):
+            timesteps = sorted(self.cuboid_index[scene_id].keys())
+            for timestep_id in timesteps:
+                # Retrieve the object(s) from the index.
+                primitive_ids = self.cuboid_index[scene_id][timestep_id]
+
+                if len(primitive_ids) == 1:
+                    ax = self._populate_ax_with_primitive(ax, primitive_ids[0])
+                else:
+                    ax = self._populate_ax_with_composite(ax, primitive_ids)
 
         return fig, ax
+
+    def _populate_ax_with_primitive(
+        self,
+        ax: plt.Axes,
+        primitive_id: int,
+    ) -> plt.Axes:
+        # Create the object for matplotlib ingestion.
+        matplotlib_like_cube = Poly3DCollection(
+            self.cuboid_coordinates[primitive_id]
+        )
+        # Set the visual properties first - check if these can be moved
+        # into the Poly3DCollection constructor instead.
+        visual_properties = {
+            k: self.cuboid_visual_metadata[k][primitive_id]
+            for k in self.cuboid_visual_metadata.keys()
+        }
+        matplotlib_like_cube.set_facecolor(visual_properties["facecolor"])
+        matplotlib_like_cube.set_linewidths(visual_properties["linewidth"])
+        matplotlib_like_cube.set_edgecolor(visual_properties["edgecolor"])
+        matplotlib_like_cube.set_alpha(visual_properties["alpha"])
+        ax.add_collection3d(matplotlib_like_cube)
+
+        return ax
+
+    def _populate_ax_with_composite(
+        self, ax: plt.Axes, primitive_ids: list[int]
+    ) -> plt.Axes:
+        for primitive_id in primitive_ids:
+            ax = self._populate_ax_with_primitive(ax, primitive_id)
+        return ax

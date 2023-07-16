@@ -1,3 +1,4 @@
+import itertools
 import pytest
 
 import matplotlib.pyplot as plt
@@ -159,6 +160,10 @@ def test_space_creates_valid_axes_on_render() -> None:
     original_augmented_data = np.concatenate([cube.faces, ones], -1)
 
     assert np.array_equal(original_augmented_data, plt_internal_reshaped_data)
+
+
+def test_space_does_nothing_on_render_when_empty() -> None:
+    ...
 
 
 def test_space_creates_valid_axes_on_render_multiple_scenes() -> None:
@@ -352,34 +357,73 @@ def test_space_can_add_composite_cube() -> None:
     h, w, d = 3, 4, 3
     composite = bb.CompositeCube(base_vector=np.array([0, 0, 0]), h=h, w=w, d=d)
 
-    # num_cubes = h * w * d
+    num_cubes = h * w * d
 
     space.add_composite(composite)
     space.snapshot()
 
-    assert np.array_equal(space.dims, np.array([[0, 1], [0, 1], [0, 1]]))
-    assert np.array_equal(space.mean, np.array([[0.5], [0.5], [0.5]]))
-    assert np.array_equal(space.total, np.array([[0.5], [0.5], [0.5]]))
+    assert np.array_equal(space.dims, np.array([[0, 4], [0, 3], [0, 3]]))
+    assert np.array_equal(space.mean, np.array([[2], [1.5], [1.5]]))
+    assert np.array_equal(space.total, np.array([[72], [54], [54]]))
     assert space.num_objs == 1
-    assert space.primitive_counter == 1
+    assert space.primitive_counter == num_cubes
     assert space.time_step == 1
     assert space.scene_counter == 1
-    expected_num_entries = 10
+
+    # The initial number of entries is 10, and the array size is doubled on
+    # overflow. Hence we'd expect re-allocating 40 entries when overflowing 20.
+    expected_num_entries = 40
+    height = np.array([0, 1, 0])
+    width = np.array([1, 0, 0])
+    depth = np.array([0, 0, 1])
+
     assert np.array_equal(
         space.cuboid_coordinates,
         np.concatenate(
             (
-                mock_coordinates_entry(),
-                np.zeros((expected_num_entries - 1, 6, 4, 3)),
+                *[
+                    mock_coordinates_entry()
+                    + (h * height)
+                    + (w * width)
+                    + (d * depth)
+                    for (h, w, d) in itertools.product(
+                        range(h), range(w), range(d)
+                    )
+                ],
+                np.zeros((expected_num_entries - 36, 6, 4, 3)),
             ),
             axis=0,
         ),
     )
     assert space.cuboid_visual_metadata == {
-        "facecolor": [None],
-        "linewidth": [0.1],
-        "edgecolor": ["black"],
-        "alpha": [0.0],
+        "facecolor": [None] * num_cubes,
+        "linewidth": [0.1] * num_cubes,
+        "edgecolor": ["black"] * num_cubes,
+        "alpha": [0.0] * num_cubes,
     }
-    assert space.cuboid_index == {0: {0: [0]}}
+    assert space.cuboid_index == {0: {0: [i for i in range(num_cubes)]}}
     assert space.changelog == [bb.Addition(timestep_id=0, name=None)]
+
+
+def test_space_creates_valid_axes_on_render_for_composite() -> None:
+    space = bb.Space()
+
+    h, w, d = 3, 4, 2
+    num_cubes = h * w * d
+
+    composite = bb.CompositeCube(base_vector=np.array([0, 0, 0]), h=h, w=w, d=d)
+    space.add_composite(composite)
+    space.snapshot()
+    _, ax = space.render()
+
+    for i in range(num_cubes):
+        plt_internal_data = ax.collections[i]._vec
+        plt_internal_reshaped_data = plt_internal_data.T.reshape((6, 4, 4))
+
+        # Add the implicit 4th dimension to the original data - all ones.
+        ones = np.ones((6, 4, 1))
+        original_augmented_data = np.concatenate([composite.faces[i], ones], -1)
+
+        assert np.array_equal(
+            original_augmented_data, plt_internal_reshaped_data
+        )

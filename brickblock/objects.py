@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Any
 
+import itertools
 import numpy as np
 
 
@@ -35,6 +36,9 @@ class Cube:
                 "Cube objects are three-dimensional, the base vector should be "
                 "3D."
             )
+
+        if scale < 0.0:
+            raise ValueError("Cube must have positively-sized dimensions.")
 
         height_basis_vector = np.array([0, 1, 0])
         width_basis_vector = np.array([1, 0, 0])
@@ -124,7 +128,7 @@ class Cube:
                 base + h,
                 # top-left-back
                 base + h + d,
-                # top-left-back
+                # top-right-back
                 base + h + w + d,
                 # top-right-front
                 base + h + w,
@@ -147,6 +151,9 @@ class Cube:
 
 
 class CompositeCube:
+    h: int
+    w: int
+    d: int
     faces: np.ndarray
     facecolor: tuple[float, float, float] | None = None
     linewidth: float = 0.1
@@ -156,9 +163,9 @@ class CompositeCube:
     def __init__(
         self,
         base_vector: np.ndarray,
-        h: float,
-        w: float,
-        d: float,
+        h: int,
+        w: int,
+        d: int,
         facecolor: tuple[float, float, float] | None = None,
         linewidth: float = 0.1,
         edgecolor: str = "black",
@@ -170,6 +177,11 @@ class CompositeCube:
             raise ValueError(
                 "Cube objects are three-dimensional, the base vector should be "
                 "3D."
+            )
+
+        if h < 0 or w < 0 or d < 0:
+            raise ValueError(
+                "Composite cube must have positively-sized dimensions."
             )
 
         height_basis_vector = np.array([0, 1, 0])
@@ -189,6 +201,9 @@ class CompositeCube:
 
         full_points = self._construct_points(points, h, w, d)
 
+        self.h = h
+        self.w = w
+        self.d = d
         self.faces = self._construct_faces(full_points)
         self.facecolor = facecolor
         self.linewidth = linewidth
@@ -198,7 +213,8 @@ class CompositeCube:
     def points(self) -> np.ndarray:
         # TODO: Figure out the relevant points that define the bounds of the
         # entire object.
-        return np.array([])
+
+        return np.array([]).reshape(())
 
     def get_visual_metadata(self) -> dict[str, Any]:
         return {
@@ -207,6 +223,43 @@ class CompositeCube:
             "edgecolor": self.edgecolor,
             "alpha": self.alpha,
         }
+
+    def get_bounding_box(self) -> np.ndarray:
+        """
+        Get the bounding box around the cube's `points`.
+
+        The output is a 3x2 matrix, with rows in WHD order (xs, ys, zs)
+        corresponding to the minimum and maximum per dimension respectively.
+        """
+        # We need 8 points:
+        # The bottom-left-front point of the bottom-left-front cube
+        # The bottom-left-back point of the bottom-left-back cube
+        # And so on
+        # b_l_f_cube_idx = 0
+        # b_l_b_cube_idx = self.d - 1
+        # b_r_b_cube_idx = (self.w * self.d) - 1
+        # b_r_f_cube_idx = ((self.w - 1) * self.d) - 1
+        # t_l_f_cube_idx = ((self.h - 1) * self.w * self.d) - 1
+        # t_l_b_cube_idx = ((self.h - 1) * self.w * self.d) + self.d - 1
+        # t_r_b_cube_idx = (self.h * self.w * self.d) - 1
+        # t_r_f_cube_idx = (
+        #     ((self.h - 1) * self.w * self.d) + ((self.w - 1) * self.d) - 1
+        # )
+
+        # (b_l_f_cube_idx, 0, 0)
+        # (b_l_b_cube_idx, 0,
+        height = self.h * np.array([0, 1, 0])
+        width = self.w * np.array([1, 0, 0])
+        depth = self.d * np.array([0, 0, 1])
+
+        base_point_idx = (0, 0, 0)
+        base = self.faces[base_point_idx]
+        bottom_left_front_point = base
+        bottom_left_back_point = base + depth
+        bottom_right_back_point = base + width + depth
+        bottom_right_front_point = base + width
+
+        return np.array().reshape((3, 2))
 
     def _construct_points(
         self,
@@ -239,7 +292,7 @@ class CompositeCube:
                 base + cube_h,
                 # top-left-back
                 base + cube_h + cube_d,
-                # top-left-back
+                # top-right-back
                 base + cube_h + cube_w + cube_d,
                 # top-right-front
                 base + cube_h + cube_w,
@@ -248,20 +301,43 @@ class CompositeCube:
 
         all_cube_points = all_cube_points.reshape((8, 3))
 
-        all_cubes_all_points = np.array([])
+        height_basis_vector = np.array([0, 1, 0])
+        width_basis_vector = np.array([1, 0, 0])
+        depth_basis_vector = np.array([0, 0, 1])
+
+        all_cubes_all_points = np.array(
+            [
+                all_cube_points
+                + (h * height_basis_vector)
+                + (w * width_basis_vector)
+                + (d * depth_basis_vector)
+                for (h, w, d) in itertools.product(
+                    range(composite_h), range(composite_w), range(composite_d)
+                )
+            ]
+        )
 
         return all_cubes_all_points.reshape(
             (composite_h, composite_w, composite_d, 8, 3)
         )
 
     def _construct_faces(self, points: np.ndarray) -> np.ndarray:
-        return np.array(
+        h, w, d, cube_points, num_coords = points.shape
+        num_cubes = h * w * d
+        ps = points.reshape((num_cubes, cube_points, num_coords))
+
+        all_cube_faces = np.array(
             [
-                (points[0], points[1], points[2], points[3]),  # bottom
-                (points[0], points[4], points[7], points[3]),  # front face
-                (points[0], points[1], points[5], points[4]),  # left face
-                (points[3], points[7], points[6], points[2]),  # right face
-                (points[1], points[5], points[6], points[2]),  # back face
-                (points[4], points[5], points[6], points[7]),  # top
+                [
+                    (ps[i][0], ps[i][1], ps[i][2], ps[i][3]),  # bottom
+                    (ps[i][0], ps[i][4], ps[i][7], ps[i][3]),  # front face
+                    (ps[i][0], ps[i][1], ps[i][5], ps[i][4]),  # left face
+                    (ps[i][3], ps[i][7], ps[i][6], ps[i][2]),  # right face
+                    (ps[i][1], ps[i][5], ps[i][6], ps[i][2]),  # back face
+                    (ps[i][4], ps[i][5], ps[i][6], ps[i][7]),  # top
+                ]
+                for i in range(num_cubes)
             ]
-        ).reshape((6, 4, 3))
+        )
+
+        return all_cube_faces.reshape((num_cubes, 6, 4, 3))

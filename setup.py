@@ -11,7 +11,7 @@ setup(
     # REQUIRED
     name="brickblock",
     # REQUIRED
-    version="0.1.1",
+    version="0.1.2",
     # Not sure?
     packages=find_packages(exclude="tests"),
     # OPTIONAL
@@ -31,7 +31,7 @@ setup(
     # OPTIONAL
     classifiers=[
         "Intended Audience :: Developers",
-        "Programming Language :: Python :: 3 :: Only"
+        "Programming Language :: Python :: 3 :: Only",
     ],
     # Keywords are tags that identify your project and help searching for it
     # OPTIONAL

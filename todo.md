@@ -4,7 +4,7 @@ V1
 
 DOD for each of these: unit tests (visualisation involves manually checking in matplotlib)
 
-12/24 done
+12/25 done
 
 - [X] Create basic `Cube` object
 - [X] Correctly visualise a `Cube` in matplotlib
@@ -34,6 +34,7 @@ DOD for each of these: unit tests (visualisation involves manually checking in m
   - Need to figure out whether these 'happen-before' or 'happen-after', whether to include inverse transform, etc.
 - [ ] Allow mutating an object by affine transform (by coordinate ID)
   - This could be trickier and potentially not needed.
+- [ ] Distinguish between 'scene' and 'non-scene' timesteps
 - [ ] Create GIF from a multi-scene `Space`
 - [ ] Log debug info per scene (objects added/mutated/deleted, possibly camera orientation as well)
 

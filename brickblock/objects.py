@@ -62,9 +62,15 @@ class Cube:
         self.alpha = alpha
 
     def points(self) -> np.ndarray:
+        """
+        TODO: Fill in
+        """
         return np.array([self.faces[0], self.faces[-1]]).reshape((8, 3))
 
     def get_visual_metadata(self) -> dict[str, Any]:
+        """
+        TODO: Fill in
+        """
         return {
             "facecolor": self.facecolor,
             "linewidth": self.linewidth,
@@ -72,6 +78,9 @@ class Cube:
             "alpha": self.alpha,
         }
 
+    # TODO: Decide on interface - do we want this not-really-bounding box AND
+    # points()? What do they mean for Cubes? What do they mean for
+    # CompositeCubes? How would this be used by a Space?
     def get_bounding_box(self) -> np.ndarray:
         """
         Get the bounding box around the cube's `points`.
@@ -138,6 +147,9 @@ class Cube:
         return full_points.reshape((8, 3))
 
     def _construct_faces(self, points: np.ndarray) -> np.ndarray:
+        """
+        TODO: Fill in
+        """
         return np.array(
             [
                 (points[0], points[1], points[2], points[3]),  # bottom
@@ -211,12 +223,17 @@ class CompositeCube:
         self.alpha = alpha
 
     def points(self) -> np.ndarray:
+        """
+        TODO: Fill in
+        """
         # TODO: Figure out the relevant points that define the bounds of the
         # entire object.
-
         return np.array([]).reshape(())
 
     def get_visual_metadata(self) -> dict[str, Any]:
+        """
+        TODO: Fill in
+        """
         return {
             "facecolor": self.facecolor,
             "linewidth": self.linewidth,
@@ -224,6 +241,9 @@ class CompositeCube:
             "alpha": self.alpha,
         }
 
+    # TODO: Decide on interface - do we want this not-really-bounding box AND
+    # points()? What do they mean for Cubes? What do they mean for
+    # CompositeCubes? How would this be used by a Space?
     def get_bounding_box(self) -> np.ndarray:
         """
         Get the bounding box around the cube's `points`.
@@ -235,19 +255,6 @@ class CompositeCube:
         # The bottom-left-front point of the bottom-left-front cube
         # The bottom-left-back point of the bottom-left-back cube
         # And so on
-        # b_l_f_cube_idx = 0
-        # b_l_b_cube_idx = self.d - 1
-        # b_r_b_cube_idx = (self.w * self.d) - 1
-        # b_r_f_cube_idx = ((self.w - 1) * self.d) - 1
-        # t_l_f_cube_idx = ((self.h - 1) * self.w * self.d) - 1
-        # t_l_b_cube_idx = ((self.h - 1) * self.w * self.d) + self.d - 1
-        # t_r_b_cube_idx = (self.h * self.w * self.d) - 1
-        # t_r_f_cube_idx = (
-        #     ((self.h - 1) * self.w * self.d) + ((self.w - 1) * self.d) - 1
-        # )
-
-        # (b_l_f_cube_idx, 0, 0)
-        # (b_l_b_cube_idx, 0,
         height = self.h * np.array([0, 1, 0])
         width = self.w * np.array([1, 0, 0])
         depth = self.d * np.array([0, 0, 1])
@@ -322,6 +329,9 @@ class CompositeCube:
         )
 
     def _construct_faces(self, points: np.ndarray) -> np.ndarray:
+        """
+        TODO: Fill in
+        """
         h, w, d, cube_points, num_coords = points.shape
         num_cubes = h * w * d
         ps = points.reshape((num_cubes, cube_points, num_coords))

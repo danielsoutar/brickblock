@@ -96,6 +96,9 @@ def test_composite_cube_creation() -> None:
 
     num_cubes = h * w * d
 
+    assert composite.h == h
+    assert composite.w == w
+    assert composite.d == d
     assert composite.faces.shape == (num_cubes, 6, 4, 3)
     assert composite.facecolor is None
     assert composite.linewidth == 0.1
@@ -113,11 +116,10 @@ def test_invalid_dims_throws_exception_making_composite_cube() -> None:
 
 
 def test_all_cubes_in_composite_cube_have_same_dims() -> None:
-    h, w, d = 3, 4, 3
+    h, w, d = 3, 4, 2
     composite = bb.CompositeCube(base_vector=np.array([0, 0, 0]), h=h, w=w, d=d)
 
-    num_cubes = h * w * d
-    faces_per_cube = composite.faces.reshape((num_cubes, 6, 4, 3))
+    faces_per_cube = composite.faces
 
     first_cube = faces_per_cube[0]
 

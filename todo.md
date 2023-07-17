@@ -4,7 +4,7 @@ V1
 
 DOD for each of these: unit tests (visualisation involves manually checking in matplotlib)
 
-13/25 done
+13/26 done
 
 - [X] Create basic `Cube` object
 - [X] Correctly visualise a `Cube` in matplotlib
@@ -20,6 +20,8 @@ DOD for each of these: unit tests (visualisation involves manually checking in m
 - [X] Have `render` imply the current timestep as a `Scene`, if not already marked as such.
 - [X] Add support for visual customisations (i.e. updating `cuboid_visual_metadata` and forwarding args)
 - [X] Add support for composite objects (multiple cubes in a single timestep)
+- [ ] Fix bug where composite objects are swapping the height and depth dimensions
+  - This is a more general problem - it also occurs for arbitrary objects.
 - [ ] Add support for `Cuboid`s (any 6-sided polyhedron)
 - [ ] Add support for named objects
 - [ ] Allow deleting an object (by coordinate, name, timestep ID)

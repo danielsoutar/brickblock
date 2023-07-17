@@ -427,3 +427,7 @@ def test_space_creates_valid_axes_on_render_for_composite() -> None:
         assert np.array_equal(
             original_augmented_data, plt_internal_reshaped_data
         )
+
+
+def test_space_correctly_reorients_data() -> None:
+    ...

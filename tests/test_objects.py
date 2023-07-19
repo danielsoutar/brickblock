@@ -18,6 +18,7 @@ def test_cube_creation() -> None:
     assert cube.linewidth == 0.1
     assert cube.edgecolor == "black"
     assert cube.alpha == 0.0
+    assert cube.name is None
 
 
 def test_invalid_base_throws_exception_making_cube() -> None:
@@ -106,6 +107,7 @@ def test_composite_cube_creation() -> None:
     assert composite.linewidth == 0.1
     assert composite.edgecolor == "black"
     assert composite.alpha == 0.0
+    assert composite.name is None
 
 
 def test_invalid_dims_throws_exception_making_composite_cube() -> None:
@@ -177,6 +179,7 @@ def test_cuboid_creation() -> None:
     assert cuboid.linewidth == 0.1
     assert cuboid.edgecolor == "black"
     assert cuboid.alpha == 0.0
+    assert cuboid.name is None
 
 
 def test_invalid_dims_throws_exception_making_cuboid() -> None:
@@ -205,3 +208,15 @@ def test_cuboid_creates_all_data_needed_for_visualising() -> None:
     original_augmented_data = np.concatenate([cuboid.faces, ones], -1)
 
     assert np.array_equal(original_augmented_data, plt_internal_reshaped_data)
+
+
+def test_objects_can_have_names() -> None:
+    cuboid = bb.Cuboid(
+        base_vector=np.array([0, 0, 0]),
+        h=2.0,
+        w=4.0,
+        d=6.0,
+        name="my-first-cuboid",
+    )
+
+    assert cuboid.name == "my-first-cuboid"

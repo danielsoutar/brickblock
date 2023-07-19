@@ -523,5 +523,56 @@ def test_space_creates_valid_axes_on_render_for_cuboid() -> None:
     assert np.array_equal(original_augmented_data, plt_internal_reshaped_data)
 
 
+def test_space_can_add_named_objects() -> None:
+    space = bb.Space()
+
+    h, w, d = 4, 4, 3
+    num_cubes_in_input_tensor = h * w * d
+    f_h, f_w, f_d = 2, 2, 3
+    num_cubes_in_filter_tensor = f_h * f_w * f_d
+
+    input_tensor = bb.CompositeCube(
+        base_vector=np.array([0, 0, 0]),
+        h=h,
+        w=w,
+        d=d,
+        name="input-tensor",
+    )
+    filter_tensor = bb.CompositeCube(
+        base_vector=np.array([2, 0, 0]),
+        h=f_h,
+        w=f_w,
+        d=f_d,
+        name="filter-tensor",
+    )
+    space.add_composite(input_tensor)
+    space.add_composite(filter_tensor)
+    space.snapshot()
+    _, ax = space.render()
+
+    assert space.cuboid_names == {
+        "input-tensor": [i for i in range(num_cubes_in_input_tensor)],
+        "filter-tensor": [
+            i + num_cubes_in_input_tensor
+            for i in range(num_cubes_in_filter_tensor)
+        ],
+    }
+
+
+def test_space_does_not_allow_duplicate_names() -> None:
+    space = bb.Space()
+
+    first_cube = bb.Cube(base_vector=np.array([0, 0, 0]), scale=1.0, name="foo")
+    second_cube = bb.Cube(
+        base_vector=np.array([0, 0, 0]), scale=1.0, name="foo"
+    )
+
+    space.add_cube(first_cube)
+    expected_err_msg = "There already exists an object with name foo."
+
+    with pytest.raises(Exception, match=expected_err_msg):
+        space.add_cube(second_cube)
+
+
 def test_space_correctly_reorients_data() -> None:
     ...

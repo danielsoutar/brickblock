@@ -19,6 +19,7 @@ class Cube:
     linewidth: float = 0.1
     edgecolor: str = "black"
     alpha: float = 0.0
+    name: str | None = None
 
     def __init__(
         self,
@@ -28,6 +29,7 @@ class Cube:
         linewidth: float = 0.1,
         edgecolor: str = "black",
         alpha: float | None = None,
+        name: str | None = None,
     ) -> None:
         # Users will not expect setting the facecolor only to have the cube be
         # invisible by default, so if the facecolor is set but not the alpha,
@@ -83,6 +85,7 @@ class Cube:
         self.linewidth = linewidth
         self.edgecolor = edgecolor
         self.alpha = alpha
+        self.name = name
 
     def points(self) -> np.ndarray:
         """
@@ -202,6 +205,7 @@ class Cuboid:
     linewidth: float = 0.1
     edgecolor: str = "black"
     alpha: float = 0.0
+    name: str | None = None
 
     # TODO: Decide how to support the simpler and more general cuboids. Maybe
     # rename this to RectangularCuboid?
@@ -215,6 +219,7 @@ class Cuboid:
         linewidth: float = 0.1,
         edgecolor: str = "black",
         alpha: float | None = 0.0,
+        name: str | None = None,
     ) -> None:
         # Users will not expect setting the facecolor only to have the cube be
         # invisible by default, so if the facecolor is set but not the alpha,
@@ -270,6 +275,7 @@ class Cuboid:
         self.linewidth = linewidth
         self.edgecolor = edgecolor
         self.alpha = alpha
+        self.name = name
 
     def points(self) -> np.ndarray:
         """
@@ -365,6 +371,16 @@ class Cuboid:
 
 
 class CompositeCube:
+    """
+    Composite object for composing scenes.
+
+    Currently this is comprised exclusively of unit cubes - that is, cubes with
+    unit scale along each of their dimensions.
+
+    This object is intended for purely as a 'front-end' for users to interact
+    with for composing `Scene`s.
+    """
+
     h: int
     w: int
     d: int
@@ -373,6 +389,7 @@ class CompositeCube:
     linewidth: float = 0.1
     edgecolor: str = "black"
     alpha: float = 0.0
+    name: str | None = None
 
     def __init__(
         self,
@@ -384,6 +401,7 @@ class CompositeCube:
         linewidth: float = 0.1,
         edgecolor: str = "black",
         alpha: float | None = 0.0,
+        name: str | None = None,
     ) -> None:
         # Users will not expect setting the facecolor only to have the cube be
         # invisible by default, so if the facecolor is set but not the alpha,
@@ -446,6 +464,7 @@ class CompositeCube:
         self.linewidth = linewidth
         self.edgecolor = edgecolor
         self.alpha = alpha
+        self.name = name
 
     def points(self) -> np.ndarray:
         """

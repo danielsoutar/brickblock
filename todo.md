@@ -4,7 +4,7 @@ V1
 
 DOD for each of these: unit tests (visualisation involves manually checking in matplotlib)
 
-15/26 done
+16/26 done
 
 - [X] Create basic `Cube` object
 - [X] Correctly visualise a `Cube` in matplotlib
@@ -23,7 +23,7 @@ DOD for each of these: unit tests (visualisation involves manually checking in m
 - [X] Fix bug where composite objects are swapping the height and depth dimensions
   - This is a more general problem - it also occurs for arbitrary objects.
 - [X] Add support for `Cuboid`s (any 6-sided polyhedron)
-- [ ] Add support for named objects
+- [X] Add support for named objects
 - [ ] Allow deleting an object (by coordinate, name, timestep ID)
   - Implies that addition/deletion need to contain all data for the object somewhere, or have a column to mask it. Timestep ID should be fine though.
 - [ ] Allow deleting multiple objects (by scene ID)

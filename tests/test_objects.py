@@ -125,9 +125,9 @@ def test_all_cubes_in_composite_cube_have_same_dims() -> None:
 
     # If each cube is merely an offset version of the first, then they must have
     # equal dimensions.
-    height_basis_vector = np.array([0, 1, 0])
+    height_basis_vector = np.array([0, 0, 1])
     width_basis_vector = np.array([1, 0, 0])
-    depth_basis_vector = np.array([0, 0, 1])
+    depth_basis_vector = np.array([0, 1, 0])
 
     for i in range(h):
         for j in range(w):
@@ -144,11 +144,10 @@ def test_all_cubes_in_composite_cube_have_same_dims() -> None:
 
 
 def test_composite_cube_creates_all_data_needed_for_visualising() -> None:
-    h, w, d = 3, 4, 3
+    h, w, d = 3, 4, 2
     composite = bb.CompositeCube(base_vector=np.array([0, 0, 0]), h=h, w=w, d=d)
 
     num_cubes = h * w * d
-    composite.faces = composite.faces.reshape((num_cubes, 6, 4, 3))
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection="3d")

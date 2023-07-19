@@ -13,13 +13,13 @@ import brickblock as bb
 
 def mock_coordinates_entry() -> np.ndarray:
     point0 = np.array([0.0, 0.0, 0.0])
-    point1 = np.array([0.0, 0.0, 1.0])
-    point2 = np.array([1.0, 0.0, 1.0])
+    point1 = np.array([0.0, 1.0, 0.0])
+    point2 = np.array([1.0, 1.0, 0.0])
     point3 = np.array([1.0, 0.0, 0.0])
-    point4 = np.array([0.0, 1.0, 0.0])
+    point4 = np.array([0.0, 0.0, 1.0])
     point5 = np.array([0.0, 1.0, 1.0])
     point6 = np.array([1.0, 1.0, 1.0])
-    point7 = np.array([1.0, 1.0, 0.0])
+    point7 = np.array([1.0, 0.0, 1.0])
 
     base = np.array(
         [
@@ -247,7 +247,7 @@ def test_space_creates_valid_axes_on_render_multiple_cubes_single_scene() -> (
     space = bb.Space()
 
     cube = bb.Cube(base_vector=np.array([0, 0, 0]), scale=1.0)
-    second_cube = bb.Cube(base_vector=np.array([3, 3, 3]), scale=1.0)
+    second_cube = bb.Cube(base_vector=np.array([3, 2, 1]), scale=1.0)
 
     space.add_cube(cube)
     space.add_cube(second_cube)
@@ -373,9 +373,9 @@ def test_space_can_add_composite_cube() -> None:
     # The initial number of entries is 10, and the array size is doubled on
     # overflow. Hence we'd expect re-allocating 40 entries when overflowing 20.
     expected_num_entries = 40
-    height = np.array([0, 1, 0])
+    height = np.array([0, 0, 1])
     width = np.array([1, 0, 0])
-    depth = np.array([0, 0, 1])
+    depth = np.array([0, 1, 0])
 
     assert np.array_equal(
         space.cuboid_coordinates,

@@ -40,16 +40,26 @@ class Cube:
         if scale < 0.0:
             raise ValueError("Cube must have positively-sized dimensions.")
 
-        height_basis_vector = np.array([0, 1, 0])
-        width_basis_vector = np.array([1, 0, 0])
-        depth_basis_vector = np.array([0, 0, 1])
+        # Explain this in docs - but essentially this is for navigating around
+        # limitation in matplotlib where the Z axis is the vertical one. You
+        # cannot just use the camera to fix the problem (I think). Or at least,
+        # not with 3D objects and the notion of left/right etc. You need to
+        # transpose or flip the actual data (or the axes), and this is the
+        # simplest way to achieve this. Of course, the flip-side is that now you
+        # are saying the z-axis corresponds to height in Brickblock, which is
+        # not ideal.
+        # TODO: Have this as a transform for matplotlib and have your own
+        # representation instead.
+        self._height_basis_vector = np.array([0, 0, 1])
+        self._width_basis_vector = np.array([1, 0, 0])
+        self._depth_basis_vector = np.array([0, 1, 0])
 
         points = np.array(
             [
                 base_vector,
-                scale * height_basis_vector,
-                scale * width_basis_vector,
-                scale * depth_basis_vector,
+                scale * self._height_basis_vector,
+                scale * self._width_basis_vector,
+                scale * self._depth_basis_vector,
             ]
         ).reshape((4, 3))
 
@@ -85,16 +95,16 @@ class Cube:
         """
         Get the bounding box around the cube's `points`.
 
-        The output is a 3x2 matrix, with rows in WHD order (xs, ys, zs)
+        The output is a 3x2 matrix, with rows in WDH order (xs, zs, ys)
         corresponding to the minimum and maximum per dimension respectively.
         """
         points = np.array([self.faces[0], self.faces[-1]]).reshape((8, 3))
         x_min = np.min(points[:, 0])
         x_max = np.max(points[:, 0])
-        y_min = np.min(points[:, 1])
-        y_max = np.max(points[:, 1])
-        z_min = np.min(points[:, 2])
-        z_max = np.max(points[:, 2])
+        z_min = np.min(points[:, 1])
+        z_max = np.max(points[:, 1])
+        y_min = np.min(points[:, 2])
+        y_max = np.max(points[:, 2])
 
         max_range = (
             np.array([x_max - x_min, y_max - y_min, z_max - z_min]).max() / 2.0
@@ -107,8 +117,8 @@ class Cube:
         return np.array(
             [
                 [mid_x - max_range, mid_x + max_range],
-                [mid_y - max_range, mid_y + max_range],
                 [mid_z - max_range, mid_z + max_range],
+                [mid_y - max_range, mid_y + max_range],
             ]
         ).reshape((3, 2))
 
@@ -196,18 +206,28 @@ class CompositeCube:
                 "Composite cube must have positively-sized dimensions."
             )
 
-        height_basis_vector = np.array([0, 1, 0])
-        width_basis_vector = np.array([1, 0, 0])
-        depth_basis_vector = np.array([0, 0, 1])
+        # Explain this in docs - but essentially this is for navigating around
+        # limitation in matplotlib where the Z axis is the vertical one. You
+        # cannot just use the camera to fix the problem (I think). Or at least,
+        # not with 3D objects and the notion of left/right etc. You need to
+        # transpose or flip the actual data (or the axes), and this is the
+        # simplest way to achieve this. Of course, the flip-side is that now you
+        # are saying the z-axis corresponds to height in Brickblock, which is
+        # not ideal.
+        # TODO: Have this as a transform for matplotlib and have your own
+        # representation instead.
+        self._height_basis_vector = np.array([0, 0, 1])
+        self._width_basis_vector = np.array([1, 0, 0])
+        self._depth_basis_vector = np.array([0, 1, 0])
 
         # For now we assume that composites are built out of unit cubes.
         # This could be generalised to arbitrary cubes but for now this will do.
         points = np.array(
             [
                 base_vector,
-                height_basis_vector,
-                width_basis_vector,
-                depth_basis_vector,
+                self._height_basis_vector,
+                self._width_basis_vector,
+                self._depth_basis_vector,
             ]
         ).reshape((4, 3))
 
@@ -308,16 +328,12 @@ class CompositeCube:
 
         all_cube_points = all_cube_points.reshape((8, 3))
 
-        height_basis_vector = np.array([0, 1, 0])
-        width_basis_vector = np.array([1, 0, 0])
-        depth_basis_vector = np.array([0, 0, 1])
-
         all_cubes_all_points = np.array(
             [
                 all_cube_points
-                + (h * height_basis_vector)
-                + (w * width_basis_vector)
-                + (d * depth_basis_vector)
+                + (h * self._height_basis_vector)
+                + (w * self._width_basis_vector)
+                + (d * self._depth_basis_vector)
                 for (h, w, d) in itertools.product(
                     range(composite_h), range(composite_w), range(composite_d)
                 )

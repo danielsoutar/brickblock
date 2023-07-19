@@ -279,9 +279,15 @@ def test_space_creates_valid_axes_on_render_multiple_cubes_scenes() -> None:
     space = bb.Space()
 
     cube = bb.Cube(base_vector=np.array([0, 0, 0]), scale=1.0)
-    second_cube = bb.Cube(base_vector=np.array([3, 3, 3]), scale=1.0)
-    third_cube = bb.Cube(base_vector=np.array([1, 1, 1]), scale=1.0)
-    fourth_cube = bb.Cube(base_vector=np.array([2, 2, 2]), scale=1.0)
+    second_cube = bb.Cube(
+        base_vector=np.array([7, 8, 9]), scale=1.0, facecolor="black", alpha=1.0
+    )
+    third_cube = bb.Cube(
+        base_vector=np.array([1, 2, 3]), scale=1.0, facecolor="blue", alpha=1.0
+    )
+    fourth_cube = bb.Cube(
+        base_vector=np.array([4, 5, 6]), scale=1.0, facecolor="red", alpha=1.0
+    )
 
     space.add_cube(cube)
     space.add_cube(second_cube)
@@ -292,7 +298,7 @@ def test_space_creates_valid_axes_on_render_multiple_cubes_scenes() -> None:
     space.add_cube(fourth_cube)
 
     space.snapshot()
-    fig, ax = space.render()
+    _, ax = space.render()
 
     plt_internal_data_for_cubes = [ax.collections[i]._vec.T for i in range(4)]
     plt_internal_reshaped_data = np.concatenate(
@@ -333,7 +339,7 @@ def test_space_can_customise_cube_visual_properties() -> None:
         "alpha": [alpha],
     }
 
-    fig, ax = space.render()
+    _, ax = space.render()
 
     plt_collection = ax.axes.collections[0]
 
@@ -412,7 +418,14 @@ def test_space_creates_valid_axes_on_render_for_composite() -> None:
     num_cubes = h * w * d
 
     composite = bb.CompositeCube(base_vector=np.array([0, 0, 0]), h=h, w=w, d=d)
+    second_composite = bb.CompositeCube(
+        base_vector=np.array([h, w, d]),
+        h=h,
+        w=w,
+        d=d,
+    )
     space.add_composite(composite)
+    space.add_composite(second_composite)
     space.snapshot()
     _, ax = space.render()
 

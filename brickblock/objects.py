@@ -37,7 +37,7 @@ class Cube:
                 "3D."
             )
 
-        if scale < 0.0:
+        if scale <= 0.0:
             raise ValueError("Cube must have positively-sized dimensions.")
 
         # Explain this in docs - but essentially this is for navigating around
@@ -50,6 +50,8 @@ class Cube:
         # not ideal.
         # TODO: Have this as a transform for matplotlib and have your own
         # representation instead.
+        h, w, d = base_vector
+        base_vector = np.array([w, d, h])
         self._height_basis_vector = np.array([0, 0, 1])
         self._width_basis_vector = np.array([1, 0, 0])
         self._depth_basis_vector = np.array([0, 1, 0])
@@ -201,7 +203,7 @@ class CompositeCube:
                 "3D."
             )
 
-        if h < 0 or w < 0 or d < 0:
+        if h <= 0 or w <= 0 or d <= 0:
             raise ValueError(
                 "Composite cube must have positively-sized dimensions."
             )
@@ -216,6 +218,8 @@ class CompositeCube:
         # not ideal.
         # TODO: Have this as a transform for matplotlib and have your own
         # representation instead.
+        base_h, base_w, base_d = base_vector
+        base_vector = np.array([base_w, base_d, base_h])
         self._height_basis_vector = np.array([0, 0, 1])
         self._width_basis_vector = np.array([1, 0, 0])
         self._depth_basis_vector = np.array([0, 1, 0])

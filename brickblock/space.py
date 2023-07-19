@@ -92,8 +92,12 @@ class Space:
 
         for i in range(num_cubes):
             cube_base_point_idx = (i, 0, 0)
+            # Swap the axes around here - otherwise you will get double-swapping
+            # of the dimensions.
+            base_vector = composite.faces[cube_base_point_idx]
+            w, d, h = base_vector
             cube = Cube(
-                composite.faces[cube_base_point_idx],
+                np.array([h, w, d]),
                 scale=1.0,
                 facecolor=composite.facecolor,
                 linewidth=composite.linewidth,

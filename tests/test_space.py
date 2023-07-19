@@ -280,13 +280,13 @@ def test_space_creates_valid_axes_on_render_multiple_cubes_scenes() -> None:
 
     cube = bb.Cube(base_vector=np.array([0, 0, 0]), scale=1.0)
     second_cube = bb.Cube(
-        base_vector=np.array([7, 8, 9]), scale=1.0, facecolor="black", alpha=1.0
+        base_vector=np.array([7, 8, 9]), scale=1.0, facecolor="black"
     )
     third_cube = bb.Cube(
-        base_vector=np.array([1, 2, 3]), scale=1.0, facecolor="blue", alpha=1.0
+        base_vector=np.array([1, 2, 3]), scale=1.0, facecolor="blue"
     )
     fourth_cube = bb.Cube(
-        base_vector=np.array([4, 5, 6]), scale=1.0, facecolor="red", alpha=1.0
+        base_vector=np.array([4, 5, 6]), scale=1.0, facecolor="red"
     )
 
     space.add_cube(cube)

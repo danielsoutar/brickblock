@@ -27,8 +27,19 @@ class Cube:
         facecolor: tuple[float, float, float] | None = None,
         linewidth: float = 0.1,
         edgecolor: str = "black",
-        alpha: float = 0.0,
+        alpha: float | None = None,
     ) -> None:
+        # Users will not expect setting the facecolor only to have the cube be
+        # invisible by default, so if the facecolor is set but not the alpha,
+        # have the object be fully opaque.
+        if alpha is None and facecolor is not None:
+            alpha = 1.0
+
+        # On the other hand, the default presentation should be transparent with
+        # black lines.
+        if alpha is None and facecolor is None:
+            alpha = 0.0
+
         # Check base_vector is 3D.
         is_3d = base_vector.flatten().shape == (3,)
         if not is_3d:
@@ -193,8 +204,19 @@ class CompositeCube:
         facecolor: tuple[float, float, float] | None = None,
         linewidth: float = 0.1,
         edgecolor: str = "black",
-        alpha: float = 0.0,
+        alpha: float | None = 0.0,
     ) -> None:
+        # Users will not expect setting the facecolor only to have the cube be
+        # invisible by default, so if the facecolor is set but not the alpha,
+        # have the object be fully opaque.
+        if alpha is None and facecolor is not None:
+            alpha = 1.0
+
+        # On the other hand, the default presentation should be transparent with
+        # black lines.
+        if alpha is None and facecolor is None:
+            alpha = 0.0
+
         # Check base_vector is 3D.
         is_3d = base_vector.flatten().shape == (3,)
         if not is_3d:

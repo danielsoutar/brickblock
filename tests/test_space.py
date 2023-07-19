@@ -12,6 +12,7 @@ import brickblock as bb
 
 
 def mock_coordinates_entry() -> np.ndarray:
+    # Points here are in XZY order
     point0 = np.array([0.0, 0.0, 0.0])
     point1 = np.array([0.0, 1.0, 0.0])
     point2 = np.array([1.0, 1.0, 0.0])
@@ -20,6 +21,31 @@ def mock_coordinates_entry() -> np.ndarray:
     point5 = np.array([0.0, 1.0, 1.0])
     point6 = np.array([1.0, 1.0, 1.0])
     point7 = np.array([1.0, 0.0, 1.0])
+
+    base = np.array(
+        [
+            [point0, point1, point2, point3],
+            [point0, point4, point7, point3],
+            [point0, point1, point5, point4],
+            [point3, point7, point6, point2],
+            [point1, point5, point6, point2],
+            [point4, point5, point6, point7],
+        ]
+    ).reshape((1, 6, 4, 3))
+
+    return base
+
+
+def mock_cuboid_coordinates_entry() -> np.ndarray:
+    # Points here are in XZY order
+    point0 = np.array([0.0, 0.0, 0.0])
+    point1 = np.array([0.0, 6.0, 0.0])
+    point2 = np.array([4.0, 6.0, 0.0])
+    point3 = np.array([4.0, 0.0, 0.0])
+    point4 = np.array([0.0, 0.0, 2.0])
+    point5 = np.array([0.0, 6.0, 2.0])
+    point6 = np.array([4.0, 6.0, 2.0])
+    point7 = np.array([4.0, 0.0, 2.0])
 
     base = np.array(
         [
@@ -360,7 +386,7 @@ def test_space_can_customise_cube_visual_properties() -> None:
 def test_space_can_add_composite_cube() -> None:
     space = bb.Space()
 
-    h, w, d = 3, 4, 3
+    h, w, d = 3, 4, 2
     composite = bb.CompositeCube(base_vector=np.array([0, 0, 0]), h=h, w=w, d=d)
 
     num_cubes = h * w * d
@@ -368,9 +394,9 @@ def test_space_can_add_composite_cube() -> None:
     space.add_composite(composite)
     space.snapshot()
 
-    assert np.array_equal(space.dims, np.array([[0, 4], [0, 3], [0, 3]]))
-    assert np.array_equal(space.mean, np.array([[2], [1.5], [1.5]]))
-    assert np.array_equal(space.total, np.array([[72], [54], [54]]))
+    assert np.array_equal(space.dims, np.array([[0, 4], [0, 2], [0, 3]]))
+    assert np.array_equal(space.mean, np.array([[2.0], [1.0], [1.5]]))
+    assert np.array_equal(space.total, np.array([[48.0], [24.0], [36.0]]))
     assert space.num_objs == 1
     assert space.primitive_counter == num_cubes
     assert space.time_step == 1
@@ -396,7 +422,7 @@ def test_space_can_add_composite_cube() -> None:
                         range(h), range(w), range(d)
                     )
                 ],
-                np.zeros((expected_num_entries - 36, 6, 4, 3)),
+                np.zeros((expected_num_entries - num_cubes, 6, 4, 3)),
             ),
             axis=0,
         ),
@@ -440,6 +466,61 @@ def test_space_creates_valid_axes_on_render_for_composite() -> None:
         assert np.array_equal(
             original_augmented_data, plt_internal_reshaped_data
         )
+
+
+def test_space_can_add_cuboid() -> None:
+    space = bb.Space()
+
+    h, w, d = 2, 4, 6
+    cuboid = bb.Cuboid(base_vector=np.array([0, 0, 0]), h=h, w=w, d=d)
+
+    space.add_cuboid(cuboid)
+    space.snapshot()
+
+    assert np.array_equal(space.dims, np.array([[0, 4], [0, 6], [0, 2]]))
+    assert np.array_equal(space.mean, np.array([[2], [3], [1]]))
+    assert np.array_equal(space.total, np.array([[2], [3], [1]]))
+    assert space.num_objs == 1
+    assert space.primitive_counter == 1
+    assert space.time_step == 1
+    assert space.scene_counter == 1
+    expected_num_entries = 10
+    assert np.array_equal(
+        space.cuboid_coordinates,
+        np.concatenate(
+            (
+                mock_cuboid_coordinates_entry(),
+                np.zeros((expected_num_entries - 1, 6, 4, 3)),
+            ),
+            axis=0,
+        ),
+    )
+    assert space.cuboid_visual_metadata == {
+        "facecolor": [None],
+        "linewidth": [0.1],
+        "edgecolor": ["black"],
+        "alpha": [0.0],
+    }
+    assert space.cuboid_index == {0: {0: [0]}}
+    assert space.changelog == [bb.Addition(timestep_id=0, name=None)]
+
+
+def test_space_creates_valid_axes_on_render_for_cuboid() -> None:
+    space = bb.Space()
+
+    cuboid = bb.Cuboid(base_vector=np.array([0, 0, 0]), h=2.0, w=4.0, d=6.0)
+    space.add_cuboid(cuboid)
+    space.snapshot()
+    _, ax = space.render()
+
+    plt_internal_data = ax.collections[0]._vec
+    plt_internal_reshaped_data = plt_internal_data.T.reshape((6, 4, 4))
+
+    # Add the implicit 4th dimension to the original data - all ones.
+    ones = np.ones((6, 4, 1))
+    original_augmented_data = np.concatenate([cuboid.faces, ones], -1)
+
+    assert np.array_equal(original_augmented_data, plt_internal_reshaped_data)
 
 
 def test_space_correctly_reorients_data() -> None:

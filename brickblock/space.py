@@ -9,7 +9,7 @@ from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import numpy as np
 
-from brickblock.objects import Cube, CompositeCube
+from brickblock.objects import Cube, Cuboid, CompositeCube
 
 
 # TODO: Decide if we want to use classes for this, what details need adding to
@@ -80,7 +80,10 @@ class Space:
         """
         TODO: Fill in
         """
-        self._add_cube_primitive(cube=cube, is_from_composite=False)
+        self._add_cuboid_primitive(cube, is_from_composite=False)
+
+    def add_cuboid(self, cuboid: Cuboid) -> None:
+        self._add_cuboid_primitive(cuboid, is_from_composite=False)
 
     # TODO: Rather than adding individual cubes, this should be a single call
     # and leverage the provided data better by direct insertion.
@@ -104,20 +107,22 @@ class Space:
                 edgecolor=composite.edgecolor,
                 alpha=composite.alpha,
             )
-            self._add_cube_primitive(cube, is_from_composite=True)
+            self._add_cuboid_primitive(cube, is_from_composite=True)
 
         self.changelog.append(Addition(self.time_step, None))
         self.num_objs += 1
         self.time_step += 1
 
-    def _add_cube_primitive(self, cube: Cube, is_from_composite: bool) -> None:
+    def _add_cuboid_primitive(
+        self, cuboid: Cube | Cuboid, is_from_composite: bool
+    ) -> None:
         """
         TODO: Fill in.
         """
-        cube_bounding_box = cube.get_bounding_box()
-        cube_mean = np.mean(cube.points(), axis=0).reshape((3, 1))
+        cuboid_bounding_box = cuboid.get_bounding_box()
+        cuboid_mean = np.mean(cuboid.points(), axis=0).reshape((3, 1))
 
-        self.total += cube_mean
+        self.total += cuboid_mean
 
         if not is_from_composite:
             self.num_objs += 1
@@ -125,17 +130,17 @@ class Space:
         self.mean = self.total / (self.primitive_counter + 1)
 
         if self.num_objs == 1:
-            dim = cube_bounding_box
+            dim = cuboid_bounding_box
         else:
             # Since there are multiple objects, ensure the resulting dimensions
             # of the surrounding box are centred around the mean.
             dim = np.array(
                 [
                     [
-                        min(self.dims[i][0], cube_bounding_box[i][0]),
-                        max(self.dims[i][1], cube_bounding_box[i][1]),
+                        min(self.dims[i][0], cuboid_bounding_box[i][0]),
+                        max(self.dims[i][1], cuboid_bounding_box[i][1]),
                     ]
-                    for i in range(len(cube_bounding_box))
+                    for i in range(len(cuboid_bounding_box))
                 ]
             ).reshape((3, 2))
 
@@ -150,8 +155,8 @@ class Space:
                 refcheck=False,
             )
 
-        self.cuboid_coordinates[self.primitive_counter] = cube.faces
-        for key, value in cube.get_visual_metadata().items():
+        self.cuboid_coordinates[self.primitive_counter] = cuboid.faces
+        for key, value in cuboid.get_visual_metadata().items():
             if key in self.cuboid_visual_metadata.keys():
                 self.cuboid_visual_metadata[key].append(value)
             else:

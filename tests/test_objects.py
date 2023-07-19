@@ -33,6 +33,8 @@ def test_invalid_base_throws_exception_making_cube() -> None:
 def test_invalid_scale_throws_exception_making_cube() -> None:
     expected_err_msg = "Cube must have positively-sized dimensions."
     with pytest.raises(ValueError, match=expected_err_msg):
+        bb.Cube(base_vector=np.array([0, 0, 0]), scale=0.0)
+    with pytest.raises(ValueError, match=expected_err_msg):
         bb.Cube(base_vector=np.array([0, 0, 0]), scale=-1.0)
 
 
@@ -165,3 +167,41 @@ def test_composite_cube_creates_all_data_needed_for_visualising() -> None:
         assert np.array_equal(
             plt_internal_reshaped_data, original_augmented_data
         )
+
+
+def test_cuboid_creation() -> None:
+    cuboid = bb.Cuboid(base_vector=np.array([0, 0, 0]), h=2.0, w=4.0, d=6.0)
+
+    assert cuboid.faces.shape == (6, 4, 3)
+    assert cuboid.facecolor is None
+    assert cuboid.linewidth == 0.1
+    assert cuboid.edgecolor == "black"
+    assert cuboid.alpha == 0.0
+
+
+def test_invalid_dims_throws_exception_making_cuboid() -> None:
+    invalid_dims = {"h": 2, "w": -1, "d": 4}
+
+    expected_err_msg = "Cuboid must have positively-sized dimensions."
+
+    with pytest.raises(ValueError, match=expected_err_msg):
+        bb.Cuboid(base_vector=np.array([0, 0, 0]), **invalid_dims)
+
+
+def test_cuboid_creates_all_data_needed_for_visualising() -> None:
+    cuboid = bb.Cuboid(base_vector=np.array([0, 0, 0]), h=2.0, w=4.0, d=6.0)
+    poly = Poly3DCollection(cuboid.faces)
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection="3d")
+    plt_collection = ax.add_collection3d(poly).axes.collections[0]
+    # The internal vector includes all 1s in an the implicit 4th dimension
+    # TODO: Understand why this is necessary. Probably to do with 3D
+    # projections or something like that.
+    plt_internal_data = np.array([plt_collection._vec])
+    plt_internal_reshaped_data = plt_internal_data.T.reshape((6, 4, 4))
+
+    # Add the implicit 4th dimension to the original data - all ones.
+    ones = np.ones((6, 4, 1))
+    original_augmented_data = np.concatenate([cuboid.faces, ones], -1)
+
+    assert np.array_equal(original_augmented_data, plt_internal_reshaped_data)

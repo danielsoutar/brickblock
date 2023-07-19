@@ -12,7 +12,7 @@ Having these abstractions allows programmers to more easily create animated 3D v
 
 ## Contributing
 
-Contributions are more than welcome! There is a very rough TODO in `todo.md` that outlines both short- and long-term goals for the library. However, there are some rules:
+Contributions are more than welcome! There is a very rough TODO in [todo.md](todo.md) that outlines both short- and long-term goals for the library. However, there are some rules:
 
 * Always follow the [code of conduct](CODE_OF_CONDUCT.md)
 * All the tests should be passing with your change

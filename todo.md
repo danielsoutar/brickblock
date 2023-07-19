@@ -25,7 +25,8 @@ DOD for each of these: unit tests (visualisation involves manually checking in m
 - [X] Add support for `Cuboid`s (any 6-sided polyhedron)
 - [X] Add support for named objects
 - [ ] Allow deleting an object (by coordinate, name, timestep ID)
-  - Implies that addition/deletion need to contain all data for the object somewhere, or have a column to mask it. Timestep ID should be fine though.
+  - Implies that addition/deletion need to contain all data for the object somewhere, or have a column to mask it.
+  - Timestep ID should be fine though.
 - [ ] Allow deleting multiple objects (by scene ID)
   - As above
 - [ ] Allow mutating an object's visual metadata (by coordinate, name, timestep ID, scene ID)

@@ -443,16 +443,22 @@ def test_space_creates_valid_axes_on_render_for_composite() -> None:
     h, w, d = 3, 4, 2
     num_cubes = h * w * d
 
-    composite = bb.CompositeCube(base_vector=np.array([0, 0, 0]), h=h, w=w, d=d)
+    composite = bb.CompositeCube(
+        base_vector=np.array([0, 0, 0]),
+        h=h,
+        w=w,
+        d=d,
+        facecolor="red",
+    )
     second_composite = bb.CompositeCube(
         base_vector=np.array([h, w, d]),
         h=h,
         w=w,
         d=d,
+        facecolor="green",
     )
     space.add_composite(composite)
     space.add_composite(second_composite)
-    space.snapshot()
     _, ax = space.render()
 
     for i in range(num_cubes):

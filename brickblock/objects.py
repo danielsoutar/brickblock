@@ -218,7 +218,7 @@ class Cuboid:
         facecolor: tuple[float, float, float] | None = None,
         linewidth: float = 0.1,
         edgecolor: str = "black",
-        alpha: float | None = 0.0,
+        alpha: float | None = None,
         name: str | None = None,
     ) -> None:
         # Users will not expect setting the facecolor only to have the cube be
@@ -400,7 +400,7 @@ class CompositeCube:
         facecolor: tuple[float, float, float] | None = None,
         linewidth: float = 0.1,
         edgecolor: str = "black",
-        alpha: float | None = 0.0,
+        alpha: float | None = None,
         name: str | None = None,
     ) -> None:
         # Users will not expect setting the facecolor only to have the cube be

@@ -304,16 +304,10 @@ def test_space_creates_valid_axes_on_render_multiple_cubes_single_scene() -> (
 def test_space_creates_valid_axes_on_render_multiple_cubes_scenes() -> None:
     space = bb.Space()
 
-    cube = bb.Cube(base_vector=np.array([0, 0, 0]), scale=1.0)
-    second_cube = bb.Cube(
-        base_vector=np.array([7, 8, 9]), scale=1.0, facecolor="black"
-    )
-    third_cube = bb.Cube(
-        base_vector=np.array([1, 2, 3]), scale=1.0, facecolor="blue"
-    )
-    fourth_cube = bb.Cube(
-        base_vector=np.array([4, 5, 6]), scale=1.0, facecolor="red"
-    )
+    cube = bb.Cube(base_vector=np.array([0, 0, 0]))
+    second_cube = bb.Cube(base_vector=np.array([7, 8, 9]), facecolor="black")
+    third_cube = bb.Cube(base_vector=np.array([1, 2, 3]), facecolor="blue")
+    fourth_cube = bb.Cube(base_vector=np.array([4, 5, 6]), facecolor="red")
 
     space.add_cube(cube)
     space.add_cube(second_cube)
@@ -352,7 +346,6 @@ def test_space_can_customise_cube_visual_properties() -> None:
 
     cube = bb.Cube(
         base_vector=np.array([0, 0, 0]),
-        scale=1.0,
         facecolor=(red, green, blue),
         linewidth=linewidth,
         alpha=alpha,
@@ -386,10 +379,10 @@ def test_space_can_customise_cube_visual_properties() -> None:
 def test_space_can_add_composite_cube() -> None:
     space = bb.Space()
 
-    h, w, d = 3, 4, 2
-    composite = bb.CompositeCube(base_vector=np.array([0, 0, 0]), h=h, w=w, d=d)
+    w, h, d = 4, 3, 2
+    composite = bb.CompositeCube(base_vector=np.array([0, 0, 0]), w=w, h=h, d=d)
 
-    num_cubes = h * w * d
+    num_cubes = w * h * d
 
     space.add_composite(composite)
     space.snapshot()
@@ -405,8 +398,8 @@ def test_space_can_add_composite_cube() -> None:
     # The initial number of entries is 10, and the array size is doubled on
     # overflow. Hence we'd expect re-allocating 40 entries when overflowing 20.
     expected_num_entries = 40
-    height = np.array([0, 0, 1])
     width = np.array([1, 0, 0])
+    height = np.array([0, 0, 1])
     depth = np.array([0, 1, 0])
 
     assert np.array_equal(
@@ -415,11 +408,11 @@ def test_space_can_add_composite_cube() -> None:
             (
                 *[
                     mock_coordinates_entry()
-                    + (h * height)
                     + (w * width)
+                    + (h * height)
                     + (d * depth)
-                    for (h, w, d) in itertools.product(
-                        range(h), range(w), range(d)
+                    for (w, h, d) in itertools.product(
+                        range(w), range(h), range(d)
                     )
                 ],
                 np.zeros((expected_num_entries - num_cubes, 6, 4, 3)),
@@ -440,20 +433,20 @@ def test_space_can_add_composite_cube() -> None:
 def test_space_creates_valid_axes_on_render_for_composite() -> None:
     space = bb.Space()
 
-    h, w, d = 3, 4, 2
-    num_cubes = h * w * d
+    w, h, d = 4, 3, 2
+    num_cubes = w * h * d
 
     composite = bb.CompositeCube(
         base_vector=np.array([0, 0, 0]),
-        h=h,
         w=w,
+        h=h,
         d=d,
         facecolor="red",
     )
     second_composite = bb.CompositeCube(
-        base_vector=np.array([h, w, d]),
-        h=h,
+        base_vector=np.array([w, h, d]),
         w=w,
+        h=h,
         d=d,
         facecolor="green",
     )
@@ -477,8 +470,8 @@ def test_space_creates_valid_axes_on_render_for_composite() -> None:
 def test_space_can_add_cuboid() -> None:
     space = bb.Space()
 
-    h, w, d = 2, 4, 6
-    cuboid = bb.Cuboid(base_vector=np.array([0, 0, 0]), h=h, w=w, d=d)
+    w, h, d = 4, 2, 6
+    cuboid = bb.Cuboid(base_vector=np.array([0, 0, 0]), w=w, h=h, d=d)
 
     space.add_cuboid(cuboid)
     space.snapshot()
@@ -514,7 +507,7 @@ def test_space_can_add_cuboid() -> None:
 def test_space_creates_valid_axes_on_render_for_cuboid() -> None:
     space = bb.Space()
 
-    cuboid = bb.Cuboid(base_vector=np.array([0, 0, 0]), h=2.0, w=4.0, d=6.0)
+    cuboid = bb.Cuboid(base_vector=np.array([0, 0, 0]), w=4.0, h=2.0, d=6.0)
     space.add_cuboid(cuboid)
     space.snapshot()
     _, ax = space.render()
@@ -532,22 +525,22 @@ def test_space_creates_valid_axes_on_render_for_cuboid() -> None:
 def test_space_can_add_named_objects() -> None:
     space = bb.Space()
 
-    h, w, d = 4, 4, 3
-    num_cubes_in_input_tensor = h * w * d
-    f_h, f_w, f_d = 2, 2, 3
-    num_cubes_in_filter_tensor = f_h * f_w * f_d
+    w, h, d = 4, 4, 3
+    num_cubes_in_input_tensor = w * h * d
+    f_w, f_h, f_d = 2, 2, 3
+    num_cubes_in_filter_tensor = f_w * f_h * f_d
 
     input_tensor = bb.CompositeCube(
         base_vector=np.array([0, 0, 0]),
-        h=h,
         w=w,
+        h=h,
         d=d,
         name="input-tensor",
     )
     filter_tensor = bb.CompositeCube(
-        base_vector=np.array([2, 0, 0]),
-        h=f_h,
+        base_vector=np.array([0, 2, 0]),
         w=f_w,
+        h=f_h,
         d=f_d,
         name="filter-tensor",
     )
@@ -568,10 +561,8 @@ def test_space_can_add_named_objects() -> None:
 def test_space_does_not_allow_duplicate_names() -> None:
     space = bb.Space()
 
-    first_cube = bb.Cube(base_vector=np.array([0, 0, 0]), scale=1.0, name="foo")
-    second_cube = bb.Cube(
-        base_vector=np.array([0, 0, 0]), scale=1.0, name="foo"
-    )
+    first_cube = bb.Cube(base_vector=np.array([0, 0, 0]), name="foo")
+    second_cube = bb.Cube(base_vector=np.array([0, 0, 0]), name="foo")
 
     space.add_cube(first_cube)
     expected_err_msg = "There already exists an object with name foo."

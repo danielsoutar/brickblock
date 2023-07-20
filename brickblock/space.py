@@ -42,14 +42,40 @@ class Deletion(SpaceStateChange):
 
 class Space:
     """
-    Representation of a 3D cartesian coordinate space, which tracks its state
-    over time.
+    Representation of a 3D coordinate space, which tracks its state over time.
 
-    This class contains geometric objects for plotting, and acts as a wrapper
-    over the visualisation library.
+    Any added objects are stored in a variety of formats, such as by coordinate
+    data, by name, and various IDs. This facilitates multiple ways of querying
+    them within a space.
+
+    The space is the object that abstracts over a visualisation backend, like
+    matplotlib.
+
+    # Attributes
+        dims: The dimensions of the space. This is stored for potential use with
+            the camera when rendering a scene.
+        mean: The mean point of the space. This is stored for potential use with
+            the camera when rendering a scene.
+        total: The total value per dimension of all objects. This is stored for
+            potential use with the camera when rendering a scene.
+        num_objs: The total number of objects in the space. All individual
+            primitives count as objects, a composite counts as one object.
+        primitive_counter: The total number of primitives in the space. A
+            composite object can comprise of multiple primitives.
+        time_step: The number of individual transforms done to the space.
+        scene_counter: The number of scenes to render.
+        cuboid_coordinates: The dense coordinate info for each primitive in the
+            space. This has shape Nx6x4x3, where N is the number of primitives.
+            Objects are stored in order of insertion.
+        cuboid_visual_metadata: The visual properties for each primitive in the
+            space. Objects are stored in order of insertion.
+        cuboid_index: A hierarchial index of the objects inserted into the
+            space. Objects are represented by lists of primitives.
+        cuboid_names: A mapping between names and objects/primitives.
+        changelog: A high-level description of each transform done to the space.
     """
 
-    # TODO: Clarify dimensions for things being HWD or XYZ (or a mix).
+    # TODO: Clarify dimensions for things being WHD or XYZ (or a mix).
     dims: np.ndarray
     mean: np.ndarray
     total: np.ndarray
@@ -80,7 +106,7 @@ class Space:
 
     def add_cube(self, cube: Cube) -> None:
         """
-        TODO: Fill in
+        Add a Cube primitive to the space.
         """
         primitive_id = self._add_cuboid_primitive(cube)
         self._add_name(cube.name, [primitive_id])
@@ -89,6 +115,9 @@ class Space:
         self.time_step += 1
 
     def add_cuboid(self, cuboid: Cuboid) -> None:
+        """
+        Add a Cuboid primitive to the space.
+        """
         primitive_id = self._add_cuboid_primitive(cuboid)
         self._add_name(cuboid.name, [primitive_id])
         self.num_objs += 1
@@ -99,7 +128,7 @@ class Space:
     # and leverage the provided data better by direct insertion.
     def add_composite(self, composite: CompositeCube) -> None:
         """
-        TODO: Fill in
+        Add a CompositeCube object to the space.
         """
         num_cubes = composite.faces.shape[0]
 
@@ -112,7 +141,7 @@ class Space:
             base_vector = composite.faces[cube_base_point_idx]
             w, d, h = base_vector
             cube = Cube(
-                np.array([h, w, d]),
+                np.array([w, h, d]),
                 scale=1.0,
                 facecolor=composite.facecolor,
                 linewidth=composite.linewidth,
@@ -127,9 +156,14 @@ class Space:
         self.num_objs += 1
         self.time_step += 1
 
-    def _add_cuboid_primitive(self, cuboid: Cube | Cuboid) -> None:
+    def _add_cuboid_primitive(self, cuboid: Cube | Cuboid) -> int:
         """
-        TODO: Fill in.
+        Add a primitive to the space by updating the various indices and data
+        structures, and return its ID.
+
+        # Args
+            cuboid: Primitive Cube/Cuboid to add to the space's various data
+            structures.
         """
         cuboid_bounding_box = cuboid.get_bounding_box()
         cuboid_mean = np.mean(cuboid.points(), axis=0).reshape((3, 1))
@@ -191,6 +225,14 @@ class Space:
         return primitive_id
 
     def _add_name(self, name: str | None, primitive_ids: list[int]) -> None:
+        """
+        Add an entry for `name` for the given `primitive_ids`, if specified.
+
+        # Args
+            name: An optional name that references each ID in `primitive_ids`.
+            primitive_ids: A list of primitive IDs to name. This list is assumed
+                to be non-empty, it can contain 1 or more IDs.
+        """
         if name is not None:
             if name in self.cuboid_names.keys():
                 raise Exception(
@@ -200,7 +242,10 @@ class Space:
 
     def snapshot(self) -> None:
         """
-        TODO: Fill in
+        Store the current state of the space as a scene, used for rendering.
+
+        Note that valid scenes must have 1+ transforms - i.e. adding,
+        deleting, or mutating an object, must be present in a scene.
         """
         if self.scene_counter not in self.cuboid_index.keys():
             raise Exception(
@@ -210,14 +255,16 @@ class Space:
         self.scene_counter += 1
 
     # TODO: Decide whether passing the Axes or having it be fully constructed by
-    # brickblock is a good idea.
+    # brickblock is a good idea - memory management could be a problem.
     # TODO: It seems controlling the azimuth and elevation parameters (which are
     # handily configurable!) is what you need for adjusting the camera.
     # TODO: plt.show shows each figure generated by render(), rather than only
     # the last one (though it shows the last one first). Can this be fixed?
+    # (Yes - you are being an idiot).
     def render(self) -> tuple[plt.Figure, plt.Axes]:
         """
-        TODO: Fill in
+        Render every scene in the space with a matplotlib Axes, and return the
+        figure-axes pair.
         """
         fig = plt.figure(figsize=(10, 8))
         fig.subplots_adjust(
@@ -227,6 +274,9 @@ class Space:
         # Remove everything except the objects to display.
         ax.set_axis_off()
 
+        # TODO: This logic really belongs in a `stream()` function. The render
+        # method should just get all primitive_ids and then render everything
+        # from the coordinates and visual_metadata.
         for scene_id in sorted(self.cuboid_index.keys()):
             timesteps = sorted(self.cuboid_index[scene_id].keys())
             for timestep_id in timesteps:
@@ -246,7 +296,12 @@ class Space:
         primitive_id: int,
     ) -> plt.Axes:
         """
-        TODO: Fill in
+        Add the primitive with `primitive_id` to the `ax`, including both
+        coordinate and visual metadata.
+
+        # Args
+            ax: The matplotlib Axes object to add the primitive to.
+            primitive_id: The ID of the primitive to add.
         """
         # Create the object for matplotlib ingestion.
         matplotlib_like_cube = Poly3DCollection(
@@ -270,7 +325,12 @@ class Space:
         self, ax: plt.Axes, primitive_ids: list[int]
     ) -> plt.Axes:
         """
-        TODO: Fill in
+        Add the composite with `primitive_ids` to the `ax`, including both
+        coordinate and visual metadata.
+
+        # Args
+            ax: The matplotlib Axes object to add the primitives to.
+            primitive_ids: The IDs of all the primitives to add.
         """
         for primitive_id in primitive_ids:
             ax = self._populate_ax_with_primitive(ax, primitive_id)

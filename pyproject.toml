@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "brickblock"
-version = "0.1.4"
+version = "0.1.5"
 description = "A fun visualisation library for those that like boxes"
 authors = ["Daniel Soutar <danielsoutar144@gmail.com>"]
 readme = "README.md"

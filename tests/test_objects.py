@@ -11,7 +11,7 @@ import brickblock as bb
 
 
 def test_cube_creation() -> None:
-    cube = bb.Cube(base_vector=np.array([0, 0, 0]), scale=1.0)
+    cube = bb.Cube(base_vector=np.array([0, 0, 0]))
 
     assert cube.faces.shape == (6, 4, 3)
     assert cube.facecolor is None
@@ -40,7 +40,7 @@ def test_invalid_scale_throws_exception_making_cube() -> None:
 
 
 def test_cube_creates_all_data_needed_for_visualising() -> None:
-    cube = bb.Cube(base_vector=np.array([0, 0, 0]), scale=1.0)
+    cube = bb.Cube(base_vector=np.array([0, 0, 0]))
     poly = Poly3DCollection(cube.faces)
     fig = plt.figure()
     ax = fig.add_subplot(111, projection="3d")
@@ -94,13 +94,13 @@ def test_cube_visualisation_can_be_customised() -> None:
 
 
 def test_composite_cube_creation() -> None:
-    h, w, d = 3, 4, 3
-    composite = bb.CompositeCube(base_vector=np.array([0, 0, 0]), h=h, w=w, d=d)
+    w, h, d = 4, 3, 3
+    composite = bb.CompositeCube(base_vector=np.array([0, 0, 0]), w=w, h=h, d=d)
 
-    num_cubes = h * w * d
+    num_cubes = w * h * d
 
-    assert composite.h == h
     assert composite.w == w
+    assert composite.h == h
     assert composite.d == d
     assert composite.faces.shape == (num_cubes, 6, 4, 3)
     assert composite.facecolor is None
@@ -113,15 +113,15 @@ def test_composite_cube_creation() -> None:
 def test_invalid_dims_throws_exception_making_composite_cube() -> None:
     invalid_dims = {"h": 2, "w": -1, "d": 4}
 
-    expected_err_msg = "Composite cube must have positively-sized dimensions."
+    expected_err_msg = "Composite object must have positively-sized dimensions."
 
     with pytest.raises(ValueError, match=expected_err_msg):
         bb.CompositeCube(base_vector=np.array([0, 0, 0]), **invalid_dims)
 
 
 def test_all_cubes_in_composite_cube_have_same_dims() -> None:
-    h, w, d = 3, 4, 2
-    composite = bb.CompositeCube(base_vector=np.array([0, 0, 0]), h=h, w=w, d=d)
+    w, h, d = 4, 3, 2
+    composite = bb.CompositeCube(base_vector=np.array([0, 0, 0]), w=w, h=h, d=d)
 
     faces_per_cube = composite.faces
 
@@ -129,29 +129,29 @@ def test_all_cubes_in_composite_cube_have_same_dims() -> None:
 
     # If each cube is merely an offset version of the first, then they must have
     # equal dimensions.
-    height_basis_vector = np.array([0, 0, 1])
     width_basis_vector = np.array([1, 0, 0])
+    height_basis_vector = np.array([0, 0, 1])
     depth_basis_vector = np.array([0, 1, 0])
 
-    for i in range(h):
-        for j in range(w):
+    for i in range(w):
+        for j in range(h):
             for k in range(d):
-                idx = (i * w * d) + (j * d) + k
+                idx = (i * h * d) + (j * d) + k
                 current_cube = faces_per_cube[idx]
                 current_cube_offset = (
                     current_cube
-                    - (i * height_basis_vector)
-                    - (j * width_basis_vector)
+                    - (i * width_basis_vector)
+                    - (j * height_basis_vector)
                     - (k * depth_basis_vector)
                 )
                 assert np.array_equal(first_cube, current_cube_offset)
 
 
 def test_composite_cube_creates_all_data_needed_for_visualising() -> None:
-    h, w, d = 3, 4, 2
-    composite = bb.CompositeCube(base_vector=np.array([0, 0, 0]), h=h, w=w, d=d)
+    w, h, d = 4, 3, 2
+    composite = bb.CompositeCube(base_vector=np.array([0, 0, 0]), w=w, h=h, d=d)
 
-    num_cubes = h * w * d
+    num_cubes = w * h * d
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection="3d")
@@ -172,7 +172,7 @@ def test_composite_cube_creates_all_data_needed_for_visualising() -> None:
 
 
 def test_cuboid_creation() -> None:
-    cuboid = bb.Cuboid(base_vector=np.array([0, 0, 0]), h=2.0, w=4.0, d=6.0)
+    cuboid = bb.Cuboid(base_vector=np.array([0, 0, 0]), w=4.0, h=2.0, d=6.0)
 
     assert cuboid.faces.shape == (6, 4, 3)
     assert cuboid.facecolor is None
@@ -192,7 +192,7 @@ def test_invalid_dims_throws_exception_making_cuboid() -> None:
 
 
 def test_cuboid_creates_all_data_needed_for_visualising() -> None:
-    cuboid = bb.Cuboid(base_vector=np.array([0, 0, 0]), h=2.0, w=4.0, d=6.0)
+    cuboid = bb.Cuboid(base_vector=np.array([0, 0, 0]), w=4.0, h=2.0, d=6.0)
     poly = Poly3DCollection(cuboid.faces)
     fig = plt.figure()
     ax = fig.add_subplot(111, projection="3d")
@@ -213,8 +213,8 @@ def test_cuboid_creates_all_data_needed_for_visualising() -> None:
 def test_objects_can_have_names() -> None:
     cuboid = bb.Cuboid(
         base_vector=np.array([0, 0, 0]),
-        h=2.0,
         w=4.0,
+        h=2.0,
         d=6.0,
         name="my-first-cuboid",
     )

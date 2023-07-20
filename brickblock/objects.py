@@ -10,8 +10,25 @@ class Cube:
     """
     Primitive object for composing scenes.
 
-    This object is intended for purely as a 'front-end' for users to interact
-    with for composing `Scene`s.
+    This class represents a cube - a six-sided polyhedron with each of its faces
+    being squares.
+
+    Internally, coordinates within this Cube are expressed in XZY/WHD format -
+    this is due to matplotlib's data layout. However, coordinate parameters
+    (e.g. in user-facing functions such as the constructor) are in XYZ/WHD
+    format (note the swapping of the axes and dimensions!), and this is the
+    preferred format in brickblock.
+
+    # Attributes
+        faces: A 6x4x3 array of numbers representing the dense coordinate data
+            for this cube. Points are in XZY format.
+        facecolor: The color for each of the faces. The default is None, i.e. a
+            transparent cube. If this is set, then by default alpha will be 1.
+        linewidth: The width for each of the lines.
+        edgecolor: The color for each of the lines.
+        alpha: The transparency for each of the faces. The default is 0, i.e.
+            a transparent cube.
+        name: A name for this cube, used for querying within a Space.
     """
 
     faces: np.ndarray
@@ -63,17 +80,17 @@ class Cube:
         # not ideal.
         # TODO: Have this as a transform for matplotlib and have your own
         # representation instead.
-        h, w, d = base_vector
+        w, h, d = base_vector
         base_vector = np.array([w, d, h])
-        self._height_basis_vector = np.array([0, 0, 1])
         self._width_basis_vector = np.array([1, 0, 0])
+        self._height_basis_vector = np.array([0, 0, 1])
         self._depth_basis_vector = np.array([0, 1, 0])
 
         points = np.array(
             [
                 base_vector,
-                scale * self._height_basis_vector,
                 scale * self._width_basis_vector,
+                scale * self._height_basis_vector,
                 scale * self._depth_basis_vector,
             ]
         ).reshape((4, 3))
@@ -89,13 +106,13 @@ class Cube:
 
     def points(self) -> np.ndarray:
         """
-        TODO: Fill in
+        Get the set of unique points that define this cube.
         """
         return np.array([self.faces[0], self.faces[-1]]).reshape((8, 3))
 
     def get_visual_metadata(self) -> dict[str, Any]:
         """
-        TODO: Fill in
+        Get the visual properties for this cube.
         """
         return {
             "facecolor": self.facecolor,
@@ -111,7 +128,7 @@ class Cube:
         """
         Get the bounding box around the cube's `points`.
 
-        The output is a 3x2 matrix, with rows in WDH order (xs, zs, ys)
+        The output is a 3x2 matrix, with rows in WHD order (xs, zs, ys)
         corresponding to the minimum and maximum per dimension respectively.
         """
         points = np.array([self.faces[0], self.faces[-1]]).reshape((8, 3))
@@ -122,20 +139,8 @@ class Cube:
         y_min = np.min(points[:, 2])
         y_max = np.max(points[:, 2])
 
-        max_range = (
-            np.array([x_max - x_min, y_max - y_min, z_max - z_min]).max() / 2.0
-        )
-
-        mid_x = (x_max + x_min) * 0.5
-        mid_y = (y_max + y_min) * 0.5
-        mid_z = (z_max + z_min) * 0.5
-
         return np.array(
-            [
-                [mid_x - max_range, mid_x + max_range],
-                [mid_z - max_range, mid_z + max_range],
-                [mid_y - max_range, mid_y + max_range],
-            ]
+            [[x_min, x_max], [z_min, z_max], [y_min, y_max]]
         ).reshape((3, 2))
 
     def _construct_points(self, points: np.ndarray) -> np.ndarray:
@@ -143,11 +148,9 @@ class Cube:
         Construct the full set of points from a partial set of points.
         """
         # Shorthand convention is to have the 'bottom-left-front' point as
-        # the base, with points defining height/width/depth of the cube
+        # the base, with points defining width/height/depth of the cube
         # after (using the left-hand rule).
-        # NB: in the 'xyz' axes, we have width-height-depth (WHD) for the
-        # coordinates.
-        base, h, w, d = points
+        base, w, h, d = points
         # Note: the ordering of points matters.
         full_points = np.array(
             [
@@ -174,7 +177,7 @@ class Cube:
 
     def _construct_faces(self, points: np.ndarray) -> np.ndarray:
         """
-        TODO: Fill in
+        Create the full 6x4x3 coordinate representation of the cube's points.
         """
         return np.array(
             [
@@ -196,8 +199,22 @@ class Cuboid:
     Strictly speaking, this defines a 'Rectangular Cuboid' which comprises three
     pairs of rectangles. The more general form can be defined by 8 vertices.
 
-    This object is intended for purely as a 'front-end' for users to interact
-    with for composing `Scene`s.
+    Internally, coordinates within this Cuboid are expressed in XZY/WHD format -
+    this is due to matplotlib's data layout. However, coordinate parameters
+    (e.g. in user-facing functions such as the constructor) are in XYZ/WHD
+    format (note the swapping of the axes and dimensions!), and this is the
+    preferred format in brickblock.
+
+    # Attributes
+        faces: A 6x4x3 array of numbers representing the dense coordinate data
+            for this cuboid. Points are in XZY format.
+        facecolor: The color for each of the faces. The default is None, i.e. a
+            transparent cuboid. If this is set, then by default alpha will be 1.
+        linewidth: The width for each of the lines.
+        edgecolor: The color for each of the lines.
+        alpha: The transparency for each of the faces. The default is 0, i.e.
+            a transparent cuboid.
+        name: A name for this cuboid, used for querying within a Space.
     """
 
     faces: np.ndarray
@@ -212,8 +229,8 @@ class Cuboid:
     def __init__(
         self,
         base_vector: np.ndarray,
-        h: float,
         w: float,
+        h: float,
         d: float,
         facecolor: tuple[float, float, float] | None = None,
         linewidth: float = 0.1,
@@ -240,7 +257,7 @@ class Cuboid:
                 "be 3D."
             )
 
-        if h <= 0.0 or w <= 0.0 or d <= 0.0:
+        if w <= 0.0 or h <= 0.0 or d <= 0.0:
             raise ValueError("Cuboid must have positively-sized dimensions.")
 
         # Explain this in docs - but essentially this is for navigating around
@@ -253,17 +270,17 @@ class Cuboid:
         # not ideal.
         # TODO: Have this as a transform for matplotlib and have your own
         # representation instead.
-        base_h, base_w, base_d = base_vector
+        base_w, base_h, base_d = base_vector
         base_vector = np.array([base_w, base_d, base_h])
-        self._height_basis_vector = np.array([0, 0, 1])
         self._width_basis_vector = np.array([1, 0, 0])
+        self._height_basis_vector = np.array([0, 0, 1])
         self._depth_basis_vector = np.array([0, 1, 0])
 
         points = np.array(
             [
                 base_vector,
-                h * self._height_basis_vector,
                 w * self._width_basis_vector,
+                h * self._height_basis_vector,
                 d * self._depth_basis_vector,
             ]
         ).reshape((4, 3))
@@ -279,13 +296,13 @@ class Cuboid:
 
     def points(self) -> np.ndarray:
         """
-        TODO: Fill in
+        Get the set of unique points that define this cuboid.
         """
         return np.array([self.faces[0], self.faces[-1]]).reshape((8, 3))
 
     def get_visual_metadata(self) -> dict[str, Any]:
         """
-        TODO: Fill in
+        Get the visual properties for this cuboid.
         """
         return {
             "facecolor": self.facecolor,
@@ -299,9 +316,9 @@ class Cuboid:
     # this be used by a Space?
     def get_bounding_box(self) -> np.ndarray:
         """
-        Get the bounding box around the cube's `points`.
+        Get the bounding box around the cuboid's `points`.
 
-        The output is a 3x2 matrix, with rows in WDH order (xs, zs, ys)
+        The output is a 3x2 matrix, with rows in WHD order (xs, zs, ys)
         corresponding to the minimum and maximum per dimension respectively.
         """
         points = np.array([self.faces[0], self.faces[-1]]).reshape((8, 3))
@@ -313,11 +330,7 @@ class Cuboid:
         y_max = np.max(points[:, 2])
 
         return np.array(
-            [
-                [x_min, x_max],
-                [z_min, z_max],
-                [y_min, y_max],
-            ]
+            [[x_min, x_max], [z_min, z_max], [y_min, y_max]]
         ).reshape((3, 2))
 
     def _construct_points(self, points: np.ndarray) -> np.ndarray:
@@ -325,11 +338,9 @@ class Cuboid:
         Construct the full set of points from a partial set of points.
         """
         # Shorthand convention is to have the 'bottom-left-front' point as
-        # the base, with points defining height/width/depth of the cube
+        # the base, with points defining width/height/depth of the cube
         # after (using the left-hand rule).
-        # NB: in the 'xyz' axes, we have width-height-depth (WHD) for the
-        # coordinates.
-        base, h, w, d = points
+        base, w, h, d = points
         # Note: the ordering of points matters.
         full_points = np.array(
             [
@@ -356,7 +367,7 @@ class Cuboid:
 
     def _construct_faces(self, points: np.ndarray) -> np.ndarray:
         """
-        TODO: Fill in
+        Create the full 6x4x3 coordinate representation of the cuboid's points.
         """
         return np.array(
             [
@@ -377,8 +388,30 @@ class CompositeCube:
     Currently this is comprised exclusively of unit cubes - that is, cubes with
     unit scale along each of their dimensions.
 
-    This object is intended for purely as a 'front-end' for users to interact
-    with for composing `Scene`s.
+    Internally, coordinates within this object are expressed in XZY/WHD format -
+    this is due to matplotlib's data layout. However, coordinate parameters
+    (e.g. in user-facing functions such as the constructor) are in XYZ/WHD
+    format (note the swapping of the axes AND dimensions!), and this is the
+    preferred format in brickblock.
+
+    # Attributes
+        w: The width of the object, or number of unit-cubes in the width
+            dimension.
+        h: The height of the object, or number of unit-cubes in the height
+            dimension.
+        d: The depth of the object, or number of unit-cubes in the depth
+            dimension.
+        faces: A Nx6x4x3 array of numbers representing the dense coordinate data
+            for this object, where N is the product of the three dimensions.
+            Points are in XZY format.
+        facecolor: The color for each of the faces in every cube. The default is
+            None, i.e. transparent cubes. If this is set, then by default alpha
+            will be 1.
+        linewidth: The width for each of the lines in every cube.
+        edgecolor: The color for each of the lines in every cube.
+        alpha: The transparency for each of the faces in every cube. The default
+            is 0, i.e. transparent cubes.
+        name: A name for this entire object, used for querying within a Space.
     """
 
     h: int
@@ -394,8 +427,8 @@ class CompositeCube:
     def __init__(
         self,
         base_vector: np.ndarray,
-        h: int,
         w: int,
+        h: int,
         d: int,
         facecolor: tuple[float, float, float] | None = None,
         linewidth: float = 0.1,
@@ -403,7 +436,7 @@ class CompositeCube:
         alpha: float | None = None,
         name: str | None = None,
     ) -> None:
-        # Users will not expect setting the facecolor only to have the cube be
+        # Users will not expect setting the facecolor only to have the object be
         # invisible by default, so if the facecolor is set but not the alpha,
         # have the object be fully opaque.
         if alpha is None and facecolor is not None:
@@ -418,13 +451,13 @@ class CompositeCube:
         is_3d = base_vector.flatten().shape == (3,)
         if not is_3d:
             raise ValueError(
-                "Cube objects are three-dimensional, the base vector should be "
-                "3D."
+                "Composite objects are three-dimensional, the base vector "
+                "should be 3D."
             )
 
-        if h <= 0 or w <= 0 or d <= 0:
+        if w <= 0 or h <= 0 or d <= 0:
             raise ValueError(
-                "Composite cube must have positively-sized dimensions."
+                "Composite object must have positively-sized dimensions."
             )
 
         # Explain this in docs - but essentially this is for navigating around
@@ -437,10 +470,10 @@ class CompositeCube:
         # not ideal.
         # TODO: Have this as a transform for matplotlib and have your own
         # representation instead.
-        base_h, base_w, base_d = base_vector
+        base_w, base_h, base_d = base_vector
         base_vector = np.array([base_w, base_d, base_h])
-        self._height_basis_vector = np.array([0, 0, 1])
         self._width_basis_vector = np.array([1, 0, 0])
+        self._height_basis_vector = np.array([0, 0, 1])
         self._depth_basis_vector = np.array([0, 1, 0])
 
         # For now we assume that composites are built out of unit cubes.
@@ -448,16 +481,16 @@ class CompositeCube:
         points = np.array(
             [
                 base_vector,
-                self._height_basis_vector,
                 self._width_basis_vector,
+                self._height_basis_vector,
                 self._depth_basis_vector,
             ]
         ).reshape((4, 3))
 
-        full_points = self._construct_points(points, h, w, d)
+        full_points = self._construct_points(points, w, h, d)
 
-        self.h = h
         self.w = w
+        self.h = h
         self.d = d
         self.faces = self._construct_faces(full_points)
         self.facecolor = facecolor
@@ -468,7 +501,7 @@ class CompositeCube:
 
     def points(self) -> np.ndarray:
         """
-        TODO: Fill in
+        Get the set of unique points that define this object.
         """
         # TODO: Figure out the relevant points that define the bounds of the
         # entire object.
@@ -476,7 +509,7 @@ class CompositeCube:
 
     def get_visual_metadata(self) -> dict[str, Any]:
         """
-        TODO: Fill in
+        Get the visual properties for this object.
         """
         return {
             "facecolor": self.facecolor,
@@ -490,44 +523,24 @@ class CompositeCube:
     # CompositeCubes? How would this be used by a Space?
     def get_bounding_box(self) -> np.ndarray:
         """
-        Get the bounding box around the cube's `points`.
-
-        The output is a 3x2 matrix, with rows in WHD order (xs, ys, zs)
-        corresponding to the minimum and maximum per dimension respectively.
+        TODO: See above.
         """
-        # We need 8 points:
-        # The bottom-left-front point of the bottom-left-front cube
-        # The bottom-left-back point of the bottom-left-back cube
-        # And so on
-        height = self.h * np.array([0, 1, 0])
-        width = self.w * np.array([1, 0, 0])
-        depth = self.d * np.array([0, 0, 1])
-
-        base_point_idx = (0, 0, 0)
-        base = self.faces[base_point_idx]
-        bottom_left_front_point = base
-        bottom_left_back_point = base + depth
-        bottom_right_back_point = base + width + depth
-        bottom_right_front_point = base + width
-
         return np.array().reshape((3, 2))
 
     def _construct_points(
         self,
         cube_points: np.ndarray,
-        composite_h: float,
         composite_w: float,
+        composite_h: float,
         composite_d: float,
     ) -> np.ndarray:
         """
         Construct the full set of points from a partial set of points.
         """
         # Shorthand convention is to have the 'bottom-left-front' point as
-        # the base, with points defining height/width/depth of the cube
+        # the base, with points defining width/height/depth of the cube
         # after (using the left-hand rule).
-        # NB: in the 'xyz' axes, we have width-height-depth (WHD) for the
-        # coordinates.
-        base, cube_h, cube_w, cube_d = cube_points
+        base, cube_w, cube_h, cube_d = cube_points
         # Note: the ordering of points matters.
         all_cube_points = np.array(
             [
@@ -555,25 +568,25 @@ class CompositeCube:
         all_cubes_all_points = np.array(
             [
                 all_cube_points
-                + (h * self._height_basis_vector)
                 + (w * self._width_basis_vector)
+                + (h * self._height_basis_vector)
                 + (d * self._depth_basis_vector)
-                for (h, w, d) in itertools.product(
-                    range(composite_h), range(composite_w), range(composite_d)
+                for (w, h, d) in itertools.product(
+                    range(composite_w), range(composite_h), range(composite_d)
                 )
             ]
         )
 
         return all_cubes_all_points.reshape(
-            (composite_h, composite_w, composite_d, 8, 3)
+            (composite_w, composite_h, composite_d, 8, 3)
         )
 
     def _construct_faces(self, points: np.ndarray) -> np.ndarray:
         """
-        TODO: Fill in
+        Create the full 6x4x3 coordinate representation of the object's points.
         """
-        h, w, d, cube_points, num_coords = points.shape
-        num_cubes = h * w * d
+        w, h, d, cube_points, num_coords = points.shape
+        num_cubes = w * h * d
         ps = points.reshape((num_cubes, cube_points, num_coords))
 
         all_cube_faces = np.array(

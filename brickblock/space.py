@@ -240,6 +240,14 @@ class Space:
                 )
             self.cuboid_names[name] = primitive_ids
 
+    # TODO: Decide how deletion should be implemented. Masking columns seem the
+    # most logical, but this could be an issue for memory consumption. On the
+    # other hand, 'actual deletion' would involve potentially expensive memory
+    # shuffling.
+    # Moreover, should you even be worrying about deletion? Masking is what you
+    # really want in virtually all cases. Deletion should actually be quite rare
+    # unless a user does something dumb or adds crazy numbers of objects.
+
     def snapshot(self) -> None:
         """
         Store the current state of the space as a scene, used for rendering.

@@ -80,6 +80,9 @@ class Cube:
         # not ideal.
         # TODO: Have this as a transform for matplotlib and have your own
         # representation instead.
+        # The below basis vectors in that order actually define the transform
+        # you need. You could reshape the entire matrix in `render` and apply
+        # a single matmul to all the data, or just swap the columns.
         w, h, d = base_vector
         base_vector = np.array([w, d, h])
         self._width_basis_vector = np.array([1, 0, 0])

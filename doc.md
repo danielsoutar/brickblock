@@ -2,7 +2,37 @@
 
 ## Examples
 
-TODO: Fill in
+The following is a basic example in Brickblock of creating a simple scene:
+
+```python
+def main() -> None:
+    space = bb.Space()
+    space.add_composite(
+        bb.CompositeCube(
+            base_vector=np.array([0, 0, 0]),
+            w=3,
+            h=3,
+            d=3,
+            name="input-tensor"
+        )
+    )
+
+    space.add_composite(
+        bb.CompositeCube(
+            base_vector=np.array([0, 1, 0]),
+            w=2,
+            h=2,
+            d=3,
+            name="filter-tensor",
+            facecolor="yellow",
+            alpha=0.3,
+        )
+    )
+
+    fig, ax = space.render()
+    plt.show()
+
+```
 
 ## Scenes and Transforms
 

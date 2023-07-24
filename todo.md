@@ -4,7 +4,7 @@ V1
 
 DOD for each of these: unit tests (visualisation involves manually checking in matplotlib)
 
-20/27 done
+20/28 done
 
 - [X] Create basic `Cube` object
 - [X] Correctly visualise a `Cube` in matplotlib
@@ -29,10 +29,13 @@ DOD for each of these: unit tests (visualisation involves manually checking in m
 - [X] Allow mutating an object's visual metadata by timestep ID
 - [X] Allow mutating an object's visual metadata by scene ID
 - [ ] Work out a way of positioning the camera better
-- [ ] Allow creating a object by offset from a given object (by coordinate, name, timestep ID)
-  - If allowing by scene ID, that implies multiple objects in a single timestep. Unless you offset each object in terms of timestep as well.
+- [ ] Have some 'default styles' inspired by original notebook
+- [ ] Allow creating a object by offset from a given object (by coordinate/name/timestep ID)
+  - If allowing by scene ID, that implies multiple objects in a single timestep.
+  - Unless you offset each object in terms of timestep as well.
 - [ ] Allow mutating an object by affine transform (by name, timestep ID, scene ID)
-  - Need to figure out whether these 'happen-before' or 'happen-after', whether to include inverse transform, etc.
+  - Need to figure out whether these 'happen-before' or 'happen-after'
+  - Need to figure out whether to include inverse transform, etc.
 - [ ] Allow mutating an object by affine transform (by coordinate ID)
   - This could be trickier and potentially not needed.
 - [ ] Distinguish between 'scene' and 'non-scene' timesteps
@@ -41,8 +44,8 @@ DOD for each of these: unit tests (visualisation involves manually checking in m
 
 V2
 
-- [ ] Use LLM for natural language instructions instead of coding things (how the fuck that would work I have no idea)
-- [ ] Allow interactive modification of a rendered scene (how the fuck that would work I still have no idea)
+- [ ] Use LLM for natural language instructions instead of coding things (how on Earth that would work I have no idea)
+- [ ] Allow interactive modification of a rendered scene (how on Earth that would work I still have no idea)
 - [ ] Allow other kinds of objects (text with cool-looking connecting lines, triangles, spheres)
 - [ ] Allow interactive playback of the GIF created by a `Space` (i.e. be able to pause/play/go back a slide, inside a notebook)
 - [ ] Use a different backend other than matplotlib?

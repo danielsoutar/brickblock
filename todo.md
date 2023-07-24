@@ -4,7 +4,7 @@ V1
 
 DOD for each of these: unit tests (visualisation involves manually checking in matplotlib)
 
-16/26 done
+17/27 done
 
 - [X] Create basic `Cube` object
 - [X] Correctly visualise a `Cube` in matplotlib
@@ -24,12 +24,10 @@ DOD for each of these: unit tests (visualisation involves manually checking in m
   - This is a more general problem - it also occurs for arbitrary objects.
 - [X] Add support for `Cuboid`s (any 6-sided polyhedron)
 - [X] Add support for named objects
-- [ ] Allow deleting an object (by coordinate, name, timestep ID)
-  - Implies that addition/deletion need to contain all data for the object somewhere, or have a column to mask it.
-  - Timestep ID should be fine though.
-- [ ] Allow deleting multiple objects (by scene ID)
-  - As above
-- [ ] Allow mutating an object's visual metadata (by coordinate, name, timestep ID, scene ID)
+- [X] Allow mutating an object's visual metadata by coordinate
+- [ ] Allow mutating an object's visual metadata by name
+- [ ] Allow mutating an object's visual metadata by timestep ID
+- [ ] Allow mutating an object's visual metadata by scene ID
 - [ ] Work out a way of positioning the camera better
 - [ ] Allow creating a object by offset from a given object (by coordinate, name, timestep ID)
   - If allowing by scene ID, that implies multiple objects in a single timestep. Unless you offset each object in terms of timestep as well.

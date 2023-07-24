@@ -571,5 +571,127 @@ def test_space_does_not_allow_duplicate_names() -> None:
         space.add_cube(second_cube)
 
 
+def test_space_mutates_primitive_by_coordinate() -> None:
+    space = bb.Space()
+
+    space.add_cube(bb.Cube(base_vector=np.array([0, 0, 0])))
+
+    assert space.cuboid_visual_metadata["facecolor"][0] is None
+    assert space.cuboid_visual_metadata["alpha"][0] == 0.0
+
+    space.mutate_by_coordinate(
+        coordinate=np.array([0, 0, 0]), facecolor="red", alpha=0.3
+    )
+
+    assert space.cuboid_visual_metadata["facecolor"][0] == "red"
+    assert space.cuboid_visual_metadata["alpha"][0] == 0.3
+
+
+def test_space_mutates_composite_by_coordinate() -> None:
+    space = bb.Space()
+
+    space.add_composite(
+        bb.CompositeCube(
+            base_vector=np.array([0, 0, 0]),
+            w=4,
+            h=3,
+            d=2,
+            facecolor="yellow",
+            alpha=0.3,
+            linewidth=0.5,
+        )
+    )
+
+    num_cubes = 4 * 3 * 2
+
+    for i in range(num_cubes):
+        assert space.cuboid_visual_metadata["facecolor"][i] == "yellow"
+        assert space.cuboid_visual_metadata["alpha"][i] == 0.3
+        assert space.cuboid_visual_metadata["linewidth"][i] == 0.5
+
+    space.mutate_by_coordinate(
+        coordinate=np.array([0, 0, 0]), facecolor=None, alpha=0.0
+    )
+
+    for i in range(num_cubes):
+        assert space.cuboid_visual_metadata["facecolor"][i] is None
+        assert space.cuboid_visual_metadata["alpha"][i] == 0.0
+        assert space.cuboid_visual_metadata["linewidth"][i] == 0.5
+
+
+def test_space_does_not_mutate_by_coordinate_non_base_intersection() -> None:
+    space = bb.Space()
+
+    space.add_composite(
+        bb.CompositeCube(
+            base_vector=np.array([0, 0, 0]),
+            w=4,
+            h=3,
+            d=2,
+            facecolor="yellow",
+            alpha=0.3,
+            linewidth=0.5,
+        )
+    )
+
+    num_cubes = 4 * 3 * 2
+
+    for i in range(num_cubes):
+        assert space.cuboid_visual_metadata["facecolor"][i] == "yellow"
+        assert space.cuboid_visual_metadata["alpha"][i] == 0.3
+        assert space.cuboid_visual_metadata["linewidth"][i] == 0.5
+
+    space.mutate_by_coordinate(
+        coordinate=np.array([0, 1, 0]), facecolor=None, alpha=0.0
+    )
+
+    for i in range(num_cubes):
+        assert space.cuboid_visual_metadata["facecolor"][i] == "yellow"
+        assert space.cuboid_visual_metadata["alpha"][i] == 0.3
+        assert space.cuboid_visual_metadata["linewidth"][i] == 0.5
+
+
+def test_space_mutates_multiple_objects_by_coordinate() -> None:
+    space = bb.Space()
+
+    space.add_composite(
+        bb.CompositeCube(
+            base_vector=np.array([0, 0, 0]),
+            w=4,
+            h=3,
+            d=2,
+            facecolor="yellow",
+            alpha=0.3,
+            linewidth=0.5,
+        )
+    )
+
+    num_cubes = 4 * 3 * 2
+
+    space.add_cube(bb.Cube(base_vector=np.array([0, 0, 0])))
+
+    for i in range(num_cubes):
+        assert space.cuboid_visual_metadata["facecolor"][i] == "yellow"
+        assert space.cuboid_visual_metadata["alpha"][i] == 0.3
+        assert space.cuboid_visual_metadata["linewidth"][i] == 0.5
+
+    assert space.cuboid_visual_metadata["facecolor"][-1] is None
+    assert space.cuboid_visual_metadata["alpha"][-1] == 0.0
+    assert space.cuboid_visual_metadata["linewidth"][-1] == 0.1
+
+    space.mutate_by_coordinate(
+        coordinate=np.array([0, 0, 0]), facecolor="red", alpha=1.0
+    )
+
+    for i in range(num_cubes):
+        assert space.cuboid_visual_metadata["facecolor"][i] == "red"
+        assert space.cuboid_visual_metadata["alpha"][i] == 1.0
+        assert space.cuboid_visual_metadata["linewidth"][i] == 0.5
+
+    assert space.cuboid_visual_metadata["facecolor"][-1] == "red"
+    assert space.cuboid_visual_metadata["alpha"][-1] == 1.0
+    assert space.cuboid_visual_metadata["linewidth"][-1] == 0.1
+
+
 def test_space_correctly_reorients_data() -> None:
     ...

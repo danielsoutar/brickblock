@@ -248,6 +248,80 @@ class Space:
     # really want in virtually all cases. Deletion should actually be quite rare
     # unless a user does something dumb or adds crazy numbers of objects.
 
+    def mutate_by_coordinate(self, coordinate: np.array, **kwargs) -> None:
+        """
+        Mutate the visual metadata of all objects, composite or primitive, with
+        base vectors equal to `coordinate` with the named arguments in `kwargs`.
+
+        Primitives that are part of composites are not included - that is, if
+        `coordinate` intersects with a composite on any point other than its
+        base vector, none of its primitives will be updated.
+
+        Note that the base vector is defined as the bottom-left-front-most point
+        of an object, primitive or composite.
+
+        # Args
+            coordinate: The coordinate which is compared to the base vector of
+                all objects in the space.
+            kwargs: Sequence of named arguments that contain updated visual
+                property values.
+        """
+        if coordinate.shape != (3,):
+            raise ValueError(
+                "Coordinates are three-dimensional, the input vector should be "
+                "3D."
+            )
+
+        # Map the coordinate to the correct representation.
+        # TODO: Decouple the user from a fixed basis.
+        w, h, d = coordinate
+        coordinate = np.array([w, d, h])
+
+        # First gather the IDs of primitive entries that match the coordinate.
+        matching_base_vectors = []
+        primitives_to_update = []
+        current_idx = 0
+
+        for idx in range(self.primitive_counter):
+            primitive = self.cuboid_coordinates[idx]
+            if np.array_equal(primitive[0, 0], coordinate):
+                matching_base_vectors.append(idx)
+
+        # Find all objects (primitive or composite) corresponding to those IDs.
+        for scene_id in sorted(self.cuboid_index.keys()):
+            for timestep_id in sorted(self.cuboid_index[scene_id].keys()):
+                primitive_ids = self.cuboid_index[scene_id][timestep_id]
+                # Because we gathered matching_base_vectors in order, and the
+                # bottom-left-front point of all objects is the first point, we
+                # can check just the first primitive_id of the list for both
+                # primitives and composites.
+
+                # Skip forward if you caught intermediate primitives.
+                while matching_base_vectors[current_idx] < primitive_ids[0]:
+                    current_idx += 1
+
+                if primitive_ids[0] == matching_base_vectors[current_idx]:
+                    primitives_to_update.extend(primitive_ids)
+                    current_idx += 1
+
+        # Now with all the primitives to update, update their visual metadata.
+        for key in kwargs.keys():
+            if key not in self.cuboid_visual_metadata.keys():
+                raise KeyError(
+                    "The provided key doesn't match any valid visual property."
+                )
+            for primitive_id in primitives_to_update:
+                self.cuboid_visual_metadata[key][primitive_id] = kwargs[key]
+
+    def mutate_by_name(self, name: str, **kwargs) -> None:
+        raise NotImplementedError()
+
+    def mutate_by_timestep(self, timestep_id: int, **kwargs) -> None:
+        raise NotImplementedError()
+
+    def mutate_by_scene(self, scene_id: int, **kwargs) -> None:
+        raise NotImplementedError()
+
     def snapshot(self) -> None:
         """
         Store the current state of the space as a scene, used for rendering.

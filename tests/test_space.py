@@ -740,5 +740,178 @@ def test_space_mutates_composite_by_name() -> None:
         assert space.cuboid_visual_metadata["linewidth"][i] == 0.5
 
 
+def test_space_mutates_primitive_by_timestep_id() -> None:
+    space = bb.Space()
+
+    space.add_cube(bb.Cube(base_vector=np.array([0, 0, 0])))
+
+    assert space.cuboid_visual_metadata["facecolor"][0] is None
+    assert space.cuboid_visual_metadata["alpha"][0] == 0.0
+
+    space.mutate_by_timestep(input_timestep=0, facecolor="red", alpha=0.3)
+
+    assert space.cuboid_visual_metadata["facecolor"][0] == "red"
+    assert space.cuboid_visual_metadata["alpha"][0] == 0.3
+
+
+def test_space_mutates_composite_by_timestep_id() -> None:
+    space = bb.Space()
+
+    space.add_composite(
+        bb.CompositeCube(
+            base_vector=np.array([0, 0, 0]),
+            w=4,
+            h=3,
+            d=2,
+            facecolor="yellow",
+            alpha=0.3,
+            linewidth=0.5,
+        )
+    )
+
+    num_cubes = 4 * 3 * 2
+
+    for i in range(num_cubes):
+        assert space.cuboid_visual_metadata["facecolor"][i] == "yellow"
+        assert space.cuboid_visual_metadata["alpha"][i] == 0.3
+        assert space.cuboid_visual_metadata["linewidth"][i] == 0.5
+
+    space.mutate_by_timestep(input_timestep=0, facecolor=None, alpha=0.0)
+
+    for i in range(num_cubes):
+        assert space.cuboid_visual_metadata["facecolor"][i] is None
+        assert space.cuboid_visual_metadata["alpha"][i] == 0.0
+        assert space.cuboid_visual_metadata["linewidth"][i] == 0.5
+
+
+def test_space_mutates_primitive_by_scene_id() -> None:
+    space = bb.Space()
+
+    space.add_cube(bb.Cube(base_vector=np.array([0, 0, 0])))
+
+    assert space.cuboid_visual_metadata["facecolor"][0] is None
+    assert space.cuboid_visual_metadata["alpha"][0] == 0.0
+
+    space.mutate_by_scene(input_scene=0, facecolor="red", alpha=0.3)
+
+    assert space.cuboid_visual_metadata["facecolor"][0] == "red"
+    assert space.cuboid_visual_metadata["alpha"][0] == 0.3
+
+
+def test_space_mutates_composite_by_scene_id() -> None:
+    space = bb.Space()
+
+    space.add_composite(
+        bb.CompositeCube(
+            base_vector=np.array([0, 0, 0]),
+            w=4,
+            h=3,
+            d=2,
+            facecolor="yellow",
+            alpha=0.3,
+            linewidth=0.5,
+        )
+    )
+
+    num_cubes = 4 * 3 * 2
+
+    for i in range(num_cubes):
+        assert space.cuboid_visual_metadata["facecolor"][i] == "yellow"
+        assert space.cuboid_visual_metadata["alpha"][i] == 0.3
+        assert space.cuboid_visual_metadata["linewidth"][i] == 0.5
+
+    space.mutate_by_scene(input_scene=0, facecolor=None, alpha=0.0)
+
+    for i in range(num_cubes):
+        assert space.cuboid_visual_metadata["facecolor"][i] is None
+        assert space.cuboid_visual_metadata["alpha"][i] == 0.0
+        assert space.cuboid_visual_metadata["linewidth"][i] == 0.5
+
+
+def test_space_mutates_multiple_objects_by_scene_id() -> None:
+    space = bb.Space()
+
+    space.add_composite(
+        bb.CompositeCube(
+            base_vector=np.array([0, 0, 0]),
+            w=4,
+            h=3,
+            d=2,
+            facecolor=None,
+            alpha=0.3,
+            linewidth=0.5,
+            name="input-tensor",
+        )
+    )
+
+    space.add_composite(
+        bb.CompositeCube(
+            base_vector=np.array([0, 0, 0]),
+            w=3,
+            h=3,
+            d=2,
+            facecolor="red",
+            alpha=0.5,
+            linewidth=0.7,
+            name="filter-tensor",
+        )
+    )
+
+    # Check that only the first scene is affected.
+    space.snapshot()
+
+    space.add_composite(
+        bb.CompositeCube(
+            base_vector=np.array([3, 3, 3]),
+            w=5,
+            h=5,
+            d=2,
+            facecolor="orange",
+            alpha=0.6,
+            linewidth=0.8,
+            name="unchanged-tensor",
+        )
+    )
+
+    num_cubes_input_tensor = 4 * 3 * 2
+    num_cubes_filter_tensor = 3 * 3 * 2
+    num_cubes_unchanged_tensor = 5 * 5 * 2
+
+    for i in range(num_cubes_input_tensor):
+        assert space.cuboid_visual_metadata["facecolor"][i] is None
+        assert space.cuboid_visual_metadata["alpha"][i] == 0.3
+        assert space.cuboid_visual_metadata["linewidth"][i] == 0.5
+
+    for i in range(num_cubes_filter_tensor):
+        offset = num_cubes_input_tensor
+        assert space.cuboid_visual_metadata["facecolor"][offset + i] == "red"
+        assert space.cuboid_visual_metadata["alpha"][offset + i] == 0.5
+        assert space.cuboid_visual_metadata["linewidth"][offset + i] == 0.7
+
+    for i in range(num_cubes_unchanged_tensor):
+        offset = num_cubes_input_tensor + num_cubes_filter_tensor
+        assert space.cuboid_visual_metadata["facecolor"][offset + i] == "orange"
+        assert space.cuboid_visual_metadata["alpha"][offset + i] == 0.6
+        assert space.cuboid_visual_metadata["linewidth"][offset + i] == 0.8
+
+    space.mutate_by_scene(
+        input_scene=0,
+        facecolor="black",
+        alpha=0.9,
+        linewidth=0.1,
+    )
+
+    for i in range(num_cubes_input_tensor + num_cubes_filter_tensor):
+        assert space.cuboid_visual_metadata["facecolor"][i] == "black"
+        assert space.cuboid_visual_metadata["alpha"][i] == 0.9
+        assert space.cuboid_visual_metadata["linewidth"][i] == 0.1
+
+    for i in range(num_cubes_unchanged_tensor):
+        offset = num_cubes_input_tensor + num_cubes_filter_tensor
+        assert space.cuboid_visual_metadata["facecolor"][offset + i] == "orange"
+        assert space.cuboid_visual_metadata["alpha"][offset + i] == 0.6
+        assert space.cuboid_visual_metadata["linewidth"][offset + i] == 0.8
+
+
 def test_space_correctly_reorients_data() -> None:
     ...

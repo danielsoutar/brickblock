@@ -4,7 +4,7 @@ V1
 
 DOD for each of these: unit tests (visualisation involves manually checking in matplotlib)
 
-18/27 done
+20/27 done
 
 - [X] Create basic `Cube` object
 - [X] Correctly visualise a `Cube` in matplotlib
@@ -26,8 +26,8 @@ DOD for each of these: unit tests (visualisation involves manually checking in m
 - [X] Add support for named objects
 - [X] Allow mutating an object's visual metadata by coordinate
 - [X] Allow mutating an object's visual metadata by name
-- [ ] Allow mutating an object's visual metadata by timestep ID
-- [ ] Allow mutating an object's visual metadata by scene ID
+- [X] Allow mutating an object's visual metadata by timestep ID
+- [X] Allow mutating an object's visual metadata by scene ID
 - [ ] Work out a way of positioning the camera better
 - [ ] Allow creating a object by offset from a given object (by coordinate, name, timestep ID)
   - If allowing by scene ID, that implies multiple objects in a single timestep. Unless you offset each object in terms of timestep as well.

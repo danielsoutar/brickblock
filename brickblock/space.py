@@ -324,11 +324,49 @@ class Space:
 
         self._mutate_by_primitive_ids(primitive_ids, **kwargs)
 
-    def mutate_by_timestep(self, timestep_id: int, **kwargs) -> None:
-        raise NotImplementedError()
+    def mutate_by_timestep(self, input_timestep: int, **kwargs) -> None:
+        """
+        Mutate the visual metadata of the object - composite or primitive, that
+        was created at timestep `input_timestep` - with the named arguments in
+        `kwargs`.
 
-    def mutate_by_scene(self, scene_id: int, **kwargs) -> None:
-        raise NotImplementedError()
+        # Args
+            name: The name of the object in the space to update.
+            kwargs: Sequence of named arguments that contain updated visual
+                property values.
+        """
+        if (input_timestep < 0) or (input_timestep > self.time_step):
+            raise ValueError("The provided timestep is invalid in this space.")
+
+        for scene_id in sorted(self.cuboid_index.keys()):
+            for timestep_id in sorted(self.cuboid_index[scene_id].keys()):
+                if timestep_id == input_timestep:
+                    self._mutate_by_primitive_ids(
+                        self.cuboid_index[scene_id][timestep_id], **kwargs
+                    )
+                    break
+
+    def mutate_by_scene(self, input_scene: int, **kwargs) -> None:
+        """
+        Mutate the visual metadata of the object - composite or primitive, that
+        was created at timestep `input_timestep` - with the named arguments in
+        `kwargs`.
+
+        # Args
+            name: The name of the object in the space to update.
+            kwargs: Sequence of named arguments that contain updated visual
+                property values.
+        """
+        if (input_scene < 0) or (input_scene > self.scene_counter):
+            raise ValueError("The provided scene ID is invalid in this space.")
+
+        for scene_id in sorted(self.cuboid_index.keys()):
+            for timestep_id in sorted(self.cuboid_index[scene_id].keys()):
+                if scene_id == input_scene:
+                    self._mutate_by_primitive_ids(
+                        self.cuboid_index[scene_id][timestep_id], **kwargs
+                    )
+            break
 
     def _mutate_by_primitive_ids(
         self, primitive_ids: list[int], **kwargs

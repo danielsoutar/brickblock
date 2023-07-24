@@ -4,7 +4,7 @@ V1
 
 DOD for each of these: unit tests (visualisation involves manually checking in matplotlib)
 
-17/27 done
+18/27 done
 
 - [X] Create basic `Cube` object
 - [X] Correctly visualise a `Cube` in matplotlib
@@ -25,7 +25,7 @@ DOD for each of these: unit tests (visualisation involves manually checking in m
 - [X] Add support for `Cuboid`s (any 6-sided polyhedron)
 - [X] Add support for named objects
 - [X] Allow mutating an object's visual metadata by coordinate
-- [ ] Allow mutating an object's visual metadata by name
+- [X] Allow mutating an object's visual metadata by name
 - [ ] Allow mutating an object's visual metadata by timestep ID
 - [ ] Allow mutating an object's visual metadata by scene ID
 - [ ] Work out a way of positioning the camera better

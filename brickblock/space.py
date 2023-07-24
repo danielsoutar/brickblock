@@ -250,8 +250,9 @@ class Space:
 
     def mutate_by_coordinate(self, coordinate: np.array, **kwargs) -> None:
         """
-        Mutate the visual metadata of all objects, composite or primitive, with
-        base vectors equal to `coordinate` with the named arguments in `kwargs`.
+        Mutate the visual metadata of all objects - composite or primitive, with
+        base vectors equal to `coordinate` - with the named arguments in
+        `kwargs`.
 
         Primitives that are part of composites are not included - that is, if
         `coordinate` intersects with a composite on any point other than its
@@ -304,23 +305,50 @@ class Space:
                     primitives_to_update.extend(primitive_ids)
                     current_idx += 1
 
-        # Now with all the primitives to update, update their visual metadata.
-        for key in kwargs.keys():
-            if key not in self.cuboid_visual_metadata.keys():
-                raise KeyError(
-                    "The provided key doesn't match any valid visual property."
-                )
-            for primitive_id in primitives_to_update:
-                self.cuboid_visual_metadata[key][primitive_id] = kwargs[key]
+        self._mutate_by_primitive_ids(primitives_to_update, **kwargs)
 
     def mutate_by_name(self, name: str, **kwargs) -> None:
-        raise NotImplementedError()
+        """
+        Mutate the visual metadata of the object - composite or primitive, that
+        has its name equal to `name` - with the named arguments in `kwargs`.
+
+        # Args
+            name: The name of the object in the space to update.
+            kwargs: Sequence of named arguments that contain updated visual
+                property values.
+        """
+        if name not in self.cuboid_names.keys():
+            raise ValueError("The provided name does not exist in this space.")
+
+        primitive_ids = self.cuboid_names[name]
+
+        self._mutate_by_primitive_ids(primitive_ids, **kwargs)
 
     def mutate_by_timestep(self, timestep_id: int, **kwargs) -> None:
         raise NotImplementedError()
 
     def mutate_by_scene(self, scene_id: int, **kwargs) -> None:
         raise NotImplementedError()
+
+    def _mutate_by_primitive_ids(
+        self, primitive_ids: list[int], **kwargs
+    ) -> None:
+        """
+        Mutate the visual metadata of all primitives given by `primitive_ids`
+        with the named arguments in `kwargs`.
+
+        # Args
+            primitive_ids: The IDs of all the primitives in the space to update.
+            kwargs: Sequence of named arguments that contain updated visual
+                property values.
+        """
+        for key in kwargs.keys():
+            if key not in self.cuboid_visual_metadata.keys():
+                raise KeyError(
+                    "The provided key doesn't match any valid visual property."
+                )
+            for primitive_id in primitive_ids:
+                self.cuboid_visual_metadata[key][primitive_id] = kwargs[key]
 
     def snapshot(self) -> None:
         """

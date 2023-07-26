@@ -107,6 +107,7 @@ def test_composite_cube_creation() -> None:
     assert composite.linewidth == 0.1
     assert composite.edgecolor == "black"
     assert composite.alpha == 0.0
+    assert composite.style == "default"
     assert composite.name is None
 
 
@@ -220,3 +221,20 @@ def test_objects_can_have_names() -> None:
     )
 
     assert cuboid.name == "my-first-cuboid"
+
+
+def test_composite_can_have_classic_style() -> None:
+    composite = bb.CompositeCube(
+        base_vector=np.array([0, 0, 0]), w=4, h=2, d=6, style="classic"
+    )
+
+    assert composite.style == "classic"
+
+
+def test_composite_cannot_have_invalid_style() -> None:
+    with pytest.raises(
+        ValueError, match="Composite object was given an invalid style."
+    ):
+        bb.CompositeCube(
+            base_vector=np.array([0, 0, 0]), w=4, h=2, d=6, style="some-style"
+        )

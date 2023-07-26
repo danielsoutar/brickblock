@@ -989,5 +989,41 @@ def test_space_updates_bounds_with_multiple_objects() -> None:
     assert np.array_equal(space.dims, expected_dims)
 
 
+def test_space_supports_composites_with_classic_style() -> None:
+    space = bb.Space()
+
+    space.add_composite(
+        bb.CompositeCube(
+            base_vector=np.array([0, 0, 0]), w=4, h=6, d=3, style="classic"
+        )
+    )
+
+    num_cubes = 4 * 6 * 3
+
+    # Remember to swap the ys and zs due to the current implementation issue
+    # with dims
+    # TODO: Have a transform for matplotlib and have your own representation
+    # instead.
+    expected_cuboid_points = bb.Cuboid(
+        base_vector=np.array([0, 0, 0]), w=4, h=6, d=3
+    ).points()
+    actual_cuboid_faces = space.cuboid_coordinates[num_cubes]
+    # TODO: This feels like this should be easier to do.
+    actual_cuboid_points = np.array(
+        [actual_cuboid_faces[0], actual_cuboid_faces[-1]]
+    ).reshape((8, 3))
+    assert np.array_equal(expected_cuboid_points, actual_cuboid_points)
+
+    # The classic style adds a cuboid around the extrema of the composite, so
+    # another primitive gets added. However, it is still considered part of the
+    # composite, so the number of objects should still be 1.
+    assert space.primitive_counter == num_cubes + 1
+    assert space.num_objs == 1
+    assert space.cuboid_visual_metadata["facecolor"][-1] is None
+    assert space.cuboid_visual_metadata["linewidth"][-1] == 1.0
+    assert space.cuboid_visual_metadata["edgecolor"][-1] == "black"
+    assert space.cuboid_visual_metadata["alpha"][-1] == 0.0
+
+
 def test_space_correctly_reorients_data() -> None:
     ...

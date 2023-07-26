@@ -152,6 +152,24 @@ class Space:
             )
             primitive_ids.append(self._add_cuboid_primitive(cube))
 
+        if composite.style == "classic":
+            cube_base_point_idx = (0, 0, 0)
+            # Swap the axes around here - otherwise you will get double-swapping
+            # of the dimensions.
+            base_vector = composite.faces[cube_base_point_idx]
+            w, d, h = base_vector
+            cuboid = Cuboid(
+                np.array([w, h, d]),
+                w=composite.w,
+                h=composite.h,
+                d=composite.d,
+                facecolor=None,
+                linewidth=1.0,
+                edgecolor="black",
+                alpha=0.0,
+            )
+            primitive_ids.append(self._add_cuboid_primitive(cuboid))
+
         self._add_name(composite.name, primitive_ids)
 
         self.changelog.append(Addition(self.time_step, None))

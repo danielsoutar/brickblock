@@ -414,6 +414,8 @@ class CompositeCube:
         edgecolor: The color for each of the lines in every cube.
         alpha: The transparency for each of the faces in every cube. The default
             is 0, i.e. transparent cubes.
+        style: The visual style of the entire object. Other field values will
+            take precedence over this style should they conflict.
         name: A name for this entire object, used for querying within a Space.
     """
 
@@ -425,6 +427,7 @@ class CompositeCube:
     linewidth: float = 0.1
     edgecolor: str = "black"
     alpha: float = 0.0
+    style: str = "default"
     name: str | None = None
 
     def __init__(
@@ -437,6 +440,7 @@ class CompositeCube:
         linewidth: float = 0.1,
         edgecolor: str = "black",
         alpha: float | None = None,
+        style: str = "default",
         name: str | None = None,
     ) -> None:
         # Users will not expect setting the facecolor only to have the object be
@@ -462,6 +466,10 @@ class CompositeCube:
             raise ValueError(
                 "Composite object must have positively-sized dimensions."
             )
+
+        style = style.lower()
+        if style not in ["default", "classic"]:
+            raise ValueError("Composite object was given an invalid style.")
 
         # Explain this in docs - but essentially this is for navigating around
         # limitation in matplotlib where the Z axis is the vertical one. You
@@ -500,6 +508,7 @@ class CompositeCube:
         self.linewidth = linewidth
         self.edgecolor = edgecolor
         self.alpha = alpha
+        self.style = style
         self.name = name
 
     def points(self) -> np.ndarray:

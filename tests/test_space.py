@@ -913,5 +913,81 @@ def test_space_mutates_multiple_objects_by_scene_id() -> None:
         assert space.cuboid_visual_metadata["linewidth"][offset + i] == 0.8
 
 
+def test_space_updates_bounds_with_cube() -> None:
+    space = bb.Space()
+
+    space.add_cube(bb.Cube(base_vector=np.array([-1, -2, -3]), scale=2.0))
+
+    # Remember to swap the ys and zs due to the current implementation issue
+    # with dims
+    # TODO: Have a transform for matplotlib and have your own representation
+    # instead.
+    expected_dims = np.array([[-1, 1], [-3, -1], [-2, 0]])
+
+    assert np.array_equal(space.dims, expected_dims)
+
+
+def test_space_updates_bounds_with_cuboid() -> None:
+    space = bb.Space()
+
+    space.add_cube(
+        bb.Cuboid(base_vector=np.array([-3, -2, -1]), w=4.0, h=15.0, d=26.0)
+    )
+
+    # Remember to swap the ys and zs due to the current implementation issue
+    # with dims
+    # TODO: Have a transform for matplotlib and have your own representation
+    # instead.
+    expected_dims = np.array([[-3, 1], [-1, 25], [-2, 13]])
+
+    assert np.array_equal(space.dims, expected_dims)
+
+
+def test_space_updates_bounds_with_composite() -> None:
+    space = bb.Space()
+
+    space.add_composite(
+        bb.CompositeCube(base_vector=np.array([1, 5, 10]), w=8, h=12, d=3)
+    )
+
+    # Remember to swap the ys and zs due to the current implementation issue
+    # with dims
+    # TODO: Have a transform for matplotlib and have your own representation
+    # instead.
+    expected_dims = np.array([[1, 9], [10, 13], [5, 17]])
+
+    assert np.array_equal(space.dims, expected_dims)
+
+
+# TODO: This is very slow due to the composite (~14,000 cubes) - make fast.
+def test_space_updates_bounds_with_multiple_objects() -> None:
+    space = bb.Space()
+
+    space.add_cube(bb.Cube(base_vector=np.array([0, 0, 0]), scale=2.0))
+
+    # Remember to swap the ys and zs due to the current implementation issue
+    # with dims
+    # TODO: Have a transform for matplotlib and have your own representation
+    # instead.
+    expected_dims = np.array([[0, 2], [0, 2], [0, 2]])
+
+    assert np.array_equal(space.dims, expected_dims)
+
+    space.add_cuboid(
+        bb.Cuboid(base_vector=np.array([100, 100, 100]), w=5, h=6, d=13)
+    )
+
+    expected_dims = np.array([[0, 105], [0, 113], [0, 106]])
+
+    assert np.array_equal(space.dims, expected_dims)
+
+    space.add_composite(
+        bb.CompositeCube(base_vector=np.array([30, 30, 30]), w=40, h=30, d=12)
+    )
+
+    # The extrema of the space should not have changed.
+    assert np.array_equal(space.dims, expected_dims)
+
+
 def test_space_correctly_reorients_data() -> None:
     ...

@@ -4,7 +4,7 @@ V1
 
 DOD for each of these: unit tests (visualisation involves manually checking in matplotlib)
 
-20/28 done
+21/28 done
 
 - [X] Create basic `Cube` object
 - [X] Correctly visualise a `Cube` in matplotlib
@@ -28,7 +28,7 @@ DOD for each of these: unit tests (visualisation involves manually checking in m
 - [X] Allow mutating an object's visual metadata by name
 - [X] Allow mutating an object's visual metadata by timestep ID
 - [X] Allow mutating an object's visual metadata by scene ID
-- [ ] Work out a way of positioning the camera better
+- [X] Work out a way of positioning the camera better
 - [ ] Have some 'default styles' inspired by original notebook
 - [ ] Allow creating a object by offset from a given object (by coordinate/name/timestep ID)
   - If allowing by scene ID, that implies multiple objects in a single timestep.

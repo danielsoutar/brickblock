@@ -113,6 +113,7 @@ class Space:
         self.num_objs += 1
         self.changelog.append(Addition(self.time_step, None))
         self.time_step += 1
+        self._update_bounds([primitive_id])
 
     def add_cuboid(self, cuboid: Cuboid) -> None:
         """
@@ -123,6 +124,7 @@ class Space:
         self.num_objs += 1
         self.changelog.append(Addition(self.time_step, None))
         self.time_step += 1
+        self._update_bounds([primitive_id])
 
     # TODO: Rather than adding individual cubes, this should be a single call
     # and leverage the provided data better by direct insertion.
@@ -155,6 +157,7 @@ class Space:
         self.changelog.append(Addition(self.time_step, None))
         self.num_objs += 1
         self.time_step += 1
+        self._update_bounds(primitive_ids)
 
     def _add_cuboid_primitive(self, cuboid: Cube | Cuboid) -> int:
         """
@@ -239,6 +242,31 @@ class Space:
                     f"There already exists an object with name {name}."
                 )
             self.cuboid_names[name] = primitive_ids
+
+    def _update_bounds(self, primitive_ids: list[int]) -> None:
+        """
+        Update the bounding box of the space, based on the primitives given by
+        `primitive_ids`.
+
+        Whether one or more primitives are given, the space will update its
+        bounds over the extrema in both cases.
+
+        The bounds of the space are updated regardless of whether or not the
+        provided primitives are visible.
+
+        # Args
+            primitive_ids: The primitives for which coordinate data is used to
+                update the bounding box of this space.
+        """
+        N = len(primitive_ids)
+        primitives = self.cuboid_coordinates[primitive_ids].reshape(
+            (N * 6 * 4, 3)
+        )
+        given_mins = np.min(primitives, axis=0)
+        given_maxes = np.max(primitives, axis=0)
+
+        self.dims[:, 0] = np.minimum(self.dims[:, 0], given_mins.T)
+        self.dims[:, 1] = np.maximum(self.dims[:, 1], given_maxes.T)
 
     # TODO: Decide how deletion should be implemented. Masking columns seem the
     # most logical, but this could be an issue for memory consumption. On the
@@ -414,9 +442,9 @@ class Space:
         Render every scene in the space with a matplotlib Axes, and return the
         figure-axes pair.
         """
-        fig = plt.figure(figsize=(10, 8))
+        fig = plt.figure(figsize=(10, 7))
         fig.subplots_adjust(
-            left=0, bottom=0, right=1, top=1, wspace=None, hspace=None
+            left=0, bottom=0, right=1, top=1, wspace=0.0, hspace=0.0
         )
         ax = fig.add_subplot(111, projection="3d")
         # Remove everything except the objects to display.
@@ -435,6 +463,21 @@ class Space:
                     ax = self._populate_ax_with_primitive(ax, primitive_ids[0])
                 else:
                     ax = self._populate_ax_with_composite(ax, primitive_ids)
+
+        # Use the space's bounds to update the camera and view.
+        # This is very janky but at least ensures everything is in view.
+        # One way this could be fixed would be to reorient everything so that
+        # aiming at the origin actually works. Essentially you take the
+        # difference between the center of the bounding box of the space, and
+        # the origin, and shift everything by the negative difference.
+        # The problem with this solution is a) it involves a transform over
+        # everything and b) would mean the user cannot turn on the axes to debug
+        # things as effectively. Potentially this could be explained in some
+        # docs though.
+        max_val = max(list(self.dims.flatten()))
+        ax.set_xlim(-max_val, max_val)
+        ax.set_ylim(-max_val, max_val)
+        ax.set_zlim(-max_val, max_val)
 
         return fig, ax
 

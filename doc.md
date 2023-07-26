@@ -38,6 +38,12 @@ def main() -> None:
 
 TODO: Fill in
 
+### The Camera
+
+In a `Scene`, the camera is re-positioned from its default in matplotlib. This is because the camera in matplotlib by default centers around the zero point regardless of what gets added to the axes. Brickblock addresses this limitation by implicitly inserting an invisible bounding box around all the objects in the space to the axes object, and updating the view accordingly. The behaviour currently is not ideal or going to work well in all scenarios, but this can be improved in the future.
+
+It is important to note however that this bounding box is around **all** objects in the space - including invisible ones! In the future this behaviour may be made configurable, or objects could be excluded from this behaviour.
+
 ## Axes vs Dimensions
 
 NB: By 'Axes', we mean the x-, y-, and z-axis. For dimensions, we mean Height, Width, and Depth.

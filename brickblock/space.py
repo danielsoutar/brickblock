@@ -189,6 +189,7 @@ class Space:
         cuboid_bounding_box = cuboid.get_bounding_box()
         cuboid_mean = np.mean(cuboid.points(), axis=0).reshape((3, 1))
 
+        # Update the bounding box - via total, mean, and dims.
         self.total += cuboid_mean
 
         self.mean = self.total / (self.primitive_counter + 1)
@@ -197,7 +198,7 @@ class Space:
             dim = cuboid_bounding_box
         else:
             # Since there are multiple objects, ensure the resulting dimensions
-            # of the surrounding box are centred around the mean.
+            # of the surrounding box are the extrema of the objects within.
             dim = np.array(
                 [
                     [
@@ -210,6 +211,7 @@ class Space:
 
         self.dims = dim
 
+        # Update the coordinate data, resizing if necessary.
         current_no_of_entries = self.cuboid_coordinates.shape[0]
         if self.primitive_counter >= current_no_of_entries:
             # refcheck set to False since this avoids issues with the debugger
@@ -220,12 +222,15 @@ class Space:
             )
 
         self.cuboid_coordinates[self.primitive_counter] = cuboid.faces
+
+        # Update the visual metadata store.
         for key, value in cuboid.get_visual_metadata().items():
             if key in self.cuboid_visual_metadata.keys():
                 self.cuboid_visual_metadata[key].append(value)
             else:
                 self.cuboid_visual_metadata[key] = [value]
 
+        # Update the index, adding entries if necessary.
         def add_key_to_nested_dict(d, keys):
             for key in keys[:-1]:
                 if key not in d:
@@ -240,6 +245,7 @@ class Space:
             self.primitive_counter
         )
 
+        # Update the primitive_counter.
         primitive_id = self.primitive_counter
         self.primitive_counter += 1
 
@@ -294,7 +300,7 @@ class Space:
     # really want in virtually all cases. Deletion should actually be quite rare
     # unless a user does something dumb or adds crazy numbers of objects.
 
-    def mutate_by_coordinate(self, coordinate: np.array, **kwargs) -> None:
+    def mutate_by_coordinate(self, coordinate: np.ndarray, **kwargs) -> None:
         """
         Mutate the visual metadata of all objects - composite or primitive, with
         base vectors equal to `coordinate` - with the named arguments in
@@ -313,6 +319,134 @@ class Space:
             kwargs: Sequence of named arguments that contain updated visual
                 property values.
         """
+        primitives_to_update = self._select_by_coordinate(coordinate)
+        self._mutate_by_primitive_ids(primitives_to_update, **kwargs)
+
+    def mutate_by_name(self, name: str, **kwargs) -> None:
+        """
+        Mutate the visual metadata of the object - composite or primitive, that
+        has its name equal to `name` - with the named arguments in `kwargs`.
+
+        # Args
+            name: The name of the object in the space to update.
+            kwargs: Sequence of named arguments that contain updated visual
+                property values.
+        """
+        primitive_ids = self._select_by_name(name)
+        self._mutate_by_primitive_ids(primitive_ids, **kwargs)
+
+    def mutate_by_timestep(self, timestep: int, **kwargs) -> None:
+        """
+        Mutate the visual metadata of the object - composite or primitive, that
+        was created at timestep `timestep` - with the named arguments in
+        `kwargs`.
+
+        # Args
+            timestep: The timestep of all the objects in the space to update.
+            kwargs: Sequence of named arguments that contain updated visual
+                property values.
+        """
+        primitive_ids = self._select_by_timestep(timestep)
+        self._mutate_by_primitive_ids(primitive_ids, **kwargs)
+
+    def mutate_by_scene(self, scene: int, **kwargs) -> None:
+        """
+        Mutate the visual metadata of the object - composite or primitive, that
+        was created in scene `scene` - with the named arguments in `kwargs`.
+
+        # Args
+            scene: The scene of all the objects in the space to update.
+            kwargs: Sequence of named arguments that contain updated visual
+                property values.
+        """
+        primitive_ids = self._select_by_scene(scene)
+        self._mutate_by_primitive_ids(primitive_ids, **kwargs)
+
+    def _mutate_by_primitive_ids(
+        self, primitive_ids: list[int], **kwargs
+    ) -> None:
+        """
+        Mutate the visual metadata of all primitives given by `primitive_ids`
+        with the named arguments in `kwargs`.
+
+        # Args
+            primitive_ids: The IDs of all the primitives in the space to update.
+            kwargs: Sequence of named arguments that contain updated visual
+                property values.
+        """
+        for key in kwargs.keys():
+            if key not in self.cuboid_visual_metadata.keys():
+                raise KeyError(
+                    "The provided key doesn't match any valid visual property."
+                )
+            for primitive_id in primitive_ids:
+                self.cuboid_visual_metadata[key][primitive_id] = kwargs[key]
+
+    def create_by_offset(
+        self,
+        offset: np.ndarray,
+        coordinate: np.ndarray | None = None,
+        name: str | None = None,
+        timestep: int | None = None,
+        scene: int | None = None,
+        **kwargs,
+    ) -> None:
+        """
+        Create a duplicate of an object (or objects) selected by any one of
+        `coordinate`, `name`, `timestep`, or `scene`, shifted by `offset`.
+
+        The offset is done with respect to the base vectors of the objects.
+
+        Exactly one of `coordinate`, `name`, `timestep`, or `scene` must be set.
+        The selection can refer to multiple objects - in this case, a duplicate
+        is made for each object in the selection.
+
+        Note that all objects created will be treated as having been created at
+        the same timestep.
+
+        The remaining args are used to override the inherited visual properties
+        of the created objects. These will apply to all created objects - if a
+        single value is given, then this is broadcast to all objects. Otherwise
+        a list with the same number of created objects is given and will be
+        applied in order of insertion.
+
+        # Args
+            offset: Offset by base vector, in XYZ coordinate form.
+            coordinate: Optional selection, where all objects with equal base
+                vectors will be selected.
+            name: Optional selection, where the object with that name will be
+                selected.
+            timestep: Optional selection, where all objects created in that
+                timestep will be selected.
+            scene: Optional selection, where all objects created in that scene
+                will be selected.
+            kwargs: Optional visual property arguments - can be a dict with
+                scalar or list of values.
+        """
+        exactly_one_set = (
+            sum([a is not None for a in [coordinate, name, timestep, scene]])
+            == 1
+        )
+        if not exactly_one_set:
+            raise ValueError(
+                "Exactly one selection argument can be set when creating "
+                "objects."
+            )
+
+        if coordinate is not None:
+            primitive_ids = self._select_by_coordinate(coordinate)
+        if name is not None:
+            primitive_ids = self._select_by_name(name)
+        if timestep is not None:
+            primitive_ids = self._select_by_timestep(timestep)
+        if scene is not None:
+            primitive_ids = self._select_by_scene(scene)
+
+        # TODO: You ideally want an index of which primitives correspond to
+        # composites, if any.
+        print(primitive_ids)
+
+    def _select_by_coordinate(self, coordinate: np.ndarray) -> list[int]:
         if coordinate.shape != (3,):
             raise ValueError(
                 "Coordinates are three-dimensional, the input vector should be "
@@ -351,88 +485,37 @@ class Space:
                     primitives_to_update.extend(primitive_ids)
                     current_idx += 1
 
-        self._mutate_by_primitive_ids(primitives_to_update, **kwargs)
+        return primitives_to_update
 
-    def mutate_by_name(self, name: str, **kwargs) -> None:
-        """
-        Mutate the visual metadata of the object - composite or primitive, that
-        has its name equal to `name` - with the named arguments in `kwargs`.
-
-        # Args
-            name: The name of the object in the space to update.
-            kwargs: Sequence of named arguments that contain updated visual
-                property values.
-        """
+    def _select_by_name(self, name: str) -> list[int]:
         if name not in self.cuboid_names.keys():
             raise ValueError("The provided name does not exist in this space.")
 
         primitive_ids = self.cuboid_names[name]
 
-        self._mutate_by_primitive_ids(primitive_ids, **kwargs)
+        return primitive_ids
 
-    def mutate_by_timestep(self, input_timestep: int, **kwargs) -> None:
-        """
-        Mutate the visual metadata of the object - composite or primitive, that
-        was created at timestep `input_timestep` - with the named arguments in
-        `kwargs`.
-
-        # Args
-            name: The name of the object in the space to update.
-            kwargs: Sequence of named arguments that contain updated visual
-                property values.
-        """
-        if (input_timestep < 0) or (input_timestep > self.time_step):
+    def _select_by_timestep(self, timestep: int) -> list[int]:
+        if (timestep < 0) or (timestep > self.time_step):
             raise ValueError("The provided timestep is invalid in this space.")
 
         for scene_id in sorted(self.cuboid_index.keys()):
             for timestep_id in sorted(self.cuboid_index[scene_id].keys()):
-                if timestep_id == input_timestep:
-                    self._mutate_by_primitive_ids(
-                        self.cuboid_index[scene_id][timestep_id], **kwargs
-                    )
-                    break
+                if timestep_id == timestep:
+                    return self.cuboid_index[scene_id][timestep_id]
 
-    def mutate_by_scene(self, input_scene: int, **kwargs) -> None:
-        """
-        Mutate the visual metadata of the object - composite or primitive, that
-        was created at timestep `input_timestep` - with the named arguments in
-        `kwargs`.
-
-        # Args
-            name: The name of the object in the space to update.
-            kwargs: Sequence of named arguments that contain updated visual
-                property values.
-        """
-        if (input_scene < 0) or (input_scene > self.scene_counter):
+    def _select_by_scene(self, scene: int) -> list[int]:
+        if (scene < 0) or (scene > self.scene_counter):
             raise ValueError("The provided scene ID is invalid in this space.")
 
+        primitive_ids = []
         for scene_id in sorted(self.cuboid_index.keys()):
             for timestep_id in sorted(self.cuboid_index[scene_id].keys()):
-                if scene_id == input_scene:
-                    self._mutate_by_primitive_ids(
-                        self.cuboid_index[scene_id][timestep_id], **kwargs
+                if scene_id == scene:
+                    primitive_ids.extend(
+                        self.cuboid_index[scene_id][timestep_id]
                     )
-            break
-
-    def _mutate_by_primitive_ids(
-        self, primitive_ids: list[int], **kwargs
-    ) -> None:
-        """
-        Mutate the visual metadata of all primitives given by `primitive_ids`
-        with the named arguments in `kwargs`.
-
-        # Args
-            primitive_ids: The IDs of all the primitives in the space to update.
-            kwargs: Sequence of named arguments that contain updated visual
-                property values.
-        """
-        for key in kwargs.keys():
-            if key not in self.cuboid_visual_metadata.keys():
-                raise KeyError(
-                    "The provided key doesn't match any valid visual property."
-                )
-            for primitive_id in primitive_ids:
-                self.cuboid_visual_metadata[key][primitive_id] = kwargs[key]
+            return primitive_ids
 
     def snapshot(self) -> None:
         """

@@ -145,7 +145,7 @@ class SpaceIndex:
         """
         # This accounts for the empty index case and the case where the index
         # does not have the requisite number of entries.
-        is_present = len(index) == (id + 1)
+        is_present = len(index) >= (id + 1)
         if not is_present:
             return slice(0, 0)
 
@@ -196,9 +196,9 @@ class SpaceIndex:
             scene_id: The ID of the scene to query over.
         """
         subset = self._extract_objects_by_id(
-            id=scene_id, index=self._composite_scene_index
+            id=scene_id, index=self._primitive_scene_index
         )
-        return self._composite_buffer[subset]
+        return self._primitive_buffer[subset]
 
     def get_composites_by_scene(self, scene_id: int) -> list[slice]:
         """

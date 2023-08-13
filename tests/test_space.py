@@ -74,6 +74,7 @@ def test_space_creation() -> None:
     assert np.array_equal(space.cuboid_coordinates, np.zeros((10, 6, 4, 3)))
     assert space.cuboid_visual_metadata == {}
     assert space.cuboid_index is not None
+    assert space.new_cuboid_index is not None
     assert space.changelog == []
 
 
@@ -109,6 +110,7 @@ def test_space_snapshot_creates_a_scene() -> None:
         "alpha": [0.0],
     }
     assert space.cuboid_index == {0: {0: [0]}}
+    assert list(space.new_cuboid_index.primitives()) == [0]
     assert space.changelog == [bb.Addition(timestep_id=0, name=None)]
 
 
@@ -149,6 +151,10 @@ def test_space_multiple_snapshots_create_multiple_scenes() -> None:
         "alpha": [0.0, 0.0],
     }
     assert space.cuboid_index == {0: {0: [0]}, 1: {1: [1]}}
+    assert space.new_cuboid_index.get_primitives_by_timestep(0) == [0]
+    assert space.new_cuboid_index.get_primitives_by_timestep(1) == [1]
+    assert space.new_cuboid_index.get_primitives_by_scene(0) == [0]
+    assert space.new_cuboid_index.get_primitives_by_scene(1) == [1]
     assert space.changelog == [
         bb.Addition(timestep_id=0, name=None),
         bb.Addition(timestep_id=1, name=None),
@@ -261,6 +267,9 @@ def test_space_add_multiple_cubes_in_single_scene() -> None:
         "alpha": [0.0, 0.0],
     }
     assert space.cuboid_index == {0: {0: [0], 1: [1]}}
+    assert space.new_cuboid_index.get_primitives_by_timestep(0) == [0]
+    assert space.new_cuboid_index.get_primitives_by_timestep(1) == [1]
+    assert space.new_cuboid_index.get_primitives_by_scene(0) == [0, 1]
     assert space.changelog == [
         bb.Addition(timestep_id=0, name=None),
         bb.Addition(timestep_id=1, name=None),

@@ -9,6 +9,7 @@ from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import numpy as np
 
+from brickblock.index import SpaceIndex
 from brickblock.objects import Cube, Cuboid, CompositeCube
 
 
@@ -58,8 +59,8 @@ class Space:
             the camera when rendering a scene.
         total: The total value per dimension of all objects. This is stored for
             potential use with the camera when rendering a scene.
-        num_objs: The total number of objects in the space. All individual
-            primitives count as objects, a composite counts as one object.
+        num_objs: The total number of objects in the space. Distinct primitives
+            and composites each count as one object.
         primitive_counter: The total number of primitives in the space. A
             composite object can comprise of multiple primitives.
         time_step: The number of individual transforms done to the space.
@@ -70,7 +71,7 @@ class Space:
         cuboid_visual_metadata: The visual properties for each primitive in the
             space. Objects are stored in order of insertion.
         cuboid_index: A hierarchial index of the objects inserted into the
-            space. Objects are represented by lists of primitives.
+            space.
         cuboid_names: A mapping between names and objects/primitives.
         changelog: A high-level description of each transform done to the space.
     """
@@ -87,6 +88,7 @@ class Space:
     cuboid_coordinates: np.ndarray
     cuboid_visual_metadata: dict[str, list]
     cuboid_index: dict[int, dict[int, list[int]]]
+    new_cuboid_index: SpaceIndex
     cuboid_names: dict[str, list[int]]
     changelog: list[SpaceStateChange]
 
@@ -101,6 +103,7 @@ class Space:
         self.cuboid_coordinates = np.zeros((10, 6, 4, 3))
         self.cuboid_visual_metadata = {}
         self.cuboid_index = {}
+        self.new_cuboid_index = SpaceIndex()
         self.cuboid_names = {}
         self.changelog = []
 
@@ -230,6 +233,22 @@ class Space:
             else:
                 self.cuboid_visual_metadata[key] = [value]
 
+        self._update_index_with_primitive(self.primitive_counter)
+
+        # Update the primitive_counter.
+        primitive_id = self.primitive_counter
+        self.primitive_counter += 1
+
+        return primitive_id
+
+    def _update_index_with_primitive(self, primitive_id: int) -> None:
+        self.new_cuboid_index.add_primitive_to_index(
+            primitive_id, self.time_step, self.scene_counter
+        )
+        # For backward compatability we call the old function.
+        self._update_index()
+
+    def _update_index(self) -> None:
         # Update the index, adding entries if necessary.
         def add_key_to_nested_dict(d, keys):
             for key in keys[:-1]:
@@ -244,12 +263,6 @@ class Space:
         self.cuboid_index[self.scene_counter][self.time_step].append(
             self.primitive_counter
         )
-
-        # Update the primitive_counter.
-        primitive_id = self.primitive_counter
-        self.primitive_counter += 1
-
-        return primitive_id
 
     def _add_name(self, name: str | None, primitive_ids: list[int]) -> None:
         """

@@ -398,7 +398,7 @@ def test_space_can_add_composite_cube() -> None:
 
     assert np.array_equal(space.dims, np.array([[0, 4], [0, 2], [0, 3]]))
     assert np.array_equal(space.mean, np.array([[2.0], [1.0], [1.5]]))
-    assert np.array_equal(space.total, np.array([[48.0], [24.0], [36.0]]))
+    assert np.array_equal(space.total, np.array([[2.0], [1.0], [1.5]]))
     assert space.num_objs == 1
     assert space.primitive_counter == num_cubes
     assert space.time_step == 1
@@ -436,6 +436,9 @@ def test_space_can_add_composite_cube() -> None:
         "alpha": [0.0] * num_cubes,
     }
     assert space.cuboid_index == {0: {0: [i for i in range(num_cubes)]}}
+    composite = slice(0, num_cubes)
+    assert space.new_cuboid_index.get_composites_by_timestep(0) == [composite]
+    assert space.new_cuboid_index.get_composites_by_scene(0) == [composite]
     assert space.changelog == [bb.Addition(timestep_id=0, name=None)]
 
 
@@ -510,6 +513,9 @@ def test_space_can_add_cuboid() -> None:
         "alpha": [0.0],
     }
     assert space.cuboid_index == {0: {0: [0]}}
+    assert space.new_cuboid_index.get_primitives_by_timestep(0) == [0]
+    assert space.new_cuboid_index.get_primitives_by_scene(0) == [0]
+
     assert space.changelog == [bb.Addition(timestep_id=0, name=None)]
 
 
@@ -559,11 +565,11 @@ def test_space_can_add_named_objects() -> None:
     _, ax = space.render()
 
     assert space.cuboid_names == {
-        "input-tensor": [i for i in range(num_cubes_in_input_tensor)],
-        "filter-tensor": [
-            i + num_cubes_in_input_tensor
-            for i in range(num_cubes_in_filter_tensor)
-        ],
+        "input-tensor": slice(0, num_cubes_in_input_tensor),
+        "filter-tensor": slice(
+            num_cubes_in_input_tensor,
+            num_cubes_in_input_tensor + num_cubes_in_filter_tensor,
+        ),
     }
 
 

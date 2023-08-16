@@ -89,7 +89,7 @@ class Space:
     cuboid_visual_metadata: dict[str, list]
     cuboid_index: dict[int, dict[int, list[int]]]
     new_cuboid_index: SpaceIndex
-    cuboid_names: dict[str, list[int]]
+    cuboid_names: dict[str, int | slice]
     changelog: list[SpaceStateChange]
 
     def __init__(self) -> None:
@@ -112,49 +112,102 @@ class Space:
         Add a Cube primitive to the space.
         """
         primitive_id = self._add_cuboid_primitive(cube)
-        self._add_name(cube.name, [primitive_id])
+        self._add_name(cube.name, primitive_id)
         self.num_objs += 1
         self.changelog.append(Addition(self.time_step, None))
         self.time_step += 1
-        self._update_bounds([primitive_id])
+        self._update_bounds(slice(primitive_id, primitive_id + 1))
 
     def add_cuboid(self, cuboid: Cuboid) -> None:
         """
         Add a Cuboid primitive to the space.
         """
         primitive_id = self._add_cuboid_primitive(cuboid)
-        self._add_name(cuboid.name, [primitive_id])
+        self._add_name(cuboid.name, primitive_id)
         self.num_objs += 1
         self.changelog.append(Addition(self.time_step, None))
         self.time_step += 1
-        self._update_bounds([primitive_id])
+        self._update_bounds(slice(primitive_id, primitive_id + 1))
 
-    # TODO: Rather than adding individual cubes, this should be a single call
-    # and leverage the provided data better by direct insertion.
     def add_composite(self, composite: CompositeCube) -> None:
         """
         Add a CompositeCube object to the space.
         """
         num_cubes = composite.faces.shape[0]
 
-        primitive_ids = []
+        # Update bounding box
+        flattened_faces = composite.faces.reshape((-1, 3))
+        self.total += np.mean(flattened_faces, axis=0).reshape((3, 1))
 
-        for i in range(num_cubes):
-            cube_base_point_idx = (i, 0, 0)
-            # Swap the axes around here - otherwise you will get double-swapping
-            # of the dimensions.
-            base_vector = composite.faces[cube_base_point_idx]
-            w, d, h = base_vector
-            cube = Cube(
-                np.array([w, h, d]),
-                scale=1.0,
-                facecolor=composite.facecolor,
-                linewidth=composite.linewidth,
-                edgecolor=composite.edgecolor,
-                alpha=composite.alpha,
+        # We only add one to the denominator because we added a single object.
+        self.mean = self.total / (self.primitive_counter + 1)
+
+        composite_points = np.array(
+            [composite.faces[0][0], composite.faces[-1][-1]]
+        ).reshape((8, 3))
+
+        x_min = np.min(composite_points[:, 0])
+        x_max = np.max(composite_points[:, 0])
+        z_min = np.min(composite_points[:, 1])
+        z_max = np.max(composite_points[:, 1])
+        y_min = np.min(composite_points[:, 2])
+        y_max = np.max(composite_points[:, 2])
+
+        composite_extrema = np.array(
+            [[x_min, x_max], [z_min, z_max], [y_min, y_max]]
+        ).reshape((3, 2))
+
+        if self.primitive_counter == 0:
+            dim = composite_extrema
+        else:
+            # Since there are multiple objects, ensure the resulting dimensions
+            # of the surrounding box are the extrema of the objects within.
+            dim = np.array(
+                [
+                    [
+                        min(self.dims[i][0], composite_extrema[i][0]),
+                        max(self.dims[i][1], composite_extrema[i][1]),
+                    ]
+                    for i in range(len(composite_extrema))
+                ]
+            ).reshape((3, 2))
+
+        self.dims = dim
+
+        # Update coordinate array
+        current_no_of_entries = self.cuboid_coordinates.shape[0]
+        if (self.primitive_counter + num_cubes) >= current_no_of_entries:
+            # Ensure that at most one allocation is needed to encompass this
+            # composite.
+            while (2 * current_no_of_entries) < num_cubes:
+                current_no_of_entries *= 2
+
+            # refcheck set to False since this avoids issues with the debugger
+            # referencing the array!
+            self.cuboid_coordinates.resize(
+                (2 * current_no_of_entries, *self.cuboid_coordinates.shape[1:]),
+                refcheck=False,
             )
-            primitive_ids.append(self._add_cuboid_primitive(cube))
 
+        offset = self.primitive_counter
+        self.cuboid_coordinates[offset : offset + num_cubes] = composite.faces
+
+        # Update visual metadata store
+        for key, value in composite.get_visual_metadata().items():
+            if key in self.cuboid_visual_metadata.keys():
+                self.cuboid_visual_metadata[key].extend([value] * num_cubes)
+            else:
+                self.cuboid_visual_metadata[key] = [value] * num_cubes
+
+        self.primitive_counter += num_cubes
+        primitive_ids = slice(offset, offset + num_cubes)
+
+        # Add to index
+        self._update_index_with_composite(primitive_ids)
+
+        # TODO: This is not ideal because it adds an extra primitive the user
+        # never asked for. This potentially could be spun out into either
+        # another index, or something done at render time.
         if composite.style == "classic":
             cube_base_point_idx = (0, 0, 0)
             # Swap the axes around here - otherwise you will get double-swapping
@@ -171,12 +224,15 @@ class Space:
                 edgecolor="black",
                 alpha=0.0,
             )
-            primitive_ids.append(self._add_cuboid_primitive(cuboid))
+            # This will add a primitive ID - meaning it is technically a
+            # distinct primitive, even though it isn't. This is invalid.
+            cuboid_id = self._add_cuboid_primitive(cuboid)
+            self._update_index_with_primitive(cuboid_id)
 
         self._add_name(composite.name, primitive_ids)
 
-        self.changelog.append(Addition(self.time_step, None))
         self.num_objs += 1
+        self.changelog.append(Addition(self.time_step, None))
         self.time_step += 1
         self._update_bounds(primitive_ids)
 
@@ -246,9 +302,16 @@ class Space:
             primitive_id, self.time_step, self.scene_counter
         )
         # For backward compatability we call the old function.
-        self._update_index()
+        self._update_index(primitive_id)
 
-    def _update_index(self) -> None:
+    def _update_index_with_composite(self, composite_id: slice) -> None:
+        self.new_cuboid_index.add_composite_to_index(
+            composite_id, self.time_step, self.scene_counter
+        )
+        # For backward compatability we call the old function.
+        self._update_index(list(range(composite_id.start, composite_id.stop)))
+
+    def _update_index(self, object_id: int | list[int]) -> None:
         # Update the index, adding entries if necessary.
         def add_key_to_nested_dict(d, keys):
             for key in keys[:-1]:
@@ -260,18 +323,23 @@ class Space:
 
         keys = [self.scene_counter, self.time_step]
         add_key_to_nested_dict(self.cuboid_index, keys)
-        self.cuboid_index[self.scene_counter][self.time_step].append(
-            self.primitive_counter
-        )
+        if isinstance(object_id, int):
+            self.cuboid_index[self.scene_counter][self.time_step].append(
+                object_id
+            )
+        else:
+            self.cuboid_index[self.scene_counter][self.time_step].extend(
+                object_id
+            )
 
-    def _add_name(self, name: str | None, primitive_ids: list[int]) -> None:
+    def _add_name(self, name: str | None, primitive_ids: int | slice) -> None:
         """
         Add an entry for `name` for the given `primitive_ids`, if specified.
 
         # Args
             name: An optional name that references each ID in `primitive_ids`.
-            primitive_ids: A list of primitive IDs to name. This list is assumed
-                to be non-empty, it can contain 1 or more IDs.
+            primitive_ids: The primitive ID(s) to name. If a slice, it is
+                assumed to be non-empty, it can contain 1 or more IDs.
         """
         if name is not None:
             if name in self.cuboid_names.keys():
@@ -280,7 +348,7 @@ class Space:
                 )
             self.cuboid_names[name] = primitive_ids
 
-    def _update_bounds(self, primitive_ids: list[int]) -> None:
+    def _update_bounds(self, primitive_ids: slice) -> None:
         """
         Update the bounding box of the space, based on the primitives given by
         `primitive_ids`.
@@ -295,7 +363,7 @@ class Space:
             primitive_ids: The primitives for which coordinate data is used to
                 update the bounding box of this space.
         """
-        N = len(primitive_ids)
+        N = primitive_ids.stop - primitive_ids.start
         primitives = self.cuboid_coordinates[primitive_ids].reshape(
             (N * 6 * 4, 3)
         )
@@ -346,7 +414,12 @@ class Space:
                 property values.
         """
         primitive_ids = self._select_by_name(name)
-        self._mutate_by_primitive_ids(primitive_ids, **kwargs)
+        if isinstance(primitive_ids, int):
+            self._mutate_by_primitive_ids([primitive_ids], **kwargs)
+        else:
+            self._mutate_by_primitive_ids(
+                list(range(primitive_ids.start, primitive_ids.stop)), **kwargs
+            )
 
     def mutate_by_timestep(self, timestep: int, **kwargs) -> None:
         """
@@ -500,7 +573,7 @@ class Space:
 
         return primitives_to_update
 
-    def _select_by_name(self, name: str) -> list[int]:
+    def _select_by_name(self, name: str) -> int | slice:
         if name not in self.cuboid_names.keys():
             raise ValueError("The provided name does not exist in this space.")
 

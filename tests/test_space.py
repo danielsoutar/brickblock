@@ -74,7 +74,6 @@ def test_space_creation() -> None:
     assert np.array_equal(space.cuboid_coordinates, np.zeros((10, 6, 4, 3)))
     assert space.cuboid_visual_metadata == {}
     assert space.cuboid_index is not None
-    assert space.new_cuboid_index is not None
     assert space.changelog == []
 
 
@@ -109,8 +108,7 @@ def test_space_snapshot_creates_a_scene() -> None:
         "edgecolor": ["black"],
         "alpha": [0.0],
     }
-    assert space.cuboid_index == {0: {0: [0]}}
-    assert list(space.new_cuboid_index.primitives()) == [0]
+    assert list(space.cuboid_index.primitives()) == [0]
     assert space.changelog == [bb.Addition(timestep_id=0, name=None)]
 
 
@@ -150,11 +148,10 @@ def test_space_multiple_snapshots_create_multiple_scenes() -> None:
         "edgecolor": ["black", "black"],
         "alpha": [0.0, 0.0],
     }
-    assert space.cuboid_index == {0: {0: [0]}, 1: {1: [1]}}
-    assert space.new_cuboid_index.get_primitives_by_timestep(0) == [0]
-    assert space.new_cuboid_index.get_primitives_by_timestep(1) == [1]
-    assert space.new_cuboid_index.get_primitives_by_scene(0) == [0]
-    assert space.new_cuboid_index.get_primitives_by_scene(1) == [1]
+    assert space.cuboid_index.get_primitives_by_timestep(0) == [0]
+    assert space.cuboid_index.get_primitives_by_timestep(1) == [1]
+    assert space.cuboid_index.get_primitives_by_scene(0) == [0]
+    assert space.cuboid_index.get_primitives_by_scene(1) == [1]
     assert space.changelog == [
         bb.Addition(timestep_id=0, name=None),
         bb.Addition(timestep_id=1, name=None),
@@ -266,10 +263,9 @@ def test_space_add_multiple_cubes_in_single_scene() -> None:
         "edgecolor": ["black", "black"],
         "alpha": [0.0, 0.0],
     }
-    assert space.cuboid_index == {0: {0: [0], 1: [1]}}
-    assert space.new_cuboid_index.get_primitives_by_timestep(0) == [0]
-    assert space.new_cuboid_index.get_primitives_by_timestep(1) == [1]
-    assert space.new_cuboid_index.get_primitives_by_scene(0) == [0, 1]
+    assert space.cuboid_index.get_primitives_by_timestep(0) == [0]
+    assert space.cuboid_index.get_primitives_by_timestep(1) == [1]
+    assert space.cuboid_index.get_primitives_by_scene(0) == [0, 1]
     assert space.changelog == [
         bb.Addition(timestep_id=0, name=None),
         bb.Addition(timestep_id=1, name=None),
@@ -435,10 +431,9 @@ def test_space_can_add_composite_cube() -> None:
         "edgecolor": ["black"] * num_cubes,
         "alpha": [0.0] * num_cubes,
     }
-    assert space.cuboid_index == {0: {0: [i for i in range(num_cubes)]}}
     composite = slice(0, num_cubes)
-    assert space.new_cuboid_index.get_composites_by_timestep(0) == [composite]
-    assert space.new_cuboid_index.get_composites_by_scene(0) == [composite]
+    assert space.cuboid_index.get_composites_by_timestep(0) == [composite]
+    assert space.cuboid_index.get_composites_by_scene(0) == [composite]
     assert space.changelog == [bb.Addition(timestep_id=0, name=None)]
 
 
@@ -512,9 +507,8 @@ def test_space_can_add_cuboid() -> None:
         "edgecolor": ["black"],
         "alpha": [0.0],
     }
-    assert space.cuboid_index == {0: {0: [0]}}
-    assert space.new_cuboid_index.get_primitives_by_timestep(0) == [0]
-    assert space.new_cuboid_index.get_primitives_by_scene(0) == [0]
+    assert space.cuboid_index.get_primitives_by_timestep(0) == [0]
+    assert space.cuboid_index.get_primitives_by_scene(0) == [0]
 
     assert space.changelog == [bb.Addition(timestep_id=0, name=None)]
 
@@ -565,11 +559,16 @@ def test_space_can_add_named_objects() -> None:
     _, ax = space.render()
 
     assert space.cuboid_names == {
-        "input-tensor": slice(0, num_cubes_in_input_tensor),
-        "filter-tensor": slice(
-            num_cubes_in_input_tensor,
-            num_cubes_in_input_tensor + num_cubes_in_filter_tensor,
-        ),
+        "input-tensor": [None, [slice(0, num_cubes_in_input_tensor)]],
+        "filter-tensor": [
+            None,
+            [
+                slice(
+                    num_cubes_in_input_tensor,
+                    num_cubes_in_input_tensor + num_cubes_in_filter_tensor,
+                )
+            ],
+        ],
     }
 
 
@@ -1000,39 +999,7 @@ def test_space_updates_bounds_with_multiple_objects() -> None:
 
 
 def test_space_supports_composites_with_classic_style() -> None:
-    space = bb.Space()
-
-    space.add_composite(
-        bb.CompositeCube(
-            base_vector=np.array([0, 0, 0]), w=4, h=6, d=3, style="classic"
-        )
-    )
-
-    num_cubes = 4 * 6 * 3
-
-    # Remember to swap the ys and zs due to the current implementation issue
-    # with dims
-    # TODO: Have a transform for matplotlib and have your own representation
-    # instead.
-    expected_cuboid_points = bb.Cuboid(
-        base_vector=np.array([0, 0, 0]), w=4, h=6, d=3
-    ).points()
-    actual_cuboid_faces = space.cuboid_coordinates[num_cubes]
-    # TODO: This feels like this should be easier to do.
-    actual_cuboid_points = np.array(
-        [actual_cuboid_faces[0], actual_cuboid_faces[-1]]
-    ).reshape((8, 3))
-    assert np.array_equal(expected_cuboid_points, actual_cuboid_points)
-
-    # The classic style adds a cuboid around the extrema of the composite, so
-    # another primitive gets added. However, it is still considered part of the
-    # composite, so the number of objects should still be 1.
-    assert space.primitive_counter == num_cubes + 1
-    assert space.num_objs == 1
-    assert space.cuboid_visual_metadata["facecolor"][-1] is None
-    assert space.cuboid_visual_metadata["linewidth"][-1] == 1.0
-    assert space.cuboid_visual_metadata["edgecolor"][-1] == "black"
-    assert space.cuboid_visual_metadata["alpha"][-1] == 0.0
+    ...
 
 
 def test_space_correctly_reorients_data() -> None:

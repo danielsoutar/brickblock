@@ -87,9 +87,8 @@ class Space:
     # TODO: Should these be classes?
     cuboid_coordinates: np.ndarray
     cuboid_visual_metadata: dict[str, list]
-    cuboid_index: dict[int, dict[int, list[int]]]
-    new_cuboid_index: SpaceIndex
-    cuboid_names: dict[str, int | slice]
+    cuboid_index: SpaceIndex
+    cuboid_names: dict[str, tuple[list[int], list[slice]]]
     changelog: list[SpaceStateChange]
 
     def __init__(self) -> None:
@@ -102,8 +101,7 @@ class Space:
         self.scene_counter = 0
         self.cuboid_coordinates = np.zeros((10, 6, 4, 3))
         self.cuboid_visual_metadata = {}
-        self.cuboid_index = {}
-        self.new_cuboid_index = SpaceIndex()
+        self.cuboid_index = SpaceIndex()
         self.cuboid_names = {}
         self.changelog = []
 
@@ -112,7 +110,7 @@ class Space:
         Add a Cube primitive to the space.
         """
         primitive_id = self._add_cuboid_primitive(cube)
-        self._add_name(cube.name, primitive_id)
+        self._add_name(cube.name, [[primitive_id], None])
         self.num_objs += 1
         self.changelog.append(Addition(self.time_step, None))
         self.time_step += 1
@@ -123,7 +121,7 @@ class Space:
         Add a Cuboid primitive to the space.
         """
         primitive_id = self._add_cuboid_primitive(cuboid)
-        self._add_name(cuboid.name, primitive_id)
+        self._add_name(cuboid.name, [[primitive_id], None])
         self.num_objs += 1
         self.changelog.append(Addition(self.time_step, None))
         self.time_step += 1
@@ -203,33 +201,16 @@ class Space:
         primitive_ids = slice(offset, offset + num_cubes)
 
         # Add to index
-        self._update_index_with_composite(primitive_ids)
+        self.cuboid_index.add_composite_to_index(
+            primitive_ids, self.time_step, self.scene_counter
+        )
 
-        # TODO: This is not ideal because it adds an extra primitive the user
-        # never asked for. This potentially could be spun out into either
-        # another index, or something done at render time.
+        # TODO: Consider how to implement 'styles'.
         if composite.style == "classic":
-            cube_base_point_idx = (0, 0, 0)
-            # Swap the axes around here - otherwise you will get double-swapping
-            # of the dimensions.
-            base_vector = composite.faces[cube_base_point_idx]
-            w, d, h = base_vector
-            cuboid = Cuboid(
-                np.array([w, h, d]),
-                w=composite.w,
-                h=composite.h,
-                d=composite.d,
-                facecolor=None,
-                linewidth=1.0,
-                edgecolor="black",
-                alpha=0.0,
-            )
-            # This will add a primitive ID - meaning it is technically a
-            # distinct primitive, even though it isn't. This is invalid.
-            cuboid_id = self._add_cuboid_primitive(cuboid)
-            self._update_index_with_primitive(cuboid_id)
+            raise NotImplementedError("Currently, styles are not supported.")
+            ...
 
-        self._add_name(composite.name, primitive_ids)
+        self._add_name(composite.name, [None, [primitive_ids]])
 
         self.num_objs += 1
         self.changelog.append(Addition(self.time_step, None))
@@ -289,7 +270,9 @@ class Space:
             else:
                 self.cuboid_visual_metadata[key] = [value]
 
-        self._update_index_with_primitive(self.primitive_counter)
+        self.cuboid_index.add_primitive_to_index(
+            self.primitive_counter, self.time_step, self.scene_counter
+        )
 
         # Update the primitive_counter.
         primitive_id = self.primitive_counter
@@ -297,56 +280,32 @@ class Space:
 
         return primitive_id
 
-    def _update_index_with_primitive(self, primitive_id: int) -> None:
-        self.new_cuboid_index.add_primitive_to_index(
-            primitive_id, self.time_step, self.scene_counter
-        )
-        # For backward compatability we call the old function.
-        self._update_index(primitive_id)
-
-    def _update_index_with_composite(self, composite_id: slice) -> None:
-        self.new_cuboid_index.add_composite_to_index(
-            composite_id, self.time_step, self.scene_counter
-        )
-        # For backward compatability we call the old function.
-        self._update_index(list(range(composite_id.start, composite_id.stop)))
-
-    def _update_index(self, object_id: int | list[int]) -> None:
-        # Update the index, adding entries if necessary.
-        def add_key_to_nested_dict(d, keys):
-            for key in keys[:-1]:
-                if key not in d:
-                    d[key] = {}
-                d = d[key]
-            if keys[-1] not in d:
-                d[keys[-1]] = []
-
-        keys = [self.scene_counter, self.time_step]
-        add_key_to_nested_dict(self.cuboid_index, keys)
-        if isinstance(object_id, int):
-            self.cuboid_index[self.scene_counter][self.time_step].append(
-                object_id
-            )
-        else:
-            self.cuboid_index[self.scene_counter][self.time_step].extend(
-                object_id
-            )
-
-    def _add_name(self, name: str | None, primitive_ids: int | slice) -> None:
+    def _add_name(
+        self,
+        name: str | None,
+        object_ids: tuple[list[int] | None, list[slice] | None],
+    ) -> None:
         """
-        Add an entry for `name` for the given `primitive_ids`, if specified.
+        Add an entry for `name` for the given `object_ids`, if specified.
+
+        It is an error to add an entry for a name that already exists.
 
         # Args
-            name: An optional name that references each ID in `primitive_ids`.
-            primitive_ids: The primitive ID(s) to name. If a slice, it is
-                assumed to be non-empty, it can contain 1 or more IDs.
+            name: An optional name that references each ID in `object_ids`.
+            object_ids: The primitive/composite ID(s) to name. Can contain both
+                primitives and composites, each composite is assumed to be
+                non-empty. There must be at least one valid ID.
         """
         if name is not None:
             if name in self.cuboid_names.keys():
                 raise Exception(
                     f"There already exists an object with name {name}."
                 )
-            self.cuboid_names[name] = primitive_ids
+            if object_ids[0] is None and object_ids[1] is None:
+                raise Exception(
+                    "The entity to name has no IDs associated with it."
+                )
+            self.cuboid_names[name] = object_ids
 
     def _update_bounds(self, primitive_ids: slice) -> None:
         """
@@ -400,8 +359,12 @@ class Space:
             kwargs: Sequence of named arguments that contain updated visual
                 property values.
         """
-        primitives_to_update = self._select_by_coordinate(coordinate)
-        self._mutate_by_primitive_ids(primitives_to_update, **kwargs)
+        primitives_to_update, composites_to_update = self._select_by_coordinate(
+            coordinate
+        )
+        self._mutate_by_ids(
+            primitives_to_update, composites_to_update, **kwargs
+        )
 
     def mutate_by_name(self, name: str, **kwargs) -> None:
         """
@@ -413,13 +376,10 @@ class Space:
             kwargs: Sequence of named arguments that contain updated visual
                 property values.
         """
-        primitive_ids = self._select_by_name(name)
-        if isinstance(primitive_ids, int):
-            self._mutate_by_primitive_ids([primitive_ids], **kwargs)
-        else:
-            self._mutate_by_primitive_ids(
-                list(range(primitive_ids.start, primitive_ids.stop)), **kwargs
-            )
+        primitives_to_update, composites_to_update = self._select_by_name(name)
+        self._mutate_by_ids(
+            primitives_to_update, composites_to_update, **kwargs
+        )
 
     def mutate_by_timestep(self, timestep: int, **kwargs) -> None:
         """
@@ -432,8 +392,12 @@ class Space:
             kwargs: Sequence of named arguments that contain updated visual
                 property values.
         """
-        primitive_ids = self._select_by_timestep(timestep)
-        self._mutate_by_primitive_ids(primitive_ids, **kwargs)
+        primitives_to_update, composites_to_update = self._select_by_timestep(
+            timestep
+        )
+        self._mutate_by_ids(
+            primitives_to_update, composites_to_update, **kwargs
+        )
 
     def mutate_by_scene(self, scene: int, **kwargs) -> None:
         """
@@ -445,18 +409,24 @@ class Space:
             kwargs: Sequence of named arguments that contain updated visual
                 property values.
         """
-        primitive_ids = self._select_by_scene(scene)
-        self._mutate_by_primitive_ids(primitive_ids, **kwargs)
+        primitives_to_update, composites_to_update = self._select_by_scene(
+            scene
+        )
+        self._mutate_by_ids(
+            primitives_to_update, composites_to_update, **kwargs
+        )
 
-    def _mutate_by_primitive_ids(
-        self, primitive_ids: list[int], **kwargs
+    def _mutate_by_ids(
+        self, primitive_ids: list[int], composite_ids: list[slice], **kwargs
     ) -> None:
         """
-        Mutate the visual metadata of all primitives given by `primitive_ids`
-        with the named arguments in `kwargs`.
+        Mutate the visual metadata of all primitives and composites (given by
+        `primitive_ids` and `composite_ids` respectively) with the named
+        arguments in `kwargs`.
 
         # Args
             primitive_ids: The IDs of all the primitives in the space to update.
+            composite_ids: The IDs of all the composites in the space to update.
             kwargs: Sequence of named arguments that contain updated visual
                 property values.
         """
@@ -467,6 +437,10 @@ class Space:
                 )
             for primitive_id in primitive_ids:
                 self.cuboid_visual_metadata[key][primitive_id] = kwargs[key]
+            for composite_id in composite_ids:
+                N = composite_id.stop - composite_id.start
+                broadcast_val = [kwargs[key]] * N
+                self.cuboid_visual_metadata[key][composite_id] = broadcast_val
 
     def create_by_offset(
         self,
@@ -520,7 +494,7 @@ class Space:
             )
 
         if coordinate is not None:
-            primitive_ids = self._select_by_coordinate(coordinate)
+            primitive_ids, _ = self._select_by_coordinate(coordinate)
         if name is not None:
             primitive_ids = self._select_by_name(name)
         if timestep is not None:
@@ -532,7 +506,9 @@ class Space:
         # composites, if any.
         print(primitive_ids)
 
-    def _select_by_coordinate(self, coordinate: np.ndarray) -> list[int]:
+    def _select_by_coordinate(
+        self, coordinate: np.ndarray
+    ) -> tuple[list[int], list[slice]]:
         if coordinate.shape != (3,):
             raise ValueError(
                 "Coordinates are three-dimensional, the input vector should be "
@@ -546,62 +522,68 @@ class Space:
 
         # First gather the IDs of primitive entries that match the coordinate.
         matching_base_vectors = []
-        primitives_to_update = []
-        current_idx = 0
+        primitives_to_update, composites_to_update = [], []
 
         for idx in range(self.primitive_counter):
             primitive = self.cuboid_coordinates[idx]
             if np.array_equal(primitive[0, 0], coordinate):
                 matching_base_vectors.append(idx)
 
-        # Find all objects (primitive or composite) corresponding to those IDs.
-        for scene_id in sorted(self.cuboid_index.keys()):
-            for timestep_id in sorted(self.cuboid_index[scene_id].keys()):
-                primitive_ids = self.cuboid_index[scene_id][timestep_id]
-                # Because we gathered matching_base_vectors in order, and the
-                # bottom-left-front point of all objects is the first point, we
-                # can check just the first primitive_id of the list for both
-                # primitives and composites.
+        # You can assume all indices are either landing on the first primitive
+        # of a composite (a match) or a distinct primitive, since otherwise
+        # you don't consider it a match anyway. That means you can just compare
+        # against the first value of the slices in the composite buffer.
 
-                # Skip forward if you caught intermediate primitives.
-                while matching_base_vectors[current_idx] < primitive_ids[0]:
-                    current_idx += 1
+        primitive_id = next(self.cuboid_index.primitives(), None)
+        composite_slice = next(self.cuboid_index.composites(), None)
 
-                if primitive_ids[0] == matching_base_vectors[current_idx]:
-                    primitives_to_update.extend(primitive_ids)
-                    current_idx += 1
+        # For each index, check if it's a primitive or composite. If it is,
+        # add it to the relevant output buffer/increment the relevant iterator.
+        # If the relevant iterator is exhausted, use a default of None.
+        for idx in matching_base_vectors:
+            if primitive_id is not None and primitive_id == idx:
+                primitives_to_update.append(primitive_id)
+                primitive_id = next(self.cuboid_index.primitives(), None)
+            if composite_slice is not None and composite_slice.start == idx:
+                composites_to_update.append(composite_slice)
+                composite_slice = next(self.cuboid_index.composites(), None)
 
-        return primitives_to_update
+        return primitives_to_update, composites_to_update
 
-    def _select_by_name(self, name: str) -> int | slice:
+    def _select_by_name(self, name: str) -> tuple[list[int], list[slice]]:
         if name not in self.cuboid_names.keys():
             raise ValueError("The provided name does not exist in this space.")
 
-        primitive_ids = self.cuboid_names[name]
+        primitive_ids, composite_ids = self.cuboid_names[name]
 
-        return primitive_ids
+        primitive_ids = primitive_ids if primitive_ids is not None else []
+        composite_ids = composite_ids if composite_ids is not None else []
 
-    def _select_by_timestep(self, timestep: int) -> list[int]:
+        return primitive_ids, composite_ids
+
+    def _select_by_timestep(
+        self, timestep: int
+    ) -> tuple[list[int], list[slice]]:
         if (timestep < 0) or (timestep > self.time_step):
             raise ValueError("The provided timestep is invalid in this space.")
 
-        for scene_id in sorted(self.cuboid_index.keys()):
-            for timestep_id in sorted(self.cuboid_index[scene_id].keys()):
-                if timestep_id == timestep:
-                    return self.cuboid_index[scene_id][timestep_id]
+        primitive_ids = self.cuboid_index.get_primitives_by_timestep(
+            timestep
+        )
+        composite_ids = self.cuboid_index.get_composites_by_timestep(
+            timestep
+        )
 
-    def _select_by_scene(self, scene: int) -> list[int]:
+        return primitive_ids, composite_ids
+
+    def _select_by_scene(self, scene: int) -> tuple[list[int], list[slice]]:
         if (scene < 0) or (scene > self.scene_counter):
             raise ValueError("The provided scene ID is invalid in this space.")
 
-        primitive_ids = []
-        for scene_id in sorted(self.cuboid_index.keys()):
-            for timestep_id in sorted(self.cuboid_index[scene_id].keys()):
-                if scene_id == scene:
-                    primitive_ids.extend(
-                        self.cuboid_index[scene_id][timestep_id]
-                    )
-            return primitive_ids
+        primitive_ids = self.cuboid_index.get_primitives_by_scene(scene)
+        composite_ids = self.cuboid_index.get_composites_by_scene(scene)
+
+        return primitive_ids, composite_ids
 
     def snapshot(self) -> None:
         """
@@ -610,7 +592,10 @@ class Space:
         Note that valid scenes must have 1+ transforms - i.e. adding,
         deleting, or mutating an object, must be present in a scene.
         """
-        if self.scene_counter not in self.cuboid_index.keys():
+        expected_num_scenes = self.scene_counter + 1
+        if not self.cuboid_index.current_scene_is_valid(
+            expected_num_scenes
+        ):
             raise Exception(
                 "A snapshot must include at least one addition, mutation, or "
                 "deletion in the given scene."
@@ -640,16 +625,17 @@ class Space:
         # TODO: This logic really belongs in a `stream()` function. The render
         # method should just get all primitive_ids and then render everything
         # from the coordinates and visual_metadata.
-        for scene_id in sorted(self.cuboid_index.keys()):
-            timesteps = sorted(self.cuboid_index[scene_id].keys())
-            for timestep_id in timesteps:
-                # Retrieve the object(s) from the index.
-                primitive_ids = self.cuboid_index[scene_id][timestep_id]
-
-                if len(primitive_ids) == 1:
-                    ax = self._populate_ax_with_primitive(ax, primitive_ids[0])
-                else:
-                    ax = self._populate_ax_with_composite(ax, primitive_ids)
+        for scene_id in range(self.scene_counter + 1):
+            primitives_for_scene = (
+                self.cuboid_index.get_primitives_by_scene(scene_id)
+            )
+            composites_for_scene = (
+                self.cuboid_index.get_composites_by_scene(scene_id)
+            )
+            for primitive in primitives_for_scene:
+                ax = self._populate_ax_with_primitive(ax, primitive)
+            for composite in composites_for_scene:
+                ax = self._populate_ax_with_composite(ax, composite)
 
         # Use the space's bounds to update the camera and view.
         # This is very janky but at least ensures everything is in view.
@@ -700,7 +686,7 @@ class Space:
         return ax
 
     def _populate_ax_with_composite(
-        self, ax: plt.Axes, primitive_ids: list[int]
+        self, ax: plt.Axes, primitive_ids: slice
     ) -> plt.Axes:
         """
         Add the composite with `primitive_ids` to the `ax`, including both
@@ -710,6 +696,21 @@ class Space:
             ax: The matplotlib Axes object to add the primitives to.
             primitive_ids: The IDs of all the primitives to add.
         """
-        for primitive_id in primitive_ids:
-            ax = self._populate_ax_with_primitive(ax, primitive_id)
+        for primitive_id in range(primitive_ids.start, primitive_ids.stop):
+            # Create the object for matplotlib ingestion.
+            matplotlib_like_cube = Poly3DCollection(
+                self.cuboid_coordinates[primitive_id]
+            )
+            # Set the visual properties first - check if these can be moved
+            # into the Poly3DCollection constructor instead.
+            visual_properties = {
+                k: self.cuboid_visual_metadata[k][primitive_id]
+                for k in self.cuboid_visual_metadata.keys()
+            }
+            matplotlib_like_cube.set_facecolor(visual_properties["facecolor"])
+            matplotlib_like_cube.set_linewidths(visual_properties["linewidth"])
+            matplotlib_like_cube.set_edgecolor(visual_properties["edgecolor"])
+            matplotlib_like_cube.set_alpha(visual_properties["alpha"])
+            ax.add_collection3d(matplotlib_like_cube)
+
         return ax

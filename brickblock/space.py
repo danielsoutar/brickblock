@@ -187,8 +187,9 @@ class Space:
                 refcheck=False,
             )
 
-        offset = self.primitive_counter
-        self.cuboid_coordinates[offset : offset + num_cubes] = composite.faces
+        base = self.primitive_counter
+        offset = base + num_cubes
+        self.cuboid_coordinates[base:offset] = composite.faces
 
         # Update visual metadata store
         for key, value in composite.get_visual_metadata().items():
@@ -198,7 +199,7 @@ class Space:
                 self.cuboid_visual_metadata[key] = [value] * num_cubes
 
         self.primitive_counter += num_cubes
-        primitive_ids = slice(offset, offset + num_cubes)
+        primitive_ids = slice(base, offset)
 
         # Add to index
         self.cuboid_index.add_composite_to_index(
@@ -567,12 +568,8 @@ class Space:
         if (timestep < 0) or (timestep > self.time_step):
             raise ValueError("The provided timestep is invalid in this space.")
 
-        primitive_ids = self.cuboid_index.get_primitives_by_timestep(
-            timestep
-        )
-        composite_ids = self.cuboid_index.get_composites_by_timestep(
-            timestep
-        )
+        primitive_ids = self.cuboid_index.get_primitives_by_timestep(timestep)
+        composite_ids = self.cuboid_index.get_composites_by_timestep(timestep)
 
         return primitive_ids, composite_ids
 
@@ -593,9 +590,7 @@ class Space:
         deleting, or mutating an object, must be present in a scene.
         """
         expected_num_scenes = self.scene_counter + 1
-        if not self.cuboid_index.current_scene_is_valid(
-            expected_num_scenes
-        ):
+        if not self.cuboid_index.current_scene_is_valid(expected_num_scenes):
             raise Exception(
                 "A snapshot must include at least one addition, mutation, or "
                 "deletion in the given scene."
@@ -626,11 +621,11 @@ class Space:
         # method should just get all primitive_ids and then render everything
         # from the coordinates and visual_metadata.
         for scene_id in range(self.scene_counter + 1):
-            primitives_for_scene = (
-                self.cuboid_index.get_primitives_by_scene(scene_id)
+            primitives_for_scene = self.cuboid_index.get_primitives_by_scene(
+                scene_id
             )
-            composites_for_scene = (
-                self.cuboid_index.get_composites_by_scene(scene_id)
+            composites_for_scene = self.cuboid_index.get_composites_by_scene(
+                scene_id
             )
             for primitive in primitives_for_scene:
                 ax = self._populate_ax_with_primitive(ax, primitive)

@@ -86,6 +86,7 @@ class Space:
     scene_counter: int
     # TODO: Should these be classes?
     cuboid_coordinates: np.ndarray
+    cuboid_shapes: np.ndarray
     cuboid_visual_metadata: dict[str, list]
     cuboid_index: SpaceIndex
     cuboid_names: dict[str, tuple[list[int], list[slice]]]
@@ -100,6 +101,7 @@ class Space:
         self.time_step = 0
         self.scene_counter = 0
         self.cuboid_coordinates = np.zeros((10, 6, 4, 3))
+        self.cuboid_shapes = np.zeros((10, 3))
         self.cuboid_visual_metadata = {}
         self.cuboid_index = SpaceIndex()
         self.cuboid_names = {}
@@ -186,10 +188,20 @@ class Space:
                 (2 * current_no_of_entries, *self.cuboid_coordinates.shape[1:]),
                 refcheck=False,
             )
+            # Repeat this for the shape array as well.
+            self.cuboid_shapes.resize(
+                (2 * current_no_of_entries, self.cuboid_shapes.shape[1]),
+                refcheck=False,
+            )
 
         base = self.primitive_counter
         offset = base + num_cubes
         self.cuboid_coordinates[base:offset] = composite.faces
+
+        # Add shape data for this composite.
+        # In this case, broadcast the entire shape across all of its primitives.
+        w, h, d = composite.shape()
+        self.cuboid_shapes[base:offset] = w, d, h
 
         # Update visual metadata store
         for key, value in composite.visual_metadata().items():
@@ -261,6 +273,10 @@ class Space:
                 (2 * current_no_of_entries, *self.cuboid_coordinates.shape[1:]),
                 refcheck=False,
             )
+
+        # Add shape data for this cuboid.
+        w, h, d = cuboid.shape()
+        self.cuboid_shapes[self.primitive_counter] = w, d, h
 
         self.cuboid_coordinates[self.primitive_counter] = cuboid.faces
 

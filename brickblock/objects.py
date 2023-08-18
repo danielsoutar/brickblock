@@ -20,6 +20,9 @@ class Cube:
     preferred format in brickblock.
 
     # Attributes
+        w: The width of the object.
+        h: The height of the object.
+        d: The depth of the object.
         faces: A 6x4x3 array of numbers representing the dense coordinate data
             for this cube. Points are in XZY format.
         facecolor: The color for each of the faces. The default is None, i.e. a
@@ -31,6 +34,9 @@ class Cube:
         name: A name for this cube, used for querying within a Space.
     """
 
+    w: float
+    h: float
+    d: float
     faces: np.ndarray
     facecolor: tuple[float, float, float] | None = None
     linewidth: float = 0.1
@@ -100,6 +106,9 @@ class Cube:
 
         full_points = self._construct_points(points)
 
+        self.w = scale
+        self.h = scale
+        self.d = scale
         self.faces = self._construct_faces(full_points)
         self.facecolor = facecolor
         self.linewidth = linewidth
@@ -112,6 +121,9 @@ class Cube:
         Get the set of unique points that define this cube.
         """
         return np.array([self.faces[0], self.faces[-1]]).reshape((8, 3))
+
+    def shape(self) -> tuple[float, float, float]:
+        return (self.w, self.h, self.d)
 
     def visual_metadata(self) -> dict[str, Any]:
         """
@@ -209,6 +221,9 @@ class Cuboid:
     preferred format in brickblock.
 
     # Attributes
+        w: The width of the object.
+        h: The height of the object.
+        d: The depth of the object.
         faces: A 6x4x3 array of numbers representing the dense coordinate data
             for this cuboid. Points are in XZY format.
         facecolor: The color for each of the faces. The default is None, i.e. a
@@ -220,6 +235,9 @@ class Cuboid:
         name: A name for this cuboid, used for querying within a Space.
     """
 
+    w: float
+    h: float
+    d: float
     faces: np.ndarray
     facecolor: tuple[float, float, float] | None = None
     linewidth: float = 0.1
@@ -290,6 +308,9 @@ class Cuboid:
 
         full_points = self._construct_points(points)
 
+        self.w = w
+        self.h = h
+        self.d = d
         self.faces = self._construct_faces(full_points)
         self.facecolor = facecolor
         self.linewidth = linewidth
@@ -302,6 +323,9 @@ class Cuboid:
         Get the set of unique points that define this cuboid.
         """
         return np.array([self.faces[0], self.faces[-1]]).reshape((8, 3))
+
+    def shape(self) -> tuple[float, float, float]:
+        return (self.w, self.h, self.d)
 
     def visual_metadata(self) -> dict[str, Any]:
         """
@@ -419,8 +443,8 @@ class CompositeCube:
         name: A name for this entire object, used for querying within a Space.
     """
 
-    h: int
     w: int
+    h: int
     d: int
     faces: np.ndarray
     facecolor: tuple[float, float, float] | None = None
@@ -518,6 +542,9 @@ class CompositeCube:
         # TODO: Figure out the relevant points that define the bounds of the
         # entire object.
         return np.array([]).reshape(())
+
+    def shape(self) -> tuple[float, float, float]:
+        return (float(self.w), float(self.h), float(self.d))
 
     def visual_metadata(self) -> dict[str, Any]:
         """

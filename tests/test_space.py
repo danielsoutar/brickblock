@@ -72,6 +72,7 @@ def test_space_creation() -> None:
     assert space.time_step == 0
     assert space.scene_counter == 0
     assert np.array_equal(space.cuboid_coordinates, np.zeros((10, 6, 4, 3)))
+    assert np.array_equal(space.cuboid_shapes, np.zeros((10, 3)))
     assert space.cuboid_visual_metadata == {}
     assert space.cuboid_index is not None
     assert space.changelog == []
@@ -99,6 +100,13 @@ def test_space_snapshot_creates_a_scene() -> None:
                 mock_coordinates_entry(),
                 np.zeros((expected_num_entries - 1, 6, 4, 3)),
             ),
+            axis=0,
+        ),
+    )
+    assert np.array_equal(
+        space.cuboid_shapes,
+        np.concatenate(
+            (np.ones((1, 3)), np.zeros((expected_num_entries - 1, 3))),
             axis=0,
         ),
     )
@@ -138,6 +146,16 @@ def test_space_multiple_snapshots_create_multiple_scenes() -> None:
                 mock_coordinates_entry(),
                 mock_coordinates_entry() + 3,
                 np.zeros((expected_num_entries - 2, 6, 4, 3)),
+            ),
+            axis=0,
+        ),
+    )
+    assert np.array_equal(
+        space.cuboid_shapes,
+        np.concatenate(
+            (
+                np.ones((2, 3)),
+                np.zeros((expected_num_entries - 2, 3)),
             ),
             axis=0,
         ),
@@ -253,6 +271,16 @@ def test_space_add_multiple_cubes_in_single_scene() -> None:
                 mock_coordinates_entry(),
                 mock_coordinates_entry() + 3,
                 np.zeros((expected_num_entries - 2, 6, 4, 3)),
+            ),
+            axis=0,
+        ),
+    )
+    assert np.array_equal(
+        space.cuboid_shapes,
+        np.concatenate(
+            (
+                np.ones((2, 3)),
+                np.zeros((expected_num_entries - 2, 3)),
             ),
             axis=0,
         ),
@@ -425,6 +453,16 @@ def test_space_can_add_composite_cube() -> None:
             axis=0,
         ),
     )
+    assert np.array_equal(
+        space.cuboid_shapes,
+        np.concatenate(
+            (
+                np.broadcast_to(np.array([w, d, h]), (num_cubes, 3)),
+                np.zeros((expected_num_entries - num_cubes, 3)),
+            ),
+            axis=0,
+        ),
+    )
     assert space.cuboid_visual_metadata == {
         "facecolor": [None] * num_cubes,
         "linewidth": [0.1] * num_cubes,
@@ -497,6 +535,16 @@ def test_space_can_add_cuboid() -> None:
             (
                 mock_cuboid_coordinates_entry(),
                 np.zeros((expected_num_entries - 1, 6, 4, 3)),
+            ),
+            axis=0,
+        ),
+    )
+    assert np.array_equal(
+        space.cuboid_shapes,
+        np.concatenate(
+            (
+                np.array([[4, 6, 2]]),
+                np.zeros((expected_num_entries - 1, 3)),
             ),
             axis=0,
         ),

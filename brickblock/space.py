@@ -133,6 +133,81 @@ class Space:
         """
         Add a CompositeCube object to the space.
         """
+        composite_id = self._add_cuboid_composite(composite)
+        self._add_name(composite.name, [None, [composite_id]])
+        self.num_objs += 1
+        self.changelog.append(Addition(self.time_step, None))
+        self.time_step += 1
+        self._update_bounds(composite_id)
+
+    def _add_cuboid_primitive(self, cuboid: Cube | Cuboid) -> int:
+        """
+        Add a primitive to the space by updating the various indices and data
+        structures, and return its ID.
+
+        # Args
+            cuboid: Primitive Cube/Cuboid to add to the space's various data
+            structures.
+        """
+        cuboid_bounding_box = cuboid.bounding_box()
+        cuboid_mean = np.mean(cuboid.points(), axis=0).reshape((3, 1))
+
+        # Update the bounding box - via total, mean, and dims.
+        self.total += cuboid_mean
+
+        self.mean = self.total / (self.num_objs + 1)
+
+        if self.primitive_counter == 0:
+            dim = cuboid_bounding_box
+        else:
+            # Since there are multiple objects, ensure the resulting dimensions
+            # of the surrounding box are the extrema of the objects within.
+            dim = np.array(
+                [
+                    [
+                        min(self.dims[i][0], cuboid_bounding_box[i][0]),
+                        max(self.dims[i][1], cuboid_bounding_box[i][1]),
+                    ]
+                    for i in range(len(cuboid_bounding_box))
+                ]
+            ).reshape((3, 2))
+
+        self.dims = dim
+
+        # Update the coordinate data, resizing if necessary.
+        current_no_of_entries = self.cuboid_coordinates.shape[0]
+        if self.primitive_counter >= current_no_of_entries:
+            # refcheck set to False since this avoids issues with the debugger
+            # referencing the array!
+            self.cuboid_coordinates.resize(
+                (2 * current_no_of_entries, *self.cuboid_coordinates.shape[1:]),
+                refcheck=False,
+            )
+
+        # Add shape data for this cuboid.
+        w, h, d = cuboid.shape()
+        self.cuboid_shapes[self.primitive_counter] = w, d, h
+
+        self.cuboid_coordinates[self.primitive_counter] = cuboid.faces
+
+        # Update the visual metadata store.
+        for key, value in cuboid.visual_metadata().items():
+            if key in self.cuboid_visual_metadata.keys():
+                self.cuboid_visual_metadata[key].append(value)
+            else:
+                self.cuboid_visual_metadata[key] = [value]
+
+        self.cuboid_index.add_primitive_to_index(
+            self.primitive_counter, self.time_step, self.scene_counter
+        )
+
+        # Update the primitive_counter.
+        primitive_id = self.primitive_counter
+        self.primitive_counter += 1
+
+        return primitive_id
+
+    def _add_cuboid_composite(self, composite: CompositeCube) -> slice:
         num_cubes = composite.faces.shape[0]
 
         # Update bounding box
@@ -223,79 +298,7 @@ class Space:
             raise NotImplementedError("Currently, styles are not supported.")
             ...
 
-        self._add_name(composite.name, [None, [primitive_ids]])
-
-        self.num_objs += 1
-        self.changelog.append(Addition(self.time_step, None))
-        self.time_step += 1
-        self._update_bounds(primitive_ids)
-
-    def _add_cuboid_primitive(self, cuboid: Cube | Cuboid) -> int:
-        """
-        Add a primitive to the space by updating the various indices and data
-        structures, and return its ID.
-
-        # Args
-            cuboid: Primitive Cube/Cuboid to add to the space's various data
-            structures.
-        """
-        cuboid_bounding_box = cuboid.bounding_box()
-        cuboid_mean = np.mean(cuboid.points(), axis=0).reshape((3, 1))
-
-        # Update the bounding box - via total, mean, and dims.
-        self.total += cuboid_mean
-
-        self.mean = self.total / (self.num_objs + 1)
-
-        if self.primitive_counter == 0:
-            dim = cuboid_bounding_box
-        else:
-            # Since there are multiple objects, ensure the resulting dimensions
-            # of the surrounding box are the extrema of the objects within.
-            dim = np.array(
-                [
-                    [
-                        min(self.dims[i][0], cuboid_bounding_box[i][0]),
-                        max(self.dims[i][1], cuboid_bounding_box[i][1]),
-                    ]
-                    for i in range(len(cuboid_bounding_box))
-                ]
-            ).reshape((3, 2))
-
-        self.dims = dim
-
-        # Update the coordinate data, resizing if necessary.
-        current_no_of_entries = self.cuboid_coordinates.shape[0]
-        if self.primitive_counter >= current_no_of_entries:
-            # refcheck set to False since this avoids issues with the debugger
-            # referencing the array!
-            self.cuboid_coordinates.resize(
-                (2 * current_no_of_entries, *self.cuboid_coordinates.shape[1:]),
-                refcheck=False,
-            )
-
-        # Add shape data for this cuboid.
-        w, h, d = cuboid.shape()
-        self.cuboid_shapes[self.primitive_counter] = w, d, h
-
-        self.cuboid_coordinates[self.primitive_counter] = cuboid.faces
-
-        # Update the visual metadata store.
-        for key, value in cuboid.visual_metadata().items():
-            if key in self.cuboid_visual_metadata.keys():
-                self.cuboid_visual_metadata[key].append(value)
-            else:
-                self.cuboid_visual_metadata[key] = [value]
-
-        self.cuboid_index.add_primitive_to_index(
-            self.primitive_counter, self.time_step, self.scene_counter
-        )
-
-        # Update the primitive_counter.
-        primitive_id = self.primitive_counter
-        self.primitive_counter += 1
-
-        return primitive_id
+        return primitive_ids
 
     def _add_name(
         self,
@@ -476,7 +479,7 @@ class Space:
 
         Exactly one of `coordinate`, `name`, `timestep`, or `scene` must be set.
         The selection can refer to multiple objects - in this case, a duplicate
-        is made for each object in the selection.
+        is made for each object in the selection. An empty selection is a no-op.
 
         Note that all objects created will be treated as having been created at
         the same timestep.
@@ -511,17 +514,103 @@ class Space:
             )
 
         if coordinate is not None:
-            primitive_ids, _ = self._select_by_coordinate(coordinate)
+            val, func = coordinate, self._select_by_coordinate
         if name is not None:
-            primitive_ids = self._select_by_name(name)
+            val, func = name, self._select_by_name
         if timestep is not None:
-            primitive_ids = self._select_by_timestep(timestep)
+            val, func = timestep, self._select_by_timestep
         if scene is not None:
-            primitive_ids = self._select_by_scene(scene)
+            val, func = scene, self._select_by_scene
 
-        # TODO: You ideally want an index of which primitives correspond to
-        # composites, if any.
-        print(primitive_ids)
+        primitive_ids, composite_ids = func(val)
+
+        if len(primitive_ids) == 0 and len(composite_ids) == 0:
+            return None
+
+        # Interleave the kwargs with the IDs to support the iterable case.
+        total_number_of_ids = len(primitive_ids) + len(composite_ids)
+        interleaved_kwargs = []
+        for i in range(total_number_of_ids):
+            kwargs_for_id = {}
+            for key in kwargs.keys():
+                if key not in self.cuboid_visual_metadata.keys():
+                    raise KeyError(
+                        "The provided key doesn't match any valid visual "
+                        "property."
+                    )
+                if isinstance(kwargs[key], list):
+                    kwargs_for_id[key] = kwargs[key][i]
+                else:
+                    kwargs_for_id[key] = kwargs[key]
+            interleaved_kwargs.append(kwargs_for_id)
+
+        new_primitive_ids = []
+        for primitive, vis_met_data in zip(primitive_ids, interleaved_kwargs):
+            visual_metadata = {
+                key: self.cuboid_visual_metadata[key][primitive]
+                for key in self.cuboid_visual_metadata.keys()
+            }
+            # Take the visual metadata, with the user-provided ones taking
+            # precedence.
+            visual_metadata = visual_metadata | vis_met_data
+            # We use a Cuboid for handling both Cubes and Cuboids.
+            # Swap the axes around here - otherwise you will get double-swapping
+            # of the dimensions.
+            base_x, base_z, base_y = self.cuboid_coordinates[primitive][0][0]
+            transformed_base = np.array([base_x, base_y, base_z])
+            w, d, h = self.cuboid_shapes[primitive]
+            cuboid = Cuboid(
+                transformed_base + offset,
+                w,
+                h,
+                d,
+                **visual_metadata,
+                name=None,
+            )
+            new_primitive_id = self._add_cuboid_primitive(cuboid)
+            new_primitive_ids.append(new_primitive_id)
+            self.num_objs += 1
+
+        new_composite_ids = []
+        for composite, vis_met_data in zip(composite_ids, interleaved_kwargs):
+            start = composite.start
+            visual_metadata = {
+                key: self.cuboid_visual_metadata[key][start]
+                for key in self.cuboid_visual_metadata.keys()
+            }
+            # Take the visual metadata, with the user-provided ones taking
+            # precedence.
+            visual_metadata = visual_metadata | vis_met_data
+            base_x, base_z, base_y = self.cuboid_coordinates[start][0][0]
+            transformed_base = np.array([base_x, base_y, base_z])
+            w, d, h = self.cuboid_shapes[start]
+            new_composite_ids.append(
+                self._add_cuboid_composite(
+                    CompositeCube(
+                        transformed_base + offset,
+                        int(w),
+                        int(h),
+                        int(d),
+                        **visual_metadata,
+                        name=None,
+                    )
+                )
+            )
+            self.num_objs += 1
+
+        if len(new_primitive_ids) > 0:
+            min_id = new_primitive_ids[0]
+        else:
+            min_id = new_composite_ids[0].start
+
+        if len(new_composite_ids) == 0:
+            max_id = new_primitive_ids[-1]
+        else:
+            max_id = new_composite_ids[-1].stop - 1
+
+        self.changelog.append(Addition(self.time_step, None))
+        self.time_step += 1
+        self._update_bounds(slice(min_id, max_id + 1))
 
     def _select_by_coordinate(
         self, coordinate: np.ndarray

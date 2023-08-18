@@ -138,7 +138,7 @@ class Space:
         self.total += np.mean(flattened_faces, axis=0).reshape((3, 1))
 
         # We only add one to the denominator because we added a single object.
-        self.mean = self.total / (self.primitive_counter + 1)
+        self.mean = self.total / (self.num_objs + 1)
 
         composite_points = np.array(
             [composite.faces[0][0], composite.faces[-1][-1]]
@@ -233,7 +233,7 @@ class Space:
         # Update the bounding box - via total, mean, and dims.
         self.total += cuboid_mean
 
-        self.mean = self.total / (self.primitive_counter + 1)
+        self.mean = self.total / (self.num_objs + 1)
 
         if self.primitive_counter == 0:
             dim = cuboid_bounding_box

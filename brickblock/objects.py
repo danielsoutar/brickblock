@@ -113,7 +113,7 @@ class Cube:
         """
         return np.array([self.faces[0], self.faces[-1]]).reshape((8, 3))
 
-    def get_visual_metadata(self) -> dict[str, Any]:
+    def visual_metadata(self) -> dict[str, Any]:
         """
         Get the visual properties for this cube.
         """
@@ -127,7 +127,7 @@ class Cube:
     # TODO: Decide on interface - do we want this not-really-bounding box AND
     # points()? What do they mean for Cubes? What do they mean for
     # CompositeCubes? How would this be used by a Space?
-    def get_bounding_box(self) -> np.ndarray:
+    def bounding_box(self) -> np.ndarray:
         """
         Get the bounding box around the cube's `points`.
 
@@ -303,7 +303,7 @@ class Cuboid:
         """
         return np.array([self.faces[0], self.faces[-1]]).reshape((8, 3))
 
-    def get_visual_metadata(self) -> dict[str, Any]:
+    def visual_metadata(self) -> dict[str, Any]:
         """
         Get the visual properties for this cuboid.
         """
@@ -317,7 +317,7 @@ class Cuboid:
     # TODO: Decide on interface - do we want this not-really-bounding box AND
     # points()? What do they mean for Cubes/Cuboids/CompositeCubes? How would
     # this be used by a Space?
-    def get_bounding_box(self) -> np.ndarray:
+    def bounding_box(self) -> np.ndarray:
         """
         Get the bounding box around the cuboid's `points`.
 
@@ -519,7 +519,7 @@ class CompositeCube:
         # entire object.
         return np.array([]).reshape(())
 
-    def get_visual_metadata(self) -> dict[str, Any]:
+    def visual_metadata(self) -> dict[str, Any]:
         """
         Get the visual properties for this object.
         """
@@ -533,7 +533,7 @@ class CompositeCube:
     # TODO: Decide on interface - do we want this not-really-bounding box AND
     # points()? What do they mean for Cubes? What do they mean for
     # CompositeCubes? How would this be used by a Space?
-    def get_bounding_box(self) -> np.ndarray:
+    def bounding_box(self) -> np.ndarray:
         """
         TODO: See above.
         """

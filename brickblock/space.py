@@ -192,7 +192,7 @@ class Space:
         self.cuboid_coordinates[base:offset] = composite.faces
 
         # Update visual metadata store
-        for key, value in composite.get_visual_metadata().items():
+        for key, value in composite.visual_metadata().items():
             if key in self.cuboid_visual_metadata.keys():
                 self.cuboid_visual_metadata[key].extend([value] * num_cubes)
             else:
@@ -227,7 +227,7 @@ class Space:
             cuboid: Primitive Cube/Cuboid to add to the space's various data
             structures.
         """
-        cuboid_bounding_box = cuboid.get_bounding_box()
+        cuboid_bounding_box = cuboid.bounding_box()
         cuboid_mean = np.mean(cuboid.points(), axis=0).reshape((3, 1))
 
         # Update the bounding box - via total, mean, and dims.
@@ -265,7 +265,7 @@ class Space:
         self.cuboid_coordinates[self.primitive_counter] = cuboid.faces
 
         # Update the visual metadata store.
-        for key, value in cuboid.get_visual_metadata().items():
+        for key, value in cuboid.visual_metadata().items():
             if key in self.cuboid_visual_metadata.keys():
                 self.cuboid_visual_metadata[key].append(value)
             else:

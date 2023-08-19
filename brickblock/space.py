@@ -28,11 +28,11 @@ class Addition(SpaceStateChange):
 
 @dataclass
 class Mutation(SpaceStateChange):
-    name: str | None
-    primitive_id: int | None
-    timestep_id: int | None
-    scene_id: int | None
-    subject: np.ndarray | tuple[dict[str, Any], dict[str, Any]]
+    subject: np.ndarray | dict[str, Any]
+    name: str | None = None
+    primitive_id: int | None = None
+    timestep_id: int | None = None
+    scene_id: int | None = None
 
 
 @dataclass
@@ -90,6 +90,8 @@ class Space:
     cuboid_visual_metadata: dict[str, list]
     cuboid_index: SpaceIndex
     cuboid_names: dict[str, tuple[list[int], list[slice]]]
+    # TODO: Document the changelog structure (mutations are stored as primitives
+    # then composites per updated field).
     changelog: list[SpaceStateChange]
 
     def __init__(self) -> None:
@@ -382,9 +384,10 @@ class Space:
         primitives_to_update, composites_to_update = self._select_by_coordinate(
             coordinate
         )
-        self._mutate_by_ids(
-            primitives_to_update, composites_to_update, **kwargs
-        )
+        if len(primitives_to_update) > 0 or len(composites_to_update) > 0:
+            self._mutate_by_ids(
+                primitives_to_update, composites_to_update, **kwargs
+            )
 
     def mutate_by_name(self, name: str, **kwargs) -> None:
         """
@@ -397,9 +400,10 @@ class Space:
                 property values.
         """
         primitives_to_update, composites_to_update = self._select_by_name(name)
-        self._mutate_by_ids(
-            primitives_to_update, composites_to_update, **kwargs
-        )
+        if len(primitives_to_update) > 0 or len(composites_to_update) > 0:
+            self._mutate_by_ids(
+                primitives_to_update, composites_to_update, **kwargs
+            )
 
     def mutate_by_timestep(self, timestep: int, **kwargs) -> None:
         """
@@ -415,9 +419,10 @@ class Space:
         primitives_to_update, composites_to_update = self._select_by_timestep(
             timestep
         )
-        self._mutate_by_ids(
-            primitives_to_update, composites_to_update, **kwargs
-        )
+        if len(primitives_to_update) > 0 or len(composites_to_update) > 0:
+            self._mutate_by_ids(
+                primitives_to_update, composites_to_update, **kwargs
+            )
 
     def mutate_by_scene(self, scene: int, **kwargs) -> None:
         """
@@ -432,9 +437,10 @@ class Space:
         primitives_to_update, composites_to_update = self._select_by_scene(
             scene
         )
-        self._mutate_by_ids(
-            primitives_to_update, composites_to_update, **kwargs
-        )
+        if len(primitives_to_update) > 0 or len(composites_to_update) > 0:
+            self._mutate_by_ids(
+                primitives_to_update, composites_to_update, **kwargs
+            )
 
     def _mutate_by_ids(
         self, primitive_ids: list[int], composite_ids: list[slice], **kwargs
@@ -444,23 +450,49 @@ class Space:
         `primitive_ids` and `composite_ids` respectively) with the named
         arguments in `kwargs`.
 
+        There is assumed to be at least one primitive or composite to update.
+
         # Args
             primitive_ids: The IDs of all the primitives in the space to update.
             composite_ids: The IDs of all the composites in the space to update.
             kwargs: Sequence of named arguments that contain updated visual
                 property values.
         """
+        before_mutation_kwargs = {}
         for key in kwargs.keys():
             if key not in self.cuboid_visual_metadata.keys():
                 raise KeyError(
                     "The provided key doesn't match any valid visual property."
                 )
+            before_mutation_kwargs[key] = []
             for primitive_id in primitive_ids:
+                old_val = self.cuboid_visual_metadata[key][primitive_id]
+                before_mutation_kwargs[key].append(old_val)
                 self.cuboid_visual_metadata[key][primitive_id] = kwargs[key]
             for composite_id in composite_ids:
                 N = composite_id.stop - composite_id.start
+                old_val = self.cuboid_visual_metadata[key][composite_id.start]
+                before_mutation_kwargs[key].append(old_val)
                 broadcast_val = [kwargs[key]] * N
                 self.cuboid_visual_metadata[key][composite_id] = broadcast_val
+
+        for primitive_id in primitive_ids:
+            self.cuboid_index.add_primitive_to_index(
+                primitive_id,
+                timestep_id=self.time_step,
+                scene_id=self.scene_counter,
+            )
+        for composite_id in composite_ids:
+            self.cuboid_index.add_composite_to_index(
+                composite_id,
+                timestep_id=self.time_step,
+                scene_id=self.scene_counter,
+            )
+
+        self.changelog.append(
+            Mutation(subject=before_mutation_kwargs, timestep_id=self.time_step)
+        )
+        self.time_step += 1
 
     def create_by_offset(
         self,

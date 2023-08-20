@@ -357,10 +357,13 @@ class Space:
     # TODO: Decide how deletion should be implemented. Masking columns seem the
     # most logical, but this could be an issue for memory consumption. On the
     # other hand, 'actual deletion' would involve potentially expensive memory
-    # shuffling.
+    # shuffling and storing of the data in the changelog, which largely
+    # nullifies the memory savings anyway.
     # Moreover, should you even be worrying about deletion? Masking is what you
     # really want in virtually all cases. Deletion should actually be quite rare
     # unless a user does something dumb or adds crazy numbers of objects.
+
+    # TODO: Should `mutate_all`/`create_all_by_offset` be supported?
 
     def mutate_by_coordinate(self, coordinate: np.ndarray, **kwargs) -> None:
         """
@@ -494,7 +497,11 @@ class Space:
         )
         self.time_step += 1
 
-    def create_by_offset(
+    # TODO: Consider whether to support `create_by_offset`, which implies
+    # creating an object with certain attributes, but its position is dictated
+    # by other objects. How would this work?
+
+    def clone_by_offset(
         self,
         offset: np.ndarray,
         coordinate: np.ndarray | None = None,

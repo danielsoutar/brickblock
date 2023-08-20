@@ -1257,11 +1257,11 @@ def test_space_creates_cuboid_from_offset_with_selections() -> None:
     base_point = np.array([0, 0, 0])
     space.add_cube(bb.Cube(base_vector=base_point, scale=2.0, name="my-cube"))
 
-    space.create_by_offset(np.array([12, 0, 0]), coordinate=base_point)
-    space.create_by_offset(np.array([0, 12, 0]), name="my-cube")
-    space.create_by_offset(np.array([0, 0, 12]), timestep=0)
+    space.clone_by_offset(np.array([12, 0, 0]), coordinate=base_point)
+    space.clone_by_offset(np.array([0, 12, 0]), name="my-cube")
+    space.clone_by_offset(np.array([0, 0, 12]), timestep=0)
     space.snapshot()
-    space.create_by_offset(np.array([32, 0, 0]), scene=0)
+    space.clone_by_offset(np.array([32, 0, 0]), scene=0)
 
     # Remember to swap the ys and zs due to the current implementation issue
     # with dims
@@ -1334,13 +1334,13 @@ def test_space_creates_composites_from_offset_with_selections() -> None:
         )
     )
 
-    space.create_by_offset(np.array([12, 0, 0]), coordinate=base_point)
+    space.clone_by_offset(np.array([12, 0, 0]), coordinate=base_point)
     # This should be treated as a no-op.
-    space.create_by_offset(np.array([12, 0, 0]), coordinate=base_point + 37)
-    space.create_by_offset(np.array([0, 12, 0]), name="my-composite")
-    space.create_by_offset(np.array([0, 0, 12]), timestep=0)
+    space.clone_by_offset(np.array([12, 0, 0]), coordinate=base_point + 37)
+    space.clone_by_offset(np.array([0, 12, 0]), name="my-composite")
+    space.clone_by_offset(np.array([0, 0, 12]), timestep=0)
     space.snapshot()
-    space.create_by_offset(np.array([32, 0, 0]), scene=0)
+    space.clone_by_offset(np.array([32, 0, 0]), scene=0)
 
     # Remember to swap the ys and zs due to the current implementation issue
     # with dims
@@ -1439,14 +1439,14 @@ def test_space_create_from_offset_only_uses_one_selection() -> None:
         "Exactly one selection argument can be set when creating objects."
     )
     with pytest.raises(Exception, match=expected_err_msg):
-        space.create_by_offset(
+        space.clone_by_offset(
             np.array([12, 0, 0]), coordinate=base_point, name="my-composite"
         )
 
     # TODO: Consider whether to support this case - and whether named objects
     # should support mutation of an earlier iteration.
     with pytest.raises(Exception, match=expected_err_msg):
-        space.create_by_offset(
+        space.clone_by_offset(
             np.array([12, 0, 0]), timestep=0, name="my-composite"
         )
 
@@ -1463,7 +1463,7 @@ def test_space_creates_composites_from_offset_with_updated_visuals() -> None:
     )
 
     # Check the scalar case.
-    space.create_by_offset(
+    space.clone_by_offset(
         np.array([12, 0, 0]),
         coordinate=base_point,
         facecolor="blue",
@@ -1471,9 +1471,9 @@ def test_space_creates_composites_from_offset_with_updated_visuals() -> None:
         alpha=0.2,
     )
     # This should be treated as a no-op.
-    space.create_by_offset(np.array([12, 0, 0]), coordinate=base_point + 37)
-    space.create_by_offset(np.array([0, 12, 0]), name="my-composite")
-    space.create_by_offset(np.array([0, 0, 12]), timestep=0)
+    space.clone_by_offset(np.array([12, 0, 0]), coordinate=base_point + 37)
+    space.clone_by_offset(np.array([0, 12, 0]), name="my-composite")
+    space.clone_by_offset(np.array([0, 0, 12]), timestep=0)
     space.snapshot()
     # Check the iterable case.
     num_cubes_per_composite = w * h * d
@@ -1491,7 +1491,7 @@ def test_space_creates_composites_from_offset_with_updated_visuals() -> None:
     ]
     # By default the alpha should be 1.0 when face colors are set, but we make
     # that explicit here for clarity.
-    space.create_by_offset(
+    space.clone_by_offset(
         np.array([32, 0, 0]),
         scene=0,
         facecolor=new_face_colors,

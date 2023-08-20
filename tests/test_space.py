@@ -457,7 +457,7 @@ def test_space_can_add_composite_cube() -> None:
         space.cuboid_shapes,
         np.concatenate(
             (
-                np.broadcast_to(np.array([w, d, h]), (num_cubes, 3)),
+                np.broadcast_to(np.array([w, h, d]), (num_cubes, 3)),
                 np.zeros((expected_num_entries - num_cubes, 3)),
             ),
             axis=0,
@@ -543,7 +543,7 @@ def test_space_can_add_cuboid() -> None:
         space.cuboid_shapes,
         np.concatenate(
             (
-                np.array([[4, 6, 2]]),
+                np.array([[4, 2, 6]]),
                 np.zeros((expected_num_entries - 1, 3)),
             ),
             axis=0,
@@ -636,13 +636,13 @@ def test_space_does_not_allow_duplicate_names() -> None:
 def test_space_mutates_primitive_by_coordinate() -> None:
     space = bb.Space()
 
-    space.add_cube(bb.Cube(base_vector=np.array([0, 0, 0])))
+    space.add_cube(bb.Cube(base_vector=np.array([1, 2, 3])))
 
     assert space.cuboid_visual_metadata["facecolor"][0] is None
     assert space.cuboid_visual_metadata["alpha"][0] == 0.0
 
     space.mutate_by_coordinate(
-        coordinate=np.array([0, 0, 0]), facecolor="red", alpha=0.3
+        coordinate=np.array([1, 2, 3]), facecolor="red", alpha=0.3
     )
 
     # Check the changelog reflects the mutation, storing the previous state.
@@ -664,7 +664,7 @@ def test_space_mutates_composite_by_coordinate() -> None:
 
     space.add_composite(
         bb.CompositeCube(
-            base_vector=np.array([0, 0, 0]),
+            base_vector=np.array([1, 2, 3]),
             w=4,
             h=3,
             d=2,
@@ -682,7 +682,7 @@ def test_space_mutates_composite_by_coordinate() -> None:
         assert space.cuboid_visual_metadata["linewidth"][i] == 0.5
 
     space.mutate_by_coordinate(
-        coordinate=np.array([0, 0, 0]), facecolor=None, alpha=0.0
+        coordinate=np.array([1, 2, 3]), facecolor=None, alpha=0.0
     )
 
     # Check the changelog reflects the mutation, storing the previous state.
@@ -714,7 +714,7 @@ def test_space_does_not_mutate_by_coordinate_non_base_intersection() -> None:
 
     space.add_composite(
         bb.CompositeCube(
-            base_vector=np.array([0, 0, 0]),
+            base_vector=np.array([0, 0, 1]),
             w=4,
             h=3,
             d=2,
@@ -755,7 +755,7 @@ def test_space_mutates_multiple_objects_by_coordinate() -> None:
 
     space.add_composite(
         bb.CompositeCube(
-            base_vector=np.array([0, 0, 0]),
+            base_vector=np.array([1, 2, 3]),
             w=4,
             h=3,
             d=2,
@@ -767,7 +767,7 @@ def test_space_mutates_multiple_objects_by_coordinate() -> None:
 
     num_cubes = 4 * 3 * 2
 
-    space.add_cube(bb.Cube(base_vector=np.array([0, 0, 0])))
+    space.add_cube(bb.Cube(base_vector=np.array([1, 2, 3])))
 
     for i in range(num_cubes):
         assert space.cuboid_visual_metadata["facecolor"][i] == "yellow"
@@ -779,7 +779,7 @@ def test_space_mutates_multiple_objects_by_coordinate() -> None:
     assert space.cuboid_visual_metadata["linewidth"][-1] == 0.1
 
     space.mutate_by_coordinate(
-        coordinate=np.array([0, 0, 0]), facecolor="red", alpha=1.0
+        coordinate=np.array([1, 2, 3]), facecolor="red", alpha=1.0
     )
 
     # Check the changelog reflects the mutation, storing the previous state.
@@ -1399,7 +1399,7 @@ def test_space_creates_composites_from_offset_with_selections() -> None:
         np.concatenate(
             (
                 np.broadcast_to(
-                    np.array([[3, 2, 4]]), (expected_num_entries, 3)
+                    np.array([[3, 4, 2]]), (expected_num_entries, 3)
                 ),
                 np.zeros((320 - expected_num_entries, 3)),
             ),

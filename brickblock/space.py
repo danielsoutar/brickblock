@@ -108,6 +108,19 @@ class Space:
         self.cuboid_index = SpaceIndex()
         self.cuboid_names = {}
         self.changelog = []
+        # The default mapping is W -> x-axis, H -> z-axis, D -> y-axis.
+        # TODO: Decouple from this fixed basis - should swap height/depth.
+        self.dimensions = {"width": 0, "height": 2, "depth": 1}
+        # We represent the transform from user-provided points (assumed in XYZ
+        # order) to matplotlib points (assumed in XZY order).
+        # TODO: Check this is the correct terminology.
+        self.basis = np.zeros((3, 3))
+        self.basis[self.dimensions["width"], 0] = 1
+        self.basis[self.dimensions["height"], 1] = 1
+        self.basis[self.dimensions["depth"], 2] = 1
+
+    def _convert_basis(self, coordinate: np.ndarray) -> np.ndarray:
+        return np.dot(coordinate, self.basis)
 
     def add_cube(self, cube: Cube) -> None:
         """
@@ -187,8 +200,7 @@ class Space:
             )
 
         # Add shape data for this cuboid.
-        w, h, d = cuboid.shape()
-        self.cuboid_shapes[self.primitive_counter] = w, d, h
+        self.cuboid_shapes[self.primitive_counter] = cuboid.shape()
 
         self.cuboid_coordinates[self.primitive_counter] = cuboid.faces
 
@@ -223,16 +235,12 @@ class Space:
             [composite.faces[0][0], composite.faces[-1][-1]]
         ).reshape((8, 3))
 
-        x_min = np.min(composite_points[:, 0])
-        x_max = np.max(composite_points[:, 0])
-        z_min = np.min(composite_points[:, 1])
-        z_max = np.max(composite_points[:, 1])
-        y_min = np.min(composite_points[:, 2])
-        y_max = np.max(composite_points[:, 2])
+        mins = [np.min(composite_points[:, i]) for i in range(3)]
+        maxes = [np.max(composite_points[:, i]) for i in range(3)]
 
-        composite_extrema = np.array(
-            [[x_min, x_max], [z_min, z_max], [y_min, y_max]]
-        ).reshape((3, 2))
+        composite_extrema = np.empty((3, 2))
+        for i, (min_dim, max_dim) in enumerate(zip(mins, maxes)):
+            composite_extrema[i] = min_dim, max_dim
 
         if self.primitive_counter == 0:
             dim = composite_extrema
@@ -277,8 +285,7 @@ class Space:
 
         # Add shape data for this composite.
         # In this case, broadcast the entire shape across all of its primitives.
-        w, h, d = composite.shape()
-        self.cuboid_shapes[base:offset] = w, d, h
+        self.cuboid_shapes[base:offset] = composite.shape()
 
         # Update visual metadata store
         for key, value in composite.visual_metadata().items():
@@ -595,14 +602,12 @@ class Space:
             # We use a Cuboid for handling both Cubes and Cuboids.
             # Swap the axes around here - otherwise you will get double-swapping
             # of the dimensions.
-            base_x, base_z, base_y = self.cuboid_coordinates[primitive][0][0]
-            transformed_base = np.array([base_x, base_y, base_z])
-            w, d, h = self.cuboid_shapes[primitive]
+            transformed_base = self._convert_basis(
+                self.cuboid_coordinates[primitive][0][0]
+            )
             cuboid = Cuboid(
                 transformed_base + offset,
-                w,
-                h,
-                d,
+                *self.cuboid_shapes[primitive],
                 **visual_metadata,
                 name=None,
             )
@@ -620,16 +625,17 @@ class Space:
             # Take the visual metadata, with the user-provided ones taking
             # precedence.
             visual_metadata = visual_metadata | vis_met_data
-            base_x, base_z, base_y = self.cuboid_coordinates[start][0][0]
-            transformed_base = np.array([base_x, base_y, base_z])
-            w, d, h = self.cuboid_shapes[start]
+            # Swap the axes around here - otherwise you will get double-swapping
+            # of the dimensions.
+            transformed_base = self._convert_basis(
+                self.cuboid_coordinates[start][0][0]
+            )
+            shape = tuple(int(val) for val in self.cuboid_shapes[start])
             new_composite_ids.append(
                 self._add_cuboid_composite(
                     CompositeCube(
                         transformed_base + offset,
-                        int(w),
-                        int(h),
-                        int(d),
+                        *shape,
                         **visual_metadata,
                         name=None,
                     )
@@ -662,8 +668,7 @@ class Space:
 
         # Map the coordinate to the correct representation.
         # TODO: Decouple the user from a fixed basis.
-        w, h, d = coordinate
-        coordinate = np.array([w, d, h])
+        coordinate = self._convert_basis(coordinate)
 
         # First gather the IDs of primitive entries that match the coordinate.
         matching_base_vectors = []

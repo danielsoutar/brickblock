@@ -4,7 +4,7 @@ V1
 
 DOD for each of these: unit tests (visualisation involves manually checking in matplotlib)
 
-23/28 done
+23/29 done
 
 - [X] Create basic `Cube` object
 - [X] Correctly visualise a `Cube` in matplotlib
@@ -33,10 +33,9 @@ DOD for each of these: unit tests (visualisation involves manually checking in m
 - [X] Allow creating an object by offset from a given object (by coordinate/name/timestep ID)
   - If allowing by scene ID, that implies multiple objects in a single timestep.
   - Unless you offset each object in terms of timestep as well.
-- [ ] Allow mutating an object by affine transform (by name, timestep ID, scene ID)
-  - Need to figure out whether these 'happen-before' or 'happen-after'
-  - Need to figure out whether to include inverse transform, etc.
-- [ ] Allow mutating an object by affine transform (by coordinate ID)
+- [ ] Allow mutating an object by translation (by all 4 selections, store as vector)
+- [ ] Allow mutating an object by reflection (by all 4 selections, store as vector of 1s and -1s)
+- [ ] Allow mutating an object by non-negative scaling (by all 4 selections, store as vector)
   - This could be trickier and potentially not needed.
 - [ ] Distinguish between 'scene' and 'non-scene' timesteps
 - [ ] Create GIF from a multi-scene `Space`

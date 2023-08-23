@@ -1,6 +1,6 @@
 # TODO: Get isort working so we can sort these imports
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Callable
 
 import matplotlib.pyplot as plt
 
@@ -585,10 +585,13 @@ class Space:
     ) -> None:
         """
         Transform the spatial data of all objects - composite or primitive, with
-        base vectors equal to `coordinate` - by the `translate` vector.
+        base vectors equal to `coordinate` - by one of the transform vectors.
+
+        Note that, since affine transformations are in general not commutative,
+        only one transform can be set.
 
         Both an empty selection (i.e. no objects match with the coordinate) or a
-        zero translate vector (i.e. the identity) are treated as no-ops.
+        zero transform vector are treated as no-ops.
 
         Primitives that are part of composites are not included - that is, if
         `coordinate` intersects with a composite on any point other than its
@@ -608,29 +611,37 @@ class Space:
         non_zero_selection = (
             len(primitives_to_update) > 0 or len(composites_to_update) > 0
         )
-        non_zero_translate = np.any(translate)
 
-        if not (non_zero_selection and non_zero_translate):
+        exactly_one_set = sum([a is not None for a in [translate]]) == 1
+        if not exactly_one_set:
+            raise ValueError(
+                "Exactly one transform argument can be set when transforming "
+                "objects."
+            )
+
+        if translate is not None:
+            val = translate
+            func = lambda obj: obj + translate  # noqa: E731
+            kwargs = {"transform": -translate, "transform_name": "translation"}
+
+        non_zero_transform = np.any(val)
+
+        if not (non_zero_selection and non_zero_transform):
             return None
 
-        self.changelog.append(
-            Transform(
-                transform=-translate,
-                transform_name="translation",
-                coordinate=coordinate,
-            )
-        )
-        self._transform_by_ids(
-            primitives_to_update, composites_to_update, translate
-        )
+        self.changelog.append(Transform(coordinate=coordinate, **kwargs))
+        self._transform_by_ids(primitives_to_update, composites_to_update, func)
 
     def transform_by_name(self, name: str, translate: np.ndarray) -> None:
         """
         Transform the spatial data of all objects - composite or primitive, that
-        that has its name equal to `name` - by the `translate` vector.
+        that has its name equal to `name` - by one of the transform vectors.
 
-        Both an empty selection (i.e. no objects match with the name) or a zero
-        translate vector (i.e. the identity) are treated as no-ops.
+        Note that, since affine transformations are in general not commutative,
+        only one transform can be set.
+
+        Both an empty selection (i.e. no objects match with the coordinate) or a
+        zero transform vector are treated as no-ops.
 
         # Args
             name: The name of the object in the space to update.
@@ -640,29 +651,39 @@ class Space:
         non_zero_selection = (
             len(primitives_to_update) > 0 or len(composites_to_update) > 0
         )
-        non_zero_translate = np.any(translate)
 
-        if not (non_zero_selection and non_zero_translate):
+        exactly_one_set = sum([a is not None for a in [translate]]) == 1
+        if not exactly_one_set:
+            raise ValueError(
+                "Exactly one transform argument can be set when transforming "
+                "objects."
+            )
+
+        if translate is not None:
+            val = translate
+            func = lambda obj: obj + translate  # noqa: E731
+            kwargs = {"transform": -translate, "transform_name": "translation"}
+
+        non_zero_transform = np.any(val)
+
+        if not (non_zero_selection and non_zero_transform):
             return None
 
-        self.changelog.append(
-            Transform(
-                transform=-translate, transform_name="translation", name=name
-            )
-        )
-        self._transform_by_ids(
-            primitives_to_update, composites_to_update, translate
-        )
+        self.changelog.append(Transform(name=name, **kwargs))
+        self._transform_by_ids(primitives_to_update, composites_to_update, func)
 
     def transform_by_timestep(
         self, timestep: int, translate: np.ndarray
     ) -> None:
         """
         Transform the spatial data of all objects - composite or primitive, that
-        was referenced at timestep `timestep` - by the `translate` vector.
+        was referenced at timestep `timestep` - by one of the transform vectors.
 
-        Both an empty selection (i.e. no objects match with the timestep) or a
-        zero translate vector (i.e. the identity) are treated as no-ops.
+        Note that, since affine transformations are in general not commutative,
+        only one transform can be set.
+
+        Both an empty selection (i.e. no objects match with the coordinate) or a
+        zero transform vector are treated as no-ops.
 
         # Args
             timestep: The timestep of all the objects in the space to update.
@@ -674,29 +695,37 @@ class Space:
         non_zero_selection = (
             len(primitives_to_update) > 0 or len(composites_to_update) > 0
         )
-        non_zero_translate = np.any(translate)
 
-        if not (non_zero_selection and non_zero_translate):
+        exactly_one_set = sum([a is not None for a in [translate]]) == 1
+        if not exactly_one_set:
+            raise ValueError(
+                "Exactly one transform argument can be set when transforming "
+                "objects."
+            )
+
+        if translate is not None:
+            val = translate
+            func = lambda obj: obj + translate  # noqa: E731
+            kwargs = {"transform": -translate, "transform_name": "translation"}
+
+        non_zero_transform = np.any(val)
+
+        if not (non_zero_selection and non_zero_transform):
             return None
 
-        self.changelog.append(
-            Transform(
-                transform=-translate,
-                transform_name="translation",
-                timestep_id=timestep,
-            )
-        )
-        self._transform_by_ids(
-            primitives_to_update, composites_to_update, translate
-        )
+        self.changelog.append(Transform(timestep_id=timestep, **kwargs))
+        self._transform_by_ids(primitives_to_update, composites_to_update, func)
 
     def transform_by_scene(self, scene: int, translate: np.ndarray) -> None:
         """
         Transform the spatial data of all objects - composite or primitive, that
-        was referenced at scene `scene` - by the `translate` vector.
+        was referenced at scene `scene` - by one of the transform vectors.
 
-        Both an empty selection (i.e. no objects match with the scene) or a zero
-        translate vector (i.e. the identity) are treated as no-ops.
+        Note that, since affine transformations are in general not commutative,
+        only one transform can be set.
+
+        Both an empty selection (i.e. no objects match with the coordinate) or a
+        zero transform vector are treated as no-ops.
 
         # Args
             scene: The scene of all the objects in the space to update.
@@ -708,35 +737,40 @@ class Space:
         non_zero_selection = (
             len(primitives_to_update) > 0 or len(composites_to_update) > 0
         )
-        non_zero_translate = np.any(translate)
 
-        if not (non_zero_selection and non_zero_translate):
+        exactly_one_set = sum([a is not None for a in [translate]]) == 1
+        if not exactly_one_set:
+            raise ValueError(
+                "Exactly one transform argument can be set when transforming "
+                "objects."
+            )
+
+        if translate is not None:
+            val = translate
+            func = lambda obj: obj + translate  # noqa: E731
+            kwargs = {"transform": -translate, "transform_name": "translation"}
+
+        non_zero_transform = np.any(val)
+
+        if not (non_zero_selection and non_zero_transform):
             return None
 
-        self.changelog.append(
-            Transform(
-                transform=-translate,
-                transform_name="translation",
-                scene_id=scene,
-            )
-        )
-        self._transform_by_ids(
-            primitives_to_update, composites_to_update, translate
-        )
+        self.changelog.append(Transform(scene_id=scene, **kwargs))
+        self._transform_by_ids(primitives_to_update, composites_to_update, func)
 
     def _transform_by_ids(
         self,
         primitive_ids: list[int],
         composite_ids: list[slice],
-        translate: np.ndarray,
+        func: Callable[[np.ndarray], np.ndarray],
     ) -> None:
         for primitive_id in primitive_ids:
             cuboid = self.cuboid_coordinates[primitive_id]
-            self.cuboid_coordinates[primitive_id] = cuboid + translate
+            self.cuboid_coordinates[primitive_id] = func(cuboid)
 
         for composite_id in composite_ids:
             composite = self.cuboid_coordinates[composite_id]
-            self.cuboid_coordinates[composite_id] = composite + translate
+            self.cuboid_coordinates[composite_id] = func(composite)
 
         for primitive_id in primitive_ids:
             self.cuboid_index.add_primitive_to_index(

@@ -636,19 +636,20 @@ def test_space_does_not_allow_duplicate_names() -> None:
 def test_space_mutates_primitive_by_coordinate() -> None:
     space = bb.Space()
 
-    space.add_cube(bb.Cube(base_vector=np.array([1, 2, 3])))
+    point = np.array([1, 2, 3])
+    space.add_cube(bb.Cube(base_vector=point))
 
     assert space.cuboid_visual_metadata["facecolor"][0] is None
     assert space.cuboid_visual_metadata["alpha"][0] == 0.0
 
-    space.mutate_by_coordinate(
-        coordinate=np.array([1, 2, 3]), facecolor="red", alpha=0.3
-    )
+    space.mutate_by_coordinate(coordinate=point, facecolor="red", alpha=0.3)
 
     # Check the changelog reflects the mutation, storing the previous state.
     assert space.changelog == [
         bb.Addition(0, None),
-        bb.Mutation(subject={"facecolor": [None], "alpha": [0]}, timestep_id=1),
+        bb.Mutation(
+            subject={"facecolor": [None], "alpha": [0]}, coordinate=point
+        ),
     ]
 
     assert space.cuboid_visual_metadata["facecolor"][0] == "red"
@@ -662,9 +663,10 @@ def test_space_mutates_primitive_by_coordinate() -> None:
 def test_space_mutates_composite_by_coordinate() -> None:
     space = bb.Space()
 
+    point = np.array([1, 2, 3])
     space.add_composite(
         bb.CompositeCube(
-            base_vector=np.array([1, 2, 3]),
+            base_vector=point,
             w=4,
             h=3,
             d=2,
@@ -681,9 +683,7 @@ def test_space_mutates_composite_by_coordinate() -> None:
         assert space.cuboid_visual_metadata["alpha"][i] == 0.3
         assert space.cuboid_visual_metadata["linewidth"][i] == 0.5
 
-    space.mutate_by_coordinate(
-        coordinate=np.array([1, 2, 3]), facecolor=None, alpha=0.0
-    )
+    space.mutate_by_coordinate(coordinate=point, facecolor=None, alpha=0.0)
 
     # Check the changelog reflects the mutation, storing the previous state.
     assert space.changelog == [
@@ -693,7 +693,7 @@ def test_space_mutates_composite_by_coordinate() -> None:
                 "facecolor": ["yellow"],
                 "alpha": [0.3],
             },
-            timestep_id=1,
+            coordinate=point,
         ),
     ]
 
@@ -709,53 +709,13 @@ def test_space_mutates_composite_by_coordinate() -> None:
     assert space.cuboid_index.get_composites_by_timestep(1) == [composite]
 
 
-def test_space_does_not_mutate_by_coordinate_non_base_intersection() -> None:
-    space = bb.Space()
-
-    space.add_composite(
-        bb.CompositeCube(
-            base_vector=np.array([0, 0, 1]),
-            w=4,
-            h=3,
-            d=2,
-            facecolor="yellow",
-            alpha=0.3,
-            linewidth=0.5,
-        )
-    )
-
-    num_cubes = 4 * 3 * 2
-
-    for i in range(num_cubes):
-        assert space.cuboid_visual_metadata["facecolor"][i] == "yellow"
-        assert space.cuboid_visual_metadata["alpha"][i] == 0.3
-        assert space.cuboid_visual_metadata["linewidth"][i] == 0.5
-
-    space.mutate_by_coordinate(
-        coordinate=np.array([0, 1, 0]), facecolor=None, alpha=0.0
-    )
-
-    # Check the changelog reflects no mutation.
-    assert space.changelog == [bb.Addition(0, None)]
-
-    for i in range(num_cubes):
-        assert space.cuboid_visual_metadata["facecolor"][i] == "yellow"
-        assert space.cuboid_visual_metadata["alpha"][i] == 0.3
-        assert space.cuboid_visual_metadata["linewidth"][i] == 0.5
-
-    composite = slice(0, num_cubes)
-
-    assert list(space.cuboid_index.composites()) == [composite]
-    assert space.cuboid_index.get_composites_by_timestep(0) == [composite]
-    assert space.cuboid_index.get_composites_by_timestep(1) == []
-
-
 def test_space_mutates_multiple_objects_by_coordinate() -> None:
     space = bb.Space()
 
+    point = np.array([1, 2, 3])
     space.add_composite(
         bb.CompositeCube(
-            base_vector=np.array([1, 2, 3]),
+            base_vector=point,
             w=4,
             h=3,
             d=2,
@@ -767,7 +727,7 @@ def test_space_mutates_multiple_objects_by_coordinate() -> None:
 
     num_cubes = 4 * 3 * 2
 
-    space.add_cube(bb.Cube(base_vector=np.array([1, 2, 3])))
+    space.add_cube(bb.Cube(base_vector=point))
 
     for i in range(num_cubes):
         assert space.cuboid_visual_metadata["facecolor"][i] == "yellow"
@@ -778,9 +738,7 @@ def test_space_mutates_multiple_objects_by_coordinate() -> None:
     assert space.cuboid_visual_metadata["alpha"][-1] == 0.0
     assert space.cuboid_visual_metadata["linewidth"][-1] == 0.1
 
-    space.mutate_by_coordinate(
-        coordinate=np.array([1, 2, 3]), facecolor="red", alpha=1.0
-    )
+    space.mutate_by_coordinate(coordinate=point, facecolor="red", alpha=1.0)
 
     # Check the changelog reflects the mutation, storing the previous state.
     assert space.changelog == [
@@ -791,7 +749,7 @@ def test_space_mutates_multiple_objects_by_coordinate() -> None:
                 "facecolor": [None, "yellow"],
                 "alpha": [0.0, 0.3],
             },
-            timestep_id=2,
+            coordinate=point,
         ),
     ]
 
@@ -833,7 +791,7 @@ def test_space_mutates_primitive_by_name() -> None:
                 "facecolor": [None],
                 "alpha": [0.0],
             },
-            timestep_id=1,
+            name="my-cube",
         ),
     ]
 
@@ -879,7 +837,7 @@ def test_space_mutates_composite_by_name() -> None:
                 "facecolor": ["yellow"],
                 "alpha": [0.3],
             },
-            timestep_id=1,
+            name="my-composite",
         ),
     ]
 
@@ -913,7 +871,7 @@ def test_space_mutates_primitive_by_timestep_id() -> None:
                 "facecolor": [None],
                 "alpha": [0.0],
             },
-            timestep_id=1,
+            timestep_id=0,
         ),
     ]
 
@@ -957,7 +915,7 @@ def test_space_mutates_composite_by_timestep_id() -> None:
                 "facecolor": ["yellow"],
                 "alpha": [0.3],
             },
-            timestep_id=1,
+            timestep_id=0,
         ),
     ]
 
@@ -991,7 +949,7 @@ def test_space_mutates_primitive_by_scene_id() -> None:
                 "facecolor": [None],
                 "alpha": [0.0],
             },
-            timestep_id=1,
+            scene_id=0,
         ),
     ]
 
@@ -1035,7 +993,7 @@ def test_space_mutates_composite_by_scene_id() -> None:
                 "facecolor": ["yellow"],
                 "alpha": [0.3],
             },
-            timestep_id=1,
+            scene_id=0,
         ),
     ]
 
@@ -1066,6 +1024,8 @@ def test_space_mutates_multiple_objects_by_scene_id() -> None:
             name="input-tensor",
         )
     )
+
+    space.add_cube(bb.Cube(base_vector=np.array([12, 14, 3])))
 
     space.add_composite(
         bb.CompositeCube(
@@ -1105,14 +1065,20 @@ def test_space_mutates_multiple_objects_by_scene_id() -> None:
         assert space.cuboid_visual_metadata["alpha"][i] == 0.3
         assert space.cuboid_visual_metadata["linewidth"][i] == 0.5
 
+    offset = num_cubes_input_tensor
+
+    assert space.cuboid_visual_metadata["facecolor"][offset] is None
+    assert space.cuboid_visual_metadata["alpha"][offset] == 0
+    assert space.cuboid_visual_metadata["linewidth"][offset] == 0.1
+
     for i in range(num_cubes_filter_tensor):
-        offset = num_cubes_input_tensor
+        offset = num_cubes_input_tensor + 1
         assert space.cuboid_visual_metadata["facecolor"][offset + i] == "red"
         assert space.cuboid_visual_metadata["alpha"][offset + i] == 0.5
         assert space.cuboid_visual_metadata["linewidth"][offset + i] == 0.7
 
     for i in range(num_cubes_unchanged_tensor):
-        offset = num_cubes_input_tensor + num_cubes_filter_tensor
+        offset = num_cubes_input_tensor + 1 + num_cubes_filter_tensor
         assert space.cuboid_visual_metadata["facecolor"][offset + i] == "orange"
         assert space.cuboid_visual_metadata["alpha"][offset + i] == 0.6
         assert space.cuboid_visual_metadata["linewidth"][offset + i] == 0.8
@@ -1124,34 +1090,41 @@ def test_space_mutates_multiple_objects_by_scene_id() -> None:
         bb.Addition(0, None),
         bb.Addition(1, None),
         bb.Addition(2, None),
+        bb.Addition(3, None),
         bb.Mutation(
             subject={
-                "facecolor": [None, "red"],
-                "alpha": [0.3, 0.5],
-                "linewidth": [0.5, 0.7],
+                "facecolor": [None, None, "red"],
+                "alpha": [0.0, 0.3, 0.5],
+                "linewidth": [0.1, 0.5, 0.7],
             },
-            timestep_id=3,
+            scene_id=0,
         ),
     ]
 
-    for i in range(num_cubes_input_tensor + num_cubes_filter_tensor):
+    for i in range(num_cubes_input_tensor + num_cubes_filter_tensor + 1):
         assert space.cuboid_visual_metadata["facecolor"][i] == "black"
         assert space.cuboid_visual_metadata["alpha"][i] == 0.9
         assert space.cuboid_visual_metadata["linewidth"][i] == 0.1
 
     for i in range(num_cubes_unchanged_tensor):
-        offset = num_cubes_input_tensor + num_cubes_filter_tensor
+        offset = num_cubes_input_tensor + num_cubes_filter_tensor + 1
         assert space.cuboid_visual_metadata["facecolor"][offset + i] == "orange"
         assert space.cuboid_visual_metadata["alpha"][offset + i] == 0.6
         assert space.cuboid_visual_metadata["linewidth"][offset + i] == 0.8
 
-    input_N = num_cubes_input_tensor
+    input_N = num_cubes_input_tensor + 1
     filter_N = num_cubes_filter_tensor
     unchanged_N = num_cubes_unchanged_tensor
 
-    first_composite = slice(0, input_N)
+    first_composite = slice(0, input_N - 1)
     second_composite = slice(input_N, input_N + filter_N)
     last_composite = slice(input_N + filter_N, input_N + filter_N + unchanged_N)
+
+    assert list(space.cuboid_index.primitives()) == [input_N - 1, input_N - 1]
+    assert space.cuboid_index.get_primitives_by_timestep(1) == [input_N - 1]
+    assert space.cuboid_index.get_primitives_by_timestep(4) == [input_N - 1]
+    assert space.cuboid_index.get_primitives_by_scene(0) == [input_N - 1]
+    assert space.cuboid_index.get_primitives_by_scene(1) == [input_N - 1]
 
     assert list(space.cuboid_index.composites()) == [
         first_composite,
@@ -1160,7 +1133,7 @@ def test_space_mutates_multiple_objects_by_scene_id() -> None:
         first_composite,
         second_composite,
     ]
-    assert space.cuboid_index.get_composites_by_timestep(3) == [
+    assert space.cuboid_index.get_composites_by_timestep(4) == [
         first_composite,
         second_composite,
     ]
@@ -1172,6 +1145,128 @@ def test_space_mutates_multiple_objects_by_scene_id() -> None:
         last_composite,
         first_composite,
         second_composite,
+    ]
+
+
+def test_space_mutates_multiple_objects_multiple_times() -> None:
+    space = bb.Space()
+
+    space.add_composite(
+        bb.CompositeCube(
+            base_vector=np.array([0, 0, 0]),
+            w=4,
+            h=3,
+            d=2,
+            facecolor=None,
+            alpha=0.3,
+            linewidth=0.5,
+            name="input-tensor",
+        )
+    )
+
+    space.add_cube(bb.Cube(base_vector=np.array([12, 14, 3])))
+
+    space.add_composite(
+        bb.CompositeCube(
+            base_vector=np.array([0, 0, 0]),
+            w=3,
+            h=3,
+            d=2,
+            facecolor="red",
+            alpha=0.5,
+            linewidth=0.7,
+            name="filter-tensor",
+        )
+    )
+
+    # Check that only the first scene is affected.
+    space.snapshot()
+
+    space.add_composite(
+        bb.CompositeCube(
+            base_vector=np.array([3, 3, 3]),
+            w=5,
+            h=5,
+            d=2,
+            facecolor="orange",
+            alpha=0.6,
+            linewidth=0.8,
+            name="unchanged-tensor",
+        )
+    )
+
+    space.mutate_by_scene(scene=0, facecolor="black", alpha=0.9, linewidth=0.1)
+    space.mutate_by_scene(scene=1, edgecolor="red")
+    space.mutate_by_name(name="input-tensor", facecolor="white")
+
+    # Check the changelog reflects the mutation, storing the previous state.
+    assert space.changelog == [
+        bb.Addition(0, None),
+        bb.Addition(1, None),
+        bb.Addition(2, None),
+        bb.Addition(3, None),
+        bb.Mutation(
+            subject={
+                "facecolor": [None, None, "red"],
+                "alpha": [0.0, 0.3, 0.5],
+                "linewidth": [0.1, 0.5, 0.7],
+            },
+            scene_id=0,
+        ),
+        bb.Mutation(
+            subject={"edgecolor": ["black", "black", "black", "black"]},
+            scene_id=1,
+        ),
+        bb.Mutation(
+            subject={"facecolor": ["black"]},
+            name="input-tensor",
+        ),
+    ]
+
+
+def test_space_mutates_nothing_on_empty_selection() -> None:
+    space = bb.Space()
+
+    space.add_composite(
+        bb.CompositeCube(
+            base_vector=np.array([0, 0, 0]),
+            w=4,
+            h=3,
+            d=2,
+            facecolor=None,
+            alpha=0.3,
+            linewidth=0.5,
+            name="input-tensor",
+        )
+    )
+
+    space.add_cube(bb.Cube(base_vector=np.array([12, 14, 3])))
+
+    # Check that only the first scene is affected.
+    space.snapshot()
+
+    expected_name_err_msg = "The provided name does not exist in this space."
+    with pytest.raises(Exception, match=expected_name_err_msg):
+        space.mutate_by_name("not-a-valid-name", facecolor="black")
+
+    expected_timestep_err_msg = (
+        "The provided timestep is invalid in this space."
+    )
+    with pytest.raises(Exception, match=expected_timestep_err_msg):
+        space.mutate_by_timestep(timestep=3, edgecolor="white")
+
+    # The scene is technically valid (it is the current scene), but it is empty,
+    # so it silently does nothing.
+    space.mutate_by_scene(scene=1, linewidth=0.69)
+
+    # An error isn't meaningful in this case, so it silently does nothing.
+    space.mutate_by_coordinate(np.array([64, 32, 16]), alpha=1.0, linewidth=1.0)
+
+    # None of the above mutations have any effect and are not reflected in the
+    # history.
+    assert space.changelog == [
+        bb.Addition(timestep_id=0, name=None),
+        bb.Addition(timestep_id=1, name=None),
     ]
 
 
@@ -1508,6 +1603,723 @@ def test_space_creates_composites_from_offset_with_updated_visuals() -> None:
         + [0.0] * (2 * num_cubes_per_composite)
         + [1.0] * (4 * num_cubes_per_composite),
     }
+
+
+def test_space_transforms_primitive_by_coordinate() -> None:
+    space = bb.Space()
+
+    point = np.array([1, 2, 3])
+    space.add_cube(bb.Cube(base_vector=point))
+
+    translate = np.array([3, 3, 3])
+    space.transform_by_coordinate(coordinate=point, translate=translate)
+
+    # Check the changelog reflects the transform, storing the previous state.
+    assert space.changelog == [
+        bb.Addition(0, None),
+        bb.Transform(
+            transform=-translate, transform_name="translation", coordinate=point
+        ),
+    ]
+
+    # Remember to swap the ys and zs due to the current implementation issue
+    # with dims
+    # TODO: Have a transform for matplotlib and have your own representation
+    # instead.
+    swapped_point = np.array([1, 3, 2])
+
+    expected_num_entries = 10
+    assert np.array_equal(
+        space.cuboid_coordinates,
+        np.concatenate(
+            (
+                mock_coordinates_entry() + swapped_point + translate,
+                np.zeros((expected_num_entries - 1, 6, 4, 3)),
+            ),
+            axis=0,
+        ),
+    )
+    assert np.array_equal(
+        space.cuboid_shapes,
+        np.concatenate(
+            (
+                np.array([[1, 1, 1]]),
+                np.zeros((expected_num_entries - 1, 3)),
+            ),
+            axis=0,
+        ),
+    )
+
+    assert list(space.cuboid_index.primitives()) == [0, 0]
+    assert space.cuboid_index.get_primitives_by_timestep(0) == [0]
+    assert space.cuboid_index.get_primitives_by_timestep(1) == [0]
+
+
+def test_space_transforms_composite_by_coordinate() -> None:
+    space = bb.Space()
+
+    point = np.array([1, 2, 3])
+    w, h, d = 4, 3, 2
+    space.add_composite(
+        bb.CompositeCube(
+            base_vector=point,
+            w=w,
+            h=h,
+            d=d,
+            facecolor="yellow",
+            alpha=0.3,
+            linewidth=0.5,
+        )
+    )
+
+    num_cubes = w * h * d
+
+    translate = np.array([3, 3, 3])
+    space.transform_by_coordinate(coordinate=point, translate=translate)
+
+    # Check the changelog reflects the transform, storing the previous state.
+    assert space.changelog == [
+        bb.Addition(0, None),
+        bb.Transform(
+            transform=-translate,
+            transform_name="translation",
+            coordinate=point,
+        ),
+    ]
+
+    # Remember to swap the ys and zs due to the current implementation issue
+    # with dims
+    # TODO: Have a transform for matplotlib and have your own representation
+    # instead.
+    swapped_point = np.array([1, 3, 2])
+    width = np.array([1, 0, 0])
+    height = np.array([0, 0, 1])
+    depth = np.array([0, 1, 0])
+
+    def make_sub_cubes():
+        return [
+            mock_coordinates_entry()
+            + swapped_point
+            + translate
+            + (w * width)
+            + (h * height)
+            + (d * depth)
+            for (w, h, d) in itertools.product(range(w), range(h), range(d))
+        ]
+
+    expected_num_entries = 40
+    assert np.array_equal(
+        space.cuboid_coordinates,
+        np.concatenate(
+            (
+                *make_sub_cubes(),
+                np.zeros((expected_num_entries - num_cubes, 6, 4, 3)),
+            ),
+            axis=0,
+        ),
+    )
+    assert np.array_equal(
+        space.cuboid_shapes,
+        np.concatenate(
+            (
+                np.broadcast_to(np.array([[w, h, d]]), (num_cubes, 3)),
+                np.zeros((expected_num_entries - num_cubes, 3)),
+            ),
+            axis=0,
+        ),
+    )
+
+    composite = slice(0, num_cubes)
+
+    assert list(space.cuboid_index.composites()) == [composite, composite]
+    assert space.cuboid_index.get_composites_by_timestep(0) == [composite]
+    assert space.cuboid_index.get_composites_by_timestep(1) == [composite]
+
+
+def test_space_transforms_multiple_objects_by_coordinate() -> None:
+    space = bb.Space()
+
+    point = np.array([1, 2, 3])
+    w, h, d = 4, 3, 2
+    space.add_composite(
+        bb.CompositeCube(
+            base_vector=point,
+            w=w,
+            h=h,
+            d=d,
+            facecolor="yellow",
+            alpha=0.3,
+            linewidth=0.5,
+        )
+    )
+
+    num_cubes = w * h * d
+
+    space.add_cube(bb.Cube(base_vector=point))
+
+    translate = np.array([3, 3, 3])
+    space.transform_by_coordinate(coordinate=point, translate=translate)
+
+    # Check the changelog reflects the transform, storing the previous state.
+    assert space.changelog == [
+        bb.Addition(0, None),
+        bb.Addition(1, None),
+        bb.Transform(
+            transform=-translate,
+            transform_name="translation",
+            coordinate=point,
+        ),
+    ]
+
+    # Remember to swap the ys and zs due to the current implementation issue
+    # with dims
+    # TODO: Have a transform for matplotlib and have your own representation
+    # instead.
+    swapped_point = np.array([1, 3, 2])
+    width = np.array([1, 0, 0])
+    height = np.array([0, 0, 1])
+    depth = np.array([0, 1, 0])
+
+    def make_sub_cubes():
+        return [
+            mock_coordinates_entry()
+            + swapped_point
+            + translate
+            + (w * width)
+            + (h * height)
+            + (d * depth)
+            for (w, h, d) in itertools.product(range(w), range(h), range(d))
+        ]
+
+    expected_num_entries = 40
+    assert np.array_equal(
+        space.cuboid_coordinates,
+        np.concatenate(
+            (
+                *make_sub_cubes(),
+                mock_coordinates_entry() + swapped_point + translate,
+                np.zeros((expected_num_entries - num_cubes - 1, 6, 4, 3)),
+            ),
+            axis=0,
+        ),
+    )
+    assert np.array_equal(
+        space.cuboid_shapes,
+        np.concatenate(
+            (
+                np.broadcast_to(np.array([[w, h, d]]), (num_cubes, 3)),
+                np.array([[1, 1, 1]]),
+                np.zeros((expected_num_entries - num_cubes - 1, 3)),
+            ),
+            axis=0,
+        ),
+    )
+
+    composite = slice(0, num_cubes)
+
+    assert list(space.cuboid_index.primitives()) == [num_cubes, num_cubes]
+    assert list(space.cuboid_index.composites()) == [composite, composite]
+    assert space.cuboid_index.get_composites_by_timestep(0) == [composite]
+    assert space.cuboid_index.get_primitives_by_timestep(1) == [num_cubes]
+    assert space.cuboid_index.get_primitives_by_timestep(2) == [num_cubes]
+    assert space.cuboid_index.get_composites_by_timestep(2) == [composite]
+
+
+def test_space_transforms_primitive_by_name() -> None:
+    space = bb.Space()
+
+    point = np.array([1, 2, 3])
+    space.add_cube(bb.Cube(base_vector=point, name="my-primitive"))
+
+    translate = np.array([3, 3, 3])
+    space.transform_by_name(name="my-primitive", translate=translate)
+
+    # Check the changelog reflects the transform, storing the previous state.
+    assert space.changelog == [
+        bb.Addition(0, None),
+        bb.Transform(
+            transform=-translate,
+            transform_name="translation",
+            name="my-primitive",
+        ),
+    ]
+
+    # Remember to swap the ys and zs due to the current implementation issue
+    # with dims
+    # TODO: Have a transform for matplotlib and have your own representation
+    # instead.
+    swapped_point = np.array([1, 3, 2])
+
+    expected_num_entries = 10
+    assert np.array_equal(
+        space.cuboid_coordinates,
+        np.concatenate(
+            (
+                mock_coordinates_entry() + swapped_point + translate,
+                np.zeros((expected_num_entries - 1, 6, 4, 3)),
+            ),
+            axis=0,
+        ),
+    )
+    assert np.array_equal(
+        space.cuboid_shapes,
+        np.concatenate(
+            (
+                np.array([[1, 1, 1]]),
+                np.zeros((expected_num_entries - 1, 3)),
+            ),
+            axis=0,
+        ),
+    )
+
+    assert list(space.cuboid_index.primitives()) == [0, 0]
+    assert space.cuboid_index.get_primitives_by_timestep(0) == [0]
+    assert space.cuboid_index.get_primitives_by_timestep(1) == [0]
+
+
+def test_space_transforms_composite_by_name() -> None:
+    space = bb.Space()
+
+    point = np.array([1, 2, 3])
+    w, h, d = 4, 3, 2
+    space.add_composite(
+        bb.CompositeCube(base_vector=point, w=w, h=h, d=d, name="my-composite")
+    )
+
+    num_cubes = w * h * d
+
+    translate = np.array([3, 3, 3])
+    space.transform_by_name(name="my-composite", translate=translate)
+
+    # Check the changelog reflects the transform, storing the previous state.
+    assert space.changelog == [
+        bb.Addition(0, None),
+        bb.Transform(
+            transform=-translate,
+            transform_name="translation",
+            name="my-composite",
+        ),
+    ]
+
+    # Remember to swap the ys and zs due to the current implementation issue
+    # with dims
+    # TODO: Have a transform for matplotlib and have your own representation
+    # instead.
+    swapped_point = np.array([1, 3, 2])
+    width = np.array([1, 0, 0])
+    height = np.array([0, 0, 1])
+    depth = np.array([0, 1, 0])
+
+    def make_sub_cubes():
+        return [
+            mock_coordinates_entry()
+            + swapped_point
+            + translate
+            + (w * width)
+            + (h * height)
+            + (d * depth)
+            for (w, h, d) in itertools.product(range(w), range(h), range(d))
+        ]
+
+    expected_num_entries = 40
+    assert np.array_equal(
+        space.cuboid_coordinates,
+        np.concatenate(
+            (
+                *make_sub_cubes(),
+                np.zeros((expected_num_entries - num_cubes, 6, 4, 3)),
+            ),
+            axis=0,
+        ),
+    )
+    assert np.array_equal(
+        space.cuboid_shapes,
+        np.concatenate(
+            (
+                np.broadcast_to(np.array([[w, h, d]]), (num_cubes, 3)),
+                np.zeros((expected_num_entries - num_cubes, 3)),
+            ),
+            axis=0,
+        ),
+    )
+
+    composite = slice(0, num_cubes)
+
+    assert list(space.cuboid_index.composites()) == [composite, composite]
+    assert space.cuboid_index.get_composites_by_timestep(0) == [composite]
+    assert space.cuboid_index.get_composites_by_timestep(1) == [composite]
+
+
+def test_space_transforms_primitive_by_timestep_id() -> None:
+    space = bb.Space()
+
+    point = np.array([1, 2, 3])
+    space.add_cube(bb.Cube(base_vector=point))
+
+    translate = np.array([3, 3, 3])
+    space.transform_by_timestep(timestep=0, translate=translate)
+
+    # Check the changelog reflects the transform, storing the previous state.
+    assert space.changelog == [
+        bb.Addition(0, None),
+        bb.Transform(
+            transform=-translate,
+            transform_name="translation",
+            timestep_id=0,
+        ),
+    ]
+
+    # Remember to swap the ys and zs due to the current implementation issue
+    # with dims
+    # TODO: Have a transform for matplotlib and have your own representation
+    # instead.
+    swapped_point = np.array([1, 3, 2])
+
+    expected_num_entries = 10
+    assert np.array_equal(
+        space.cuboid_coordinates,
+        np.concatenate(
+            (
+                mock_coordinates_entry() + swapped_point + translate,
+                np.zeros((expected_num_entries - 1, 6, 4, 3)),
+            ),
+            axis=0,
+        ),
+    )
+    assert np.array_equal(
+        space.cuboid_shapes,
+        np.concatenate(
+            (
+                np.array([[1, 1, 1]]),
+                np.zeros((expected_num_entries - 1, 3)),
+            ),
+            axis=0,
+        ),
+    )
+
+    assert list(space.cuboid_index.primitives()) == [0, 0]
+    assert space.cuboid_index.get_primitives_by_timestep(0) == [0]
+    assert space.cuboid_index.get_primitives_by_timestep(1) == [0]
+
+
+def test_space_transforms_composite_by_timestep_id() -> None:
+    space = bb.Space()
+
+    point = np.array([1, 2, 3])
+    w, h, d = 4, 3, 2
+    space.add_composite(bb.CompositeCube(base_vector=point, w=w, h=h, d=d))
+
+    num_cubes = w * h * d
+
+    translate = np.array([3, 3, 3])
+    space.transform_by_timestep(timestep=0, translate=translate)
+
+    # Check the changelog reflects the transform, storing the previous state.
+    assert space.changelog == [
+        bb.Addition(0, None),
+        bb.Transform(
+            transform=-translate,
+            transform_name="translation",
+            timestep_id=0,
+        ),
+    ]
+
+    # Remember to swap the ys and zs due to the current implementation issue
+    # with dims
+    # TODO: Have a transform for matplotlib and have your own representation
+    # instead.
+    swapped_point = np.array([1, 3, 2])
+    width = np.array([1, 0, 0])
+    height = np.array([0, 0, 1])
+    depth = np.array([0, 1, 0])
+
+    def make_sub_cubes():
+        return [
+            mock_coordinates_entry()
+            + swapped_point
+            + translate
+            + (w * width)
+            + (h * height)
+            + (d * depth)
+            for (w, h, d) in itertools.product(range(w), range(h), range(d))
+        ]
+
+    expected_num_entries = 40
+    assert np.array_equal(
+        space.cuboid_coordinates,
+        np.concatenate(
+            (
+                *make_sub_cubes(),
+                np.zeros((expected_num_entries - num_cubes, 6, 4, 3)),
+            ),
+            axis=0,
+        ),
+    )
+    assert np.array_equal(
+        space.cuboid_shapes,
+        np.concatenate(
+            (
+                np.broadcast_to(np.array([[w, h, d]]), (num_cubes, 3)),
+                np.zeros((expected_num_entries - num_cubes, 3)),
+            ),
+            axis=0,
+        ),
+    )
+
+    composite = slice(0, num_cubes)
+
+    assert list(space.cuboid_index.composites()) == [composite, composite]
+    assert space.cuboid_index.get_composites_by_timestep(0) == [composite]
+    assert space.cuboid_index.get_composites_by_timestep(1) == [composite]
+
+
+def test_space_transforms_primitive_by_scene_id() -> None:
+    space = bb.Space()
+
+    point = np.array([1, 2, 3])
+    space.add_cube(bb.Cube(base_vector=point))
+
+    translate = np.array([3, 3, 3])
+    space.transform_by_scene(scene=0, translate=translate)
+
+    # Check the changelog reflects the transform, storing the previous state.
+    assert space.changelog == [
+        bb.Addition(0, None),
+        bb.Transform(
+            transform=-translate,
+            transform_name="translation",
+            scene_id=0,
+        ),
+    ]
+
+    # Remember to swap the ys and zs due to the current implementation issue
+    # with dims
+    # TODO: Have a transform for matplotlib and have your own representation
+    # instead.
+    swapped_point = np.array([1, 3, 2])
+
+    expected_num_entries = 10
+    assert np.array_equal(
+        space.cuboid_coordinates,
+        np.concatenate(
+            (
+                mock_coordinates_entry() + swapped_point + translate,
+                np.zeros((expected_num_entries - 1, 6, 4, 3)),
+            ),
+            axis=0,
+        ),
+    )
+    assert np.array_equal(
+        space.cuboid_shapes,
+        np.concatenate(
+            (
+                np.array([[1, 1, 1]]),
+                np.zeros((expected_num_entries - 1, 3)),
+            ),
+            axis=0,
+        ),
+    )
+
+    assert list(space.cuboid_index.primitives()) == [0, 0]
+    assert space.cuboid_index.get_primitives_by_timestep(0) == [0]
+    assert space.cuboid_index.get_primitives_by_timestep(1) == [0]
+
+
+def test_space_transforms_composite_by_scene_id() -> None:
+    space = bb.Space()
+
+    point = np.array([1, 2, 3])
+    w, h, d = 4, 3, 2
+    space.add_composite(bb.CompositeCube(base_vector=point, w=w, h=h, d=d))
+
+    num_cubes = w * h * d
+
+    translate = np.array([3, 3, 3])
+    space.transform_by_scene(scene=0, translate=translate)
+
+    # Check the changelog reflects the transform, storing the previous state.
+    assert space.changelog == [
+        bb.Addition(0, None),
+        bb.Transform(
+            transform=-translate,
+            transform_name="translation",
+            scene_id=0,
+        ),
+    ]
+
+    # Remember to swap the ys and zs due to the current implementation issue
+    # with dims
+    # TODO: Have a transform for matplotlib and have your own representation
+    # instead.
+    swapped_point = np.array([1, 3, 2])
+    width = np.array([1, 0, 0])
+    height = np.array([0, 0, 1])
+    depth = np.array([0, 1, 0])
+
+    def make_sub_cubes():
+        return [
+            mock_coordinates_entry()
+            + swapped_point
+            + translate
+            + (w * width)
+            + (h * height)
+            + (d * depth)
+            for (w, h, d) in itertools.product(range(w), range(h), range(d))
+        ]
+
+    expected_num_entries = 40
+    assert np.array_equal(
+        space.cuboid_coordinates,
+        np.concatenate(
+            (
+                *make_sub_cubes(),
+                np.zeros((expected_num_entries - num_cubes, 6, 4, 3)),
+            ),
+            axis=0,
+        ),
+    )
+    assert np.array_equal(
+        space.cuboid_shapes,
+        np.concatenate(
+            (
+                np.broadcast_to(np.array([[w, h, d]]), (num_cubes, 3)),
+                np.zeros((expected_num_entries - num_cubes, 3)),
+            ),
+            axis=0,
+        ),
+    )
+
+    composite = slice(0, num_cubes)
+
+    assert list(space.cuboid_index.composites()) == [composite, composite]
+    assert space.cuboid_index.get_composites_by_timestep(0) == [composite]
+    assert space.cuboid_index.get_composites_by_timestep(1) == [composite]
+
+
+def test_space_transforms_multiple_objects_multiple_times() -> None:
+    space = bb.Space()
+
+    space.add_composite(
+        bb.CompositeCube(
+            base_vector=np.array([0, 0, 0]),
+            w=4,
+            h=3,
+            d=2,
+            facecolor=None,
+            alpha=0.3,
+            linewidth=0.5,
+            name="input-tensor",
+        )
+    )
+
+    space.add_cube(bb.Cube(base_vector=np.array([12, 14, 3])))
+
+    space.add_composite(
+        bb.CompositeCube(
+            base_vector=np.array([0, 0, 0]),
+            w=3,
+            h=3,
+            d=2,
+            facecolor="red",
+            alpha=0.5,
+            linewidth=0.7,
+            name="filter-tensor",
+        )
+    )
+
+    # Check that only the first scene is affected.
+    space.snapshot()
+
+    space.add_composite(
+        bb.CompositeCube(
+            base_vector=np.array([3, 3, 3]),
+            w=5,
+            h=5,
+            d=2,
+            facecolor="orange",
+            alpha=0.6,
+            linewidth=0.8,
+            name="unchanged-tensor",
+        )
+    )
+
+    first_translate = np.array([4, 5, 6])
+    second_translate = np.array([10, 14, 2])
+    third_translate = np.array([300, 200, 100])
+    space.transform_by_scene(scene=0, translate=first_translate)
+    space.transform_by_scene(scene=1, translate=second_translate)
+    space.transform_by_name(name="input-tensor", translate=third_translate)
+
+    # Check the changelog reflects the transforms, storing the previous state.
+    assert space.changelog == [
+        bb.Addition(0, None),
+        bb.Addition(1, None),
+        bb.Addition(2, None),
+        bb.Addition(3, None),
+        bb.Transform(
+            transform=-first_translate,
+            transform_name="translation",
+            scene_id=0,
+        ),
+        bb.Transform(
+            transform=-second_translate,
+            transform_name="translation",
+            scene_id=1,
+        ),
+        bb.Transform(
+            transform=-third_translate,
+            transform_name="translation",
+            name="input-tensor",
+        ),
+    ]
+
+
+def test_space_transforms_nothing_on_empty_selection() -> None:
+    space = bb.Space()
+
+    space.add_composite(
+        bb.CompositeCube(
+            base_vector=np.array([0, 0, 0]),
+            w=4,
+            h=3,
+            d=2,
+            facecolor=None,
+            alpha=0.3,
+            linewidth=0.5,
+            name="input-tensor",
+        )
+    )
+
+    space.add_cube(bb.Cube(base_vector=np.array([12, 14, 3])))
+
+    # Check that only the first scene is affected.
+    space.snapshot()
+
+    translate = np.array([3, 3, 3])
+
+    expected_name_err_msg = "The provided name does not exist in this space."
+    with pytest.raises(Exception, match=expected_name_err_msg):
+        space.transform_by_name("not-a-valid-name", translate=translate)
+
+    expected_timestep_err_msg = (
+        "The provided timestep is invalid in this space."
+    )
+    with pytest.raises(Exception, match=expected_timestep_err_msg):
+        space.transform_by_timestep(timestep=3, translate=translate)
+
+    # The scene is technically valid (it is the current scene), but it is empty,
+    # so it silently does nothing.
+    space.transform_by_scene(scene=1, translate=translate)
+
+    # An error isn't meaningful in this case, so it silently does nothing.
+    space.transform_by_coordinate(np.array([64, 32, 16]), translate=translate)
+
+    # None of the above transforms have any effect and are not reflected in the
+    # history.
+    assert space.changelog == [
+        bb.Addition(timestep_id=0, name=None),
+        bb.Addition(timestep_id=1, name=None),
+    ]
 
 
 def test_space_supports_composites_with_classic_style() -> None:

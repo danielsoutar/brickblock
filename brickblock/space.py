@@ -28,11 +28,36 @@ class Addition(SpaceStateChange):
 
 @dataclass
 class Mutation(SpaceStateChange):
-    subject: np.ndarray | dict[str, Any]
+    subject: dict[str, Any]
     name: str | None = None
-    primitive_id: int | None = None
+    coordinate: np.ndarray | None = None
     timestep_id: int | None = None
     scene_id: int | None = None
+
+
+@dataclass
+class Transform(SpaceStateChange):
+    transform: np.ndarray
+    transform_name: str
+    name: str | None = None
+    coordinate: np.ndarray | None = None
+    timestep_id: int | None = None
+    scene_id: int | None = None
+
+    def __eq__(self, __value: object) -> bool:
+        vals_except_coordinate_match = (
+            np.array_equal(self.transform, __value.transform)
+            and self.transform_name == __value.transform_name
+            and self.name == __value.name
+            and self.timestep_id == __value.timestep_id
+            and self.scene_id == __value.scene_id
+        )
+        coordinates_match = (
+            np.array_equal(self.coordinate, __value.coordinate)
+            if self.coordinate is not None
+            else __value.coordinate is None
+        )
+        return vals_except_coordinate_match and coordinates_match
 
 
 @dataclass
@@ -378,6 +403,9 @@ class Space:
         base vectors equal to `coordinate` - with the named arguments in
         `kwargs`.
 
+        Both an empty selection (i.e. no objects match with the coordinate) or
+        empty kwargs (i.e. no visual updates to perform) are treated as no-ops.
+
         Primitives that are part of composites are not included - that is, if
         `coordinate` intersects with a composite on any point other than its
         base vector, none of its primitives will be updated.
@@ -394,15 +422,29 @@ class Space:
         primitives_to_update, composites_to_update = self._select_by_coordinate(
             coordinate
         )
-        if len(primitives_to_update) > 0 or len(composites_to_update) > 0:
-            self._mutate_by_ids(
-                primitives_to_update, composites_to_update, **kwargs
-            )
+        non_zero_selection = (
+            len(primitives_to_update) > 0 or len(composites_to_update) > 0
+        )
+
+        non_empty_kwargs = len(kwargs) > 0
+
+        if not (non_zero_selection and non_empty_kwargs):
+            return None
+
+        previous_state = self._mutate_by_ids(
+            primitives_to_update, composites_to_update, **kwargs
+        )
+        self.changelog.append(
+            Mutation(subject=previous_state, coordinate=coordinate)
+        )
 
     def mutate_by_name(self, name: str, **kwargs) -> None:
         """
         Mutate the visual metadata of the object - composite or primitive, that
         has its name equal to `name` - with the named arguments in `kwargs`.
+
+        Both an empty selection (i.e. no objects match with the name) or empty
+        kwargs (i.e. no visual updates to perform) are treated as no-ops.
 
         # Args
             name: The name of the object in the space to update.
@@ -410,16 +452,28 @@ class Space:
                 property values.
         """
         primitives_to_update, composites_to_update = self._select_by_name(name)
-        if len(primitives_to_update) > 0 or len(composites_to_update) > 0:
-            self._mutate_by_ids(
-                primitives_to_update, composites_to_update, **kwargs
-            )
+        non_zero_selection = (
+            len(primitives_to_update) > 0 or len(composites_to_update) > 0
+        )
+
+        non_empty_kwargs = len(kwargs) > 0
+
+        if not (non_zero_selection and non_empty_kwargs):
+            return None
+
+        previous_state = self._mutate_by_ids(
+            primitives_to_update, composites_to_update, **kwargs
+        )
+        self.changelog.append(Mutation(subject=previous_state, name=name))
 
     def mutate_by_timestep(self, timestep: int, **kwargs) -> None:
         """
         Mutate the visual metadata of the object - composite or primitive, that
-        was created at timestep `timestep` - with the named arguments in
+        was referenced at timestep `timestep` - with the named arguments in
         `kwargs`.
+
+        Both an empty selection (i.e. no objects match with the timestep) or
+        empty kwargs (i.e. no visual updates to perform) are treated as no-ops.
 
         # Args
             timestep: The timestep of all the objects in the space to update.
@@ -429,15 +483,29 @@ class Space:
         primitives_to_update, composites_to_update = self._select_by_timestep(
             timestep
         )
-        if len(primitives_to_update) > 0 or len(composites_to_update) > 0:
-            self._mutate_by_ids(
-                primitives_to_update, composites_to_update, **kwargs
-            )
+        non_zero_selection = (
+            len(primitives_to_update) > 0 or len(composites_to_update) > 0
+        )
+
+        non_empty_kwargs = len(kwargs) > 0
+
+        if not (non_zero_selection and non_empty_kwargs):
+            return None
+
+        previous_state = self._mutate_by_ids(
+            primitives_to_update, composites_to_update, **kwargs
+        )
+        self.changelog.append(
+            Mutation(subject=previous_state, timestep_id=timestep)
+        )
 
     def mutate_by_scene(self, scene: int, **kwargs) -> None:
         """
         Mutate the visual metadata of the object - composite or primitive, that
-        was created in scene `scene` - with the named arguments in `kwargs`.
+        was referenced in scene `scene` - with the named arguments in `kwargs`.
+
+        Both an empty selection (i.e. no objects match with the scene) or
+        empty kwargs (i.e. no visual updates to perform) are treated as no-ops.
 
         # Args
             scene: The scene of all the objects in the space to update.
@@ -447,20 +515,30 @@ class Space:
         primitives_to_update, composites_to_update = self._select_by_scene(
             scene
         )
-        if len(primitives_to_update) > 0 or len(composites_to_update) > 0:
-            self._mutate_by_ids(
-                primitives_to_update, composites_to_update, **kwargs
-            )
+        non_zero_selection = (
+            len(primitives_to_update) > 0 or len(composites_to_update) > 0
+        )
+
+        non_empty_kwargs = len(kwargs) > 0
+
+        if not (non_zero_selection and non_empty_kwargs):
+            return None
+
+        previous_state = self._mutate_by_ids(
+            primitives_to_update, composites_to_update, **kwargs
+        )
+        self.changelog.append(Mutation(subject=previous_state, scene_id=scene))
 
     def _mutate_by_ids(
         self, primitive_ids: list[int], composite_ids: list[slice], **kwargs
-    ) -> None:
+    ) -> dict[str, Any]:
         """
         Mutate the visual metadata of all primitives and composites (given by
         `primitive_ids` and `composite_ids` respectively) with the named
-        arguments in `kwargs`.
+        arguments in `kwargs`, and return the previous version of the metadata.
 
-        There is assumed to be at least one primitive or composite to update.
+        There is assumed to be at least one primitive or composite to update,
+        and `kwargs` is assumed to be non-empty.
 
         # Args
             primitive_ids: The IDs of all the primitives in the space to update.
@@ -499,9 +577,180 @@ class Space:
                 scene_id=self.scene_counter,
             )
 
-        self.changelog.append(
-            Mutation(subject=before_mutation_kwargs, timestep_id=self.time_step)
+        self.time_step += 1
+        return before_mutation_kwargs
+
+    def transform_by_coordinate(
+        self, coordinate: np.ndarray, translate: np.ndarray
+    ) -> None:
+        """
+        Transform the spatial data of all objects - composite or primitive, with
+        base vectors equal to `coordinate` - by the `translate` vector.
+
+        Both an empty selection (i.e. no objects match with the coordinate) or a
+        zero translate vector (i.e. the identity) are treated as no-ops.
+
+        Primitives that are part of composites are not included - that is, if
+        `coordinate` intersects with a composite on any point other than its
+        base vector, none of its primitives will be updated.
+
+        Note that the base vector is defined as the bottom-left-front-most point
+        of an object, primitive or composite.
+
+        # Args
+            coordinate: The coordinate which is compared to the base vector of
+                all objects in the space.
+            translate: The vector by which to shift selected objects by.
+        """
+        primitives_to_update, composites_to_update = self._select_by_coordinate(
+            coordinate
         )
+        non_zero_selection = (
+            len(primitives_to_update) > 0 or len(composites_to_update) > 0
+        )
+        non_zero_translate = np.any(translate)
+
+        if not (non_zero_selection and non_zero_translate):
+            return None
+
+        self.changelog.append(
+            Transform(
+                transform=-translate,
+                transform_name="translation",
+                coordinate=coordinate,
+            )
+        )
+        self._transform_by_ids(
+            primitives_to_update, composites_to_update, translate
+        )
+
+    def transform_by_name(self, name: str, translate: np.ndarray) -> None:
+        """
+        Transform the spatial data of all objects - composite or primitive, that
+        that has its name equal to `name` - by the `translate` vector.
+
+        Both an empty selection (i.e. no objects match with the name) or a zero
+        translate vector (i.e. the identity) are treated as no-ops.
+
+        # Args
+            name: The name of the object in the space to update.
+            translate: The vector by which to shift selected objects by.
+        """
+        primitives_to_update, composites_to_update = self._select_by_name(name)
+        non_zero_selection = (
+            len(primitives_to_update) > 0 or len(composites_to_update) > 0
+        )
+        non_zero_translate = np.any(translate)
+
+        if not (non_zero_selection and non_zero_translate):
+            return None
+
+        self.changelog.append(
+            Transform(
+                transform=-translate, transform_name="translation", name=name
+            )
+        )
+        self._transform_by_ids(
+            primitives_to_update, composites_to_update, translate
+        )
+
+    def transform_by_timestep(
+        self, timestep: int, translate: np.ndarray
+    ) -> None:
+        """
+        Transform the spatial data of all objects - composite or primitive, that
+        was referenced at timestep `timestep` - by the `translate` vector.
+
+        Both an empty selection (i.e. no objects match with the timestep) or a
+        zero translate vector (i.e. the identity) are treated as no-ops.
+
+        # Args
+            timestep: The timestep of all the objects in the space to update.
+            translate: The vector by which to shift selected objects by.
+        """
+        primitives_to_update, composites_to_update = self._select_by_timestep(
+            timestep
+        )
+        non_zero_selection = (
+            len(primitives_to_update) > 0 or len(composites_to_update) > 0
+        )
+        non_zero_translate = np.any(translate)
+
+        if not (non_zero_selection and non_zero_translate):
+            return None
+
+        self.changelog.append(
+            Transform(
+                transform=-translate,
+                transform_name="translation",
+                timestep_id=timestep,
+            )
+        )
+        self._transform_by_ids(
+            primitives_to_update, composites_to_update, translate
+        )
+
+    def transform_by_scene(self, scene: int, translate: np.ndarray) -> None:
+        """
+        Transform the spatial data of all objects - composite or primitive, that
+        was referenced at scene `scene` - by the `translate` vector.
+
+        Both an empty selection (i.e. no objects match with the scene) or a zero
+        translate vector (i.e. the identity) are treated as no-ops.
+
+        # Args
+            scene: The scene of all the objects in the space to update.
+            translate: The vector by which to shift selected objects by.
+        """
+        primitives_to_update, composites_to_update = self._select_by_scene(
+            scene
+        )
+        non_zero_selection = (
+            len(primitives_to_update) > 0 or len(composites_to_update) > 0
+        )
+        non_zero_translate = np.any(translate)
+
+        if not (non_zero_selection and non_zero_translate):
+            return None
+
+        self.changelog.append(
+            Transform(
+                transform=-translate,
+                transform_name="translation",
+                scene_id=scene,
+            )
+        )
+        self._transform_by_ids(
+            primitives_to_update, composites_to_update, translate
+        )
+
+    def _transform_by_ids(
+        self,
+        primitive_ids: list[int],
+        composite_ids: list[slice],
+        translate: np.ndarray,
+    ) -> None:
+        for primitive_id in primitive_ids:
+            cuboid = self.cuboid_coordinates[primitive_id]
+            self.cuboid_coordinates[primitive_id] = cuboid + translate
+
+        for composite_id in composite_ids:
+            composite = self.cuboid_coordinates[composite_id]
+            self.cuboid_coordinates[composite_id] = composite + translate
+
+        for primitive_id in primitive_ids:
+            self.cuboid_index.add_primitive_to_index(
+                primitive_id,
+                timestep_id=self.time_step,
+                scene_id=self.scene_counter,
+            )
+        for composite_id in composite_ids:
+            self.cuboid_index.add_composite_to_index(
+                composite_id,
+                timestep_id=self.time_step,
+                scene_id=self.scene_counter,
+            )
+
         self.time_step += 1
 
     # TODO: Consider whether to support `create_by_offset`, which implies
@@ -720,6 +969,8 @@ class Space:
         primitive_ids = self.cuboid_index.get_primitives_by_timestep(timestep)
         composite_ids = self.cuboid_index.get_composites_by_timestep(timestep)
 
+        # TODO: Update outputs to ensure they only contain distinct values.
+
         return primitive_ids, composite_ids
 
     def _select_by_scene(self, scene: int) -> tuple[list[int], list[slice]]:
@@ -728,6 +979,8 @@ class Space:
 
         primitive_ids = self.cuboid_index.get_primitives_by_scene(scene)
         composite_ids = self.cuboid_index.get_composites_by_scene(scene)
+
+        # TODO: Update outputs to ensure they only contain distinct values.
 
         return primitive_ids, composite_ids
 

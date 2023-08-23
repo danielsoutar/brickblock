@@ -157,8 +157,8 @@ class SpaceIndex:
 
     def get_primitives_by_timestep(self, timestep_id: int) -> list[int]:
         """
-        Get all distinct primitives in the index with timestep equal to
-        `timestep_id`, in order of insertion.
+        Get all primitives in the index with timestep equal to `timestep_id`, in
+        order of insertion.
 
         If the given timestep has no primitives, return an empty list.
 
@@ -172,8 +172,8 @@ class SpaceIndex:
 
     def get_composites_by_timestep(self, timestep_id: int) -> list[slice]:
         """
-        Get all distinct composites in the index with timestep equal to
-        `timestep_id`, in order of insertion.
+        Get all composites in the index with timestep equal to `timestep_id`, in
+        order of insertion.
 
         If the given timestep has no composites, return an empty list.
 
@@ -187,8 +187,8 @@ class SpaceIndex:
 
     def get_primitives_by_scene(self, scene_id: int) -> list[int]:
         """
-        Get all distinct primitives in the index with scene equal to `scene_id`,
-        in order of insertion.
+        Get all primitives in the index with scene equal to `scene_id`, in order
+        of insertion.
 
         If the given scene has no primitives, return an empty list.
 
@@ -202,8 +202,8 @@ class SpaceIndex:
 
     def get_composites_by_scene(self, scene_id: int) -> list[slice]:
         """
-        Get all distinct composites in the index with scene equal to `scene_id`,
-        in order of insertion.
+        Get all composites in the index with scene equal to `scene_id`, in order
+        of insertion.
 
         If the given scene has no composites, return an empty list.
 

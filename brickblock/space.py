@@ -581,7 +581,10 @@ class Space:
         return before_mutation_kwargs
 
     def transform_by_coordinate(
-        self, coordinate: np.ndarray, translate: np.ndarray
+        self,
+        coordinate: np.ndarray,
+        translate: np.ndarray | None = None,
+        reflect: np.ndarray | None = None,
     ) -> None:
         """
         Transform the spatial data of all objects - composite or primitive, with
@@ -604,6 +607,8 @@ class Space:
             coordinate: The coordinate which is compared to the base vector of
                 all objects in the space.
             translate: The vector by which to shift selected objects by.
+            reflect: The vector by which to reflect selected objects by, with
+                respect to the axes of the space.
         """
         primitives_to_update, composites_to_update = self._select_by_coordinate(
             coordinate
@@ -612,7 +617,9 @@ class Space:
             len(primitives_to_update) > 0 or len(composites_to_update) > 0
         )
 
-        exactly_one_set = sum([a is not None for a in [translate]]) == 1
+        exactly_one_set = (
+            sum([a is not None for a in [translate, reflect]]) == 1
+        )
         if not exactly_one_set:
             raise ValueError(
                 "Exactly one transform argument can be set when transforming "
@@ -623,6 +630,10 @@ class Space:
             val = translate
             func = lambda obj: obj + translate  # noqa: E731
             kwargs = {"transform": -translate, "transform_name": "translation"}
+        if reflect is not None:
+            val = reflect
+            func = lambda obj: obj * reflect  # noqa: E731
+            kwargs = {"transform": reflect, "transform_name": "reflection"}
 
         non_zero_transform = np.any(val)
 
@@ -632,7 +643,12 @@ class Space:
         self.changelog.append(Transform(coordinate=coordinate, **kwargs))
         self._transform_by_ids(primitives_to_update, composites_to_update, func)
 
-    def transform_by_name(self, name: str, translate: np.ndarray) -> None:
+    def transform_by_name(
+        self,
+        name: str,
+        translate: np.ndarray | None = None,
+        reflect: np.ndarray | None = None,
+    ) -> None:
         """
         Transform the spatial data of all objects - composite or primitive, that
         that has its name equal to `name` - by one of the transform vectors.
@@ -646,13 +662,17 @@ class Space:
         # Args
             name: The name of the object in the space to update.
             translate: The vector by which to shift selected objects by.
+            reflect: The vector by which to reflect selected objects by, with
+                respect to the axes of the space.
         """
         primitives_to_update, composites_to_update = self._select_by_name(name)
         non_zero_selection = (
             len(primitives_to_update) > 0 or len(composites_to_update) > 0
         )
 
-        exactly_one_set = sum([a is not None for a in [translate]]) == 1
+        exactly_one_set = (
+            sum([a is not None for a in [translate, reflect]]) == 1
+        )
         if not exactly_one_set:
             raise ValueError(
                 "Exactly one transform argument can be set when transforming "
@@ -663,6 +683,10 @@ class Space:
             val = translate
             func = lambda obj: obj + translate  # noqa: E731
             kwargs = {"transform": -translate, "transform_name": "translation"}
+        if reflect is not None:
+            val = reflect
+            func = lambda obj: obj * reflect  # noqa: E731
+            kwargs = {"transform": reflect, "transform_name": "reflection"}
 
         non_zero_transform = np.any(val)
 
@@ -673,7 +697,10 @@ class Space:
         self._transform_by_ids(primitives_to_update, composites_to_update, func)
 
     def transform_by_timestep(
-        self, timestep: int, translate: np.ndarray
+        self,
+        timestep: int,
+        translate: np.ndarray | None = None,
+        reflect: np.ndarray | None = None,
     ) -> None:
         """
         Transform the spatial data of all objects - composite or primitive, that
@@ -688,6 +715,8 @@ class Space:
         # Args
             timestep: The timestep of all the objects in the space to update.
             translate: The vector by which to shift selected objects by.
+            reflect: The vector by which to reflect selected objects by, with
+                respect to the axes of the space.
         """
         primitives_to_update, composites_to_update = self._select_by_timestep(
             timestep
@@ -696,7 +725,9 @@ class Space:
             len(primitives_to_update) > 0 or len(composites_to_update) > 0
         )
 
-        exactly_one_set = sum([a is not None for a in [translate]]) == 1
+        exactly_one_set = (
+            sum([a is not None for a in [translate, reflect]]) == 1
+        )
         if not exactly_one_set:
             raise ValueError(
                 "Exactly one transform argument can be set when transforming "
@@ -707,6 +738,10 @@ class Space:
             val = translate
             func = lambda obj: obj + translate  # noqa: E731
             kwargs = {"transform": -translate, "transform_name": "translation"}
+        if reflect is not None:
+            val = reflect
+            func = lambda obj: obj * reflect  # noqa: E731
+            kwargs = {"transform": reflect, "transform_name": "reflection"}
 
         non_zero_transform = np.any(val)
 
@@ -716,10 +751,18 @@ class Space:
         self.changelog.append(Transform(timestep_id=timestep, **kwargs))
         self._transform_by_ids(primitives_to_update, composites_to_update, func)
 
-    def transform_by_scene(self, scene: int, translate: np.ndarray) -> None:
+    def transform_by_scene(
+        self,
+        scene: int,
+        translate: np.ndarray | None = None,
+        reflect: np.ndarray | None = None,
+    ) -> None:
         """
         Transform the spatial data of all objects - composite or primitive, that
         was referenced at scene `scene` - by one of the transform vectors.
+
+        Objects that are referenced multiple times (i.e. over several timesteps)
+        will only be transformed once.
 
         Note that, since affine transformations are in general not commutative,
         only one transform can be set.
@@ -730,6 +773,8 @@ class Space:
         # Args
             scene: The scene of all the objects in the space to update.
             translate: The vector by which to shift selected objects by.
+            reflect: The vector by which to reflect selected objects by, with
+                respect to the axes of the space.
         """
         primitives_to_update, composites_to_update = self._select_by_scene(
             scene
@@ -738,7 +783,9 @@ class Space:
             len(primitives_to_update) > 0 or len(composites_to_update) > 0
         )
 
-        exactly_one_set = sum([a is not None for a in [translate]]) == 1
+        exactly_one_set = (
+            sum([a is not None for a in [translate, reflect]]) == 1
+        )
         if not exactly_one_set:
             raise ValueError(
                 "Exactly one transform argument can be set when transforming "
@@ -749,6 +796,10 @@ class Space:
             val = translate
             func = lambda obj: obj + translate  # noqa: E731
             kwargs = {"transform": -translate, "transform_name": "translation"}
+        if reflect is not None:
+            val = reflect
+            func = lambda obj: obj * reflect  # noqa: E731
+            kwargs = {"transform": reflect, "transform_name": "reflection"}
 
         non_zero_transform = np.any(val)
 
@@ -1004,6 +1055,7 @@ class Space:
         composite_ids = self.cuboid_index.get_composites_by_timestep(timestep)
 
         # TODO: Update outputs to ensure they only contain distinct values.
+        # TODO: Check whether this is an issue for timesteps.
 
         return primitive_ids, composite_ids
 
@@ -1015,6 +1067,17 @@ class Space:
         composite_ids = self.cuboid_index.get_composites_by_scene(scene)
 
         # TODO: Update outputs to ensure they only contain distinct values.
+        primitive_ids = sorted(list(set(primitive_ids)))
+        # This is nasty, but it's because slices are not hashable despite being
+        # immutable. Having composite_ids as tuples is worth considering.
+        composite_ids = sorted(
+            list(
+                slice(t[0], t[1])
+                for t in set(
+                    [(c_id.start, c_id.stop) for c_id in composite_ids]
+                )
+            )
+        )
 
         return primitive_ids, composite_ids
 

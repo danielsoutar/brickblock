@@ -1612,7 +1612,12 @@ def test_space_transforms_primitive_by_coordinate() -> None:
     space.add_cube(bb.Cube(base_vector=point))
 
     translate = np.array([3, 3, 3])
+    shifted_point = point + translate
+    # TODO: Make reflection slightly more readable/interpretable.
+    # This reflects about the x-axis.
+    reflect = np.array([1, -1, -1])
     space.transform_by_coordinate(coordinate=point, translate=translate)
+    space.transform_by_coordinate(coordinate=shifted_point, reflect=reflect)
 
     # Check the changelog reflects the transform, storing the previous state.
     assert space.changelog == [
@@ -1620,20 +1625,25 @@ def test_space_transforms_primitive_by_coordinate() -> None:
         bb.Transform(
             transform=-translate, transform_name="translation", coordinate=point
         ),
+        bb.Transform(
+            transform=reflect,
+            transform_name="reflection",
+            coordinate=shifted_point,
+        ),
     ]
 
     # Remember to swap the ys and zs due to the current implementation issue
     # with dims
     # TODO: Have a transform for matplotlib and have your own representation
     # instead.
-    swapped_point = np.array([1, 3, 2])
+    swapped_point = np.array([1, 3, 2]) + translate
 
     expected_num_entries = 10
     assert np.array_equal(
         space.cuboid_coordinates,
         np.concatenate(
             (
-                mock_coordinates_entry() + swapped_point + translate,
+                (mock_coordinates_entry() + swapped_point) * reflect,
                 np.zeros((expected_num_entries - 1, 6, 4, 3)),
             ),
             axis=0,
@@ -1650,9 +1660,10 @@ def test_space_transforms_primitive_by_coordinate() -> None:
         ),
     )
 
-    assert list(space.cuboid_index.primitives()) == [0, 0]
+    assert list(space.cuboid_index.primitives()) == [0, 0, 0]
     assert space.cuboid_index.get_primitives_by_timestep(0) == [0]
     assert space.cuboid_index.get_primitives_by_timestep(1) == [0]
+    assert space.cuboid_index.get_primitives_by_timestep(2) == [0]
 
 
 def test_space_transforms_composite_by_coordinate() -> None:
@@ -1675,7 +1686,12 @@ def test_space_transforms_composite_by_coordinate() -> None:
     num_cubes = w * h * d
 
     translate = np.array([3, 3, 3])
+    shifted_point = point + translate
+    # TODO: Make reflection slightly more readable/interpretable.
+    # This reflects about the x-axis.
+    reflect = np.array([1, -1, -1])
     space.transform_by_coordinate(coordinate=point, translate=translate)
+    space.transform_by_coordinate(coordinate=shifted_point, reflect=reflect)
 
     # Check the changelog reflects the transform, storing the previous state.
     assert space.changelog == [
@@ -1685,13 +1701,18 @@ def test_space_transforms_composite_by_coordinate() -> None:
             transform_name="translation",
             coordinate=point,
         ),
+        bb.Transform(
+            transform=reflect,
+            transform_name="reflection",
+            coordinate=shifted_point,
+        ),
     ]
 
     # Remember to swap the ys and zs due to the current implementation issue
     # with dims
     # TODO: Have a transform for matplotlib and have your own representation
     # instead.
-    swapped_point = np.array([1, 3, 2])
+    swapped_point = np.array([1, 3, 2]) + translate
     width = np.array([1, 0, 0])
     height = np.array([0, 0, 1])
     depth = np.array([0, 1, 0])
@@ -1700,7 +1721,6 @@ def test_space_transforms_composite_by_coordinate() -> None:
         return [
             mock_coordinates_entry()
             + swapped_point
-            + translate
             + (w * width)
             + (h * height)
             + (d * depth)
@@ -1712,7 +1732,7 @@ def test_space_transforms_composite_by_coordinate() -> None:
         space.cuboid_coordinates,
         np.concatenate(
             (
-                *make_sub_cubes(),
+                *(make_sub_cubes() * reflect),
                 np.zeros((expected_num_entries - num_cubes, 6, 4, 3)),
             ),
             axis=0,
@@ -1731,9 +1751,14 @@ def test_space_transforms_composite_by_coordinate() -> None:
 
     composite = slice(0, num_cubes)
 
-    assert list(space.cuboid_index.composites()) == [composite, composite]
+    assert list(space.cuboid_index.composites()) == [
+        composite,
+        composite,
+        composite,
+    ]
     assert space.cuboid_index.get_composites_by_timestep(0) == [composite]
     assert space.cuboid_index.get_composites_by_timestep(1) == [composite]
+    assert space.cuboid_index.get_composites_by_timestep(2) == [composite]
 
 
 def test_space_transforms_multiple_objects_by_coordinate() -> None:
@@ -1758,7 +1783,12 @@ def test_space_transforms_multiple_objects_by_coordinate() -> None:
     space.add_cube(bb.Cube(base_vector=point))
 
     translate = np.array([3, 3, 3])
+    shifted_point = point + translate
+    # TODO: Make reflection slightly more readable/interpretable.
+    # This reflects about the x-axis.
+    reflect = np.array([1, -1, -1])
     space.transform_by_coordinate(coordinate=point, translate=translate)
+    space.transform_by_coordinate(coordinate=shifted_point, reflect=reflect)
 
     # Check the changelog reflects the transform, storing the previous state.
     assert space.changelog == [
@@ -1769,13 +1799,18 @@ def test_space_transforms_multiple_objects_by_coordinate() -> None:
             transform_name="translation",
             coordinate=point,
         ),
+        bb.Transform(
+            transform=reflect,
+            transform_name="reflection",
+            coordinate=shifted_point,
+        ),
     ]
 
     # Remember to swap the ys and zs due to the current implementation issue
     # with dims
     # TODO: Have a transform for matplotlib and have your own representation
     # instead.
-    swapped_point = np.array([1, 3, 2])
+    swapped_point = np.array([1, 3, 2]) + translate
     width = np.array([1, 0, 0])
     height = np.array([0, 0, 1])
     depth = np.array([0, 1, 0])
@@ -1784,7 +1819,6 @@ def test_space_transforms_multiple_objects_by_coordinate() -> None:
         return [
             mock_coordinates_entry()
             + swapped_point
-            + translate
             + (w * width)
             + (h * height)
             + (d * depth)
@@ -1796,8 +1830,8 @@ def test_space_transforms_multiple_objects_by_coordinate() -> None:
         space.cuboid_coordinates,
         np.concatenate(
             (
-                *make_sub_cubes(),
-                mock_coordinates_entry() + swapped_point + translate,
+                *(make_sub_cubes() * reflect),
+                (mock_coordinates_entry() + swapped_point) * reflect,
                 np.zeros((expected_num_entries - num_cubes - 1, 6, 4, 3)),
             ),
             axis=0,
@@ -1817,12 +1851,14 @@ def test_space_transforms_multiple_objects_by_coordinate() -> None:
 
     composite = slice(0, num_cubes)
 
-    assert list(space.cuboid_index.primitives()) == [num_cubes, num_cubes]
-    assert list(space.cuboid_index.composites()) == [composite, composite]
+    assert list(space.cuboid_index.primitives()) == [num_cubes] * 3
+    assert list(space.cuboid_index.composites()) == [composite] * 3
     assert space.cuboid_index.get_composites_by_timestep(0) == [composite]
     assert space.cuboid_index.get_primitives_by_timestep(1) == [num_cubes]
     assert space.cuboid_index.get_primitives_by_timestep(2) == [num_cubes]
     assert space.cuboid_index.get_composites_by_timestep(2) == [composite]
+    assert space.cuboid_index.get_primitives_by_timestep(3) == [num_cubes]
+    assert space.cuboid_index.get_composites_by_timestep(3) == [composite]
 
 
 def test_space_transforms_primitive_by_name() -> None:
@@ -1832,7 +1868,11 @@ def test_space_transforms_primitive_by_name() -> None:
     space.add_cube(bb.Cube(base_vector=point, name="my-primitive"))
 
     translate = np.array([3, 3, 3])
+    # TODO: Make reflection slightly more readable/interpretable.
+    # This reflects about the x-axis.
+    reflect = np.array([1, -1, -1])
     space.transform_by_name(name="my-primitive", translate=translate)
+    space.transform_by_name(name="my-primitive", reflect=reflect)
 
     # Check the changelog reflects the transform, storing the previous state.
     assert space.changelog == [
@@ -1842,20 +1882,25 @@ def test_space_transforms_primitive_by_name() -> None:
             transform_name="translation",
             name="my-primitive",
         ),
+        bb.Transform(
+            transform=reflect,
+            transform_name="reflection",
+            name="my-primitive",
+        ),
     ]
 
     # Remember to swap the ys and zs due to the current implementation issue
     # with dims
     # TODO: Have a transform for matplotlib and have your own representation
     # instead.
-    swapped_point = np.array([1, 3, 2])
+    swapped_point = np.array([1, 3, 2]) + translate
 
     expected_num_entries = 10
     assert np.array_equal(
         space.cuboid_coordinates,
         np.concatenate(
             (
-                mock_coordinates_entry() + swapped_point + translate,
+                (mock_coordinates_entry() + swapped_point) * reflect,
                 np.zeros((expected_num_entries - 1, 6, 4, 3)),
             ),
             axis=0,
@@ -1872,9 +1917,10 @@ def test_space_transforms_primitive_by_name() -> None:
         ),
     )
 
-    assert list(space.cuboid_index.primitives()) == [0, 0]
+    assert list(space.cuboid_index.primitives()) == [0, 0, 0]
     assert space.cuboid_index.get_primitives_by_timestep(0) == [0]
     assert space.cuboid_index.get_primitives_by_timestep(1) == [0]
+    assert space.cuboid_index.get_primitives_by_timestep(2) == [0]
 
 
 def test_space_transforms_composite_by_name() -> None:
@@ -1889,7 +1935,11 @@ def test_space_transforms_composite_by_name() -> None:
     num_cubes = w * h * d
 
     translate = np.array([3, 3, 3])
+    # TODO: Make reflection slightly more readable/interpretable.
+    # This reflects about the x-axis.
+    reflect = np.array([1, -1, -1])
     space.transform_by_name(name="my-composite", translate=translate)
+    space.transform_by_name(name="my-composite", reflect=reflect)
 
     # Check the changelog reflects the transform, storing the previous state.
     assert space.changelog == [
@@ -1899,13 +1949,18 @@ def test_space_transforms_composite_by_name() -> None:
             transform_name="translation",
             name="my-composite",
         ),
+        bb.Transform(
+            transform=reflect,
+            transform_name="reflection",
+            name="my-composite",
+        ),
     ]
 
     # Remember to swap the ys and zs due to the current implementation issue
     # with dims
     # TODO: Have a transform for matplotlib and have your own representation
     # instead.
-    swapped_point = np.array([1, 3, 2])
+    swapped_point = np.array([1, 3, 2]) + translate
     width = np.array([1, 0, 0])
     height = np.array([0, 0, 1])
     depth = np.array([0, 1, 0])
@@ -1914,7 +1969,6 @@ def test_space_transforms_composite_by_name() -> None:
         return [
             mock_coordinates_entry()
             + swapped_point
-            + translate
             + (w * width)
             + (h * height)
             + (d * depth)
@@ -1926,7 +1980,7 @@ def test_space_transforms_composite_by_name() -> None:
         space.cuboid_coordinates,
         np.concatenate(
             (
-                *make_sub_cubes(),
+                *(make_sub_cubes() * reflect),
                 np.zeros((expected_num_entries - num_cubes, 6, 4, 3)),
             ),
             axis=0,
@@ -1945,9 +1999,10 @@ def test_space_transforms_composite_by_name() -> None:
 
     composite = slice(0, num_cubes)
 
-    assert list(space.cuboid_index.composites()) == [composite, composite]
+    assert list(space.cuboid_index.composites()) == [composite] * 3
     assert space.cuboid_index.get_composites_by_timestep(0) == [composite]
     assert space.cuboid_index.get_composites_by_timestep(1) == [composite]
+    assert space.cuboid_index.get_composites_by_timestep(2) == [composite]
 
 
 def test_space_transforms_primitive_by_timestep_id() -> None:
@@ -1957,7 +2012,12 @@ def test_space_transforms_primitive_by_timestep_id() -> None:
     space.add_cube(bb.Cube(base_vector=point))
 
     translate = np.array([3, 3, 3])
+    # TODO: Make reflection slightly more readable/interpretable.
+    # This reflects about the x-axis.
+    reflect = np.array([1, -1, -1])
     space.transform_by_timestep(timestep=0, translate=translate)
+    # Possibly counter-intuitive, but this is equally valid as timestep==1.
+    space.transform_by_timestep(timestep=0, reflect=reflect)
 
     # Check the changelog reflects the transform, storing the previous state.
     assert space.changelog == [
@@ -1967,20 +2027,25 @@ def test_space_transforms_primitive_by_timestep_id() -> None:
             transform_name="translation",
             timestep_id=0,
         ),
+        bb.Transform(
+            transform=reflect,
+            transform_name="reflection",
+            timestep_id=0,
+        ),
     ]
 
     # Remember to swap the ys and zs due to the current implementation issue
     # with dims
     # TODO: Have a transform for matplotlib and have your own representation
     # instead.
-    swapped_point = np.array([1, 3, 2])
+    swapped_point = np.array([1, 3, 2]) + translate
 
     expected_num_entries = 10
     assert np.array_equal(
         space.cuboid_coordinates,
         np.concatenate(
             (
-                mock_coordinates_entry() + swapped_point + translate,
+                (mock_coordinates_entry() + swapped_point) * reflect,
                 np.zeros((expected_num_entries - 1, 6, 4, 3)),
             ),
             axis=0,
@@ -1997,9 +2062,10 @@ def test_space_transforms_primitive_by_timestep_id() -> None:
         ),
     )
 
-    assert list(space.cuboid_index.primitives()) == [0, 0]
+    assert list(space.cuboid_index.primitives()) == [0, 0, 0]
     assert space.cuboid_index.get_primitives_by_timestep(0) == [0]
     assert space.cuboid_index.get_primitives_by_timestep(1) == [0]
+    assert space.cuboid_index.get_primitives_by_timestep(2) == [0]
 
 
 def test_space_transforms_composite_by_timestep_id() -> None:
@@ -2012,7 +2078,12 @@ def test_space_transforms_composite_by_timestep_id() -> None:
     num_cubes = w * h * d
 
     translate = np.array([3, 3, 3])
+    # TODO: Make reflection slightly more readable/interpretable.
+    # This reflects about the x-axis.
+    reflect = np.array([1, -1, -1])
     space.transform_by_timestep(timestep=0, translate=translate)
+    # Possibly counter-intuitive, but this is equally valid as timestep==1.
+    space.transform_by_timestep(timestep=0, reflect=reflect)
 
     # Check the changelog reflects the transform, storing the previous state.
     assert space.changelog == [
@@ -2022,13 +2093,18 @@ def test_space_transforms_composite_by_timestep_id() -> None:
             transform_name="translation",
             timestep_id=0,
         ),
+        bb.Transform(
+            transform=reflect,
+            transform_name="reflection",
+            timestep_id=0,
+        ),
     ]
 
     # Remember to swap the ys and zs due to the current implementation issue
     # with dims
     # TODO: Have a transform for matplotlib and have your own representation
     # instead.
-    swapped_point = np.array([1, 3, 2])
+    swapped_point = np.array([1, 3, 2]) + translate
     width = np.array([1, 0, 0])
     height = np.array([0, 0, 1])
     depth = np.array([0, 1, 0])
@@ -2037,7 +2113,6 @@ def test_space_transforms_composite_by_timestep_id() -> None:
         return [
             mock_coordinates_entry()
             + swapped_point
-            + translate
             + (w * width)
             + (h * height)
             + (d * depth)
@@ -2049,7 +2124,7 @@ def test_space_transforms_composite_by_timestep_id() -> None:
         space.cuboid_coordinates,
         np.concatenate(
             (
-                *make_sub_cubes(),
+                *(make_sub_cubes() * reflect),
                 np.zeros((expected_num_entries - num_cubes, 6, 4, 3)),
             ),
             axis=0,
@@ -2068,9 +2143,10 @@ def test_space_transforms_composite_by_timestep_id() -> None:
 
     composite = slice(0, num_cubes)
 
-    assert list(space.cuboid_index.composites()) == [composite, composite]
+    assert list(space.cuboid_index.composites()) == [composite] * 3
     assert space.cuboid_index.get_composites_by_timestep(0) == [composite]
     assert space.cuboid_index.get_composites_by_timestep(1) == [composite]
+    assert space.cuboid_index.get_composites_by_timestep(2) == [composite]
 
 
 def test_space_transforms_primitive_by_scene_id() -> None:
@@ -2080,7 +2156,11 @@ def test_space_transforms_primitive_by_scene_id() -> None:
     space.add_cube(bb.Cube(base_vector=point))
 
     translate = np.array([3, 3, 3])
+    # TODO: Make reflection slightly more readable/interpretable.
+    # This reflects about the x-axis.
+    reflect = np.array([1, -1, -1])
     space.transform_by_scene(scene=0, translate=translate)
+    space.transform_by_scene(scene=0, reflect=reflect)
 
     # Check the changelog reflects the transform, storing the previous state.
     assert space.changelog == [
@@ -2090,20 +2170,25 @@ def test_space_transforms_primitive_by_scene_id() -> None:
             transform_name="translation",
             scene_id=0,
         ),
+        bb.Transform(
+            transform=reflect,
+            transform_name="reflection",
+            scene_id=0,
+        ),
     ]
 
     # Remember to swap the ys and zs due to the current implementation issue
     # with dims
     # TODO: Have a transform for matplotlib and have your own representation
     # instead.
-    swapped_point = np.array([1, 3, 2])
+    swapped_point = np.array([1, 3, 2]) + translate
 
     expected_num_entries = 10
     assert np.array_equal(
         space.cuboid_coordinates,
         np.concatenate(
             (
-                mock_coordinates_entry() + swapped_point + translate,
+                (mock_coordinates_entry() + swapped_point) * reflect,
                 np.zeros((expected_num_entries - 1, 6, 4, 3)),
             ),
             axis=0,
@@ -2120,9 +2205,10 @@ def test_space_transforms_primitive_by_scene_id() -> None:
         ),
     )
 
-    assert list(space.cuboid_index.primitives()) == [0, 0]
+    assert list(space.cuboid_index.primitives()) == [0, 0, 0]
     assert space.cuboid_index.get_primitives_by_timestep(0) == [0]
     assert space.cuboid_index.get_primitives_by_timestep(1) == [0]
+    assert space.cuboid_index.get_primitives_by_timestep(2) == [0]
 
 
 def test_space_transforms_composite_by_scene_id() -> None:
@@ -2135,7 +2221,11 @@ def test_space_transforms_composite_by_scene_id() -> None:
     num_cubes = w * h * d
 
     translate = np.array([3, 3, 3])
+    # TODO: Make reflection slightly more readable/interpretable.
+    # This reflects about the x-axis.
+    reflect = np.array([1, -1, -1])
     space.transform_by_scene(scene=0, translate=translate)
+    space.transform_by_scene(scene=0, reflect=reflect)
 
     # Check the changelog reflects the transform, storing the previous state.
     assert space.changelog == [
@@ -2145,13 +2235,18 @@ def test_space_transforms_composite_by_scene_id() -> None:
             transform_name="translation",
             scene_id=0,
         ),
+        bb.Transform(
+            transform=reflect,
+            transform_name="reflection",
+            scene_id=0,
+        ),
     ]
 
     # Remember to swap the ys and zs due to the current implementation issue
     # with dims
     # TODO: Have a transform for matplotlib and have your own representation
     # instead.
-    swapped_point = np.array([1, 3, 2])
+    swapped_point = np.array([1, 3, 2]) + translate
     width = np.array([1, 0, 0])
     height = np.array([0, 0, 1])
     depth = np.array([0, 1, 0])
@@ -2160,7 +2255,6 @@ def test_space_transforms_composite_by_scene_id() -> None:
         return [
             mock_coordinates_entry()
             + swapped_point
-            + translate
             + (w * width)
             + (h * height)
             + (d * depth)
@@ -2172,7 +2266,7 @@ def test_space_transforms_composite_by_scene_id() -> None:
         space.cuboid_coordinates,
         np.concatenate(
             (
-                *make_sub_cubes(),
+                *(make_sub_cubes() * reflect),
                 np.zeros((expected_num_entries - num_cubes, 6, 4, 3)),
             ),
             axis=0,
@@ -2191,9 +2285,10 @@ def test_space_transforms_composite_by_scene_id() -> None:
 
     composite = slice(0, num_cubes)
 
-    assert list(space.cuboid_index.composites()) == [composite, composite]
+    assert list(space.cuboid_index.composites()) == [composite] * 3
     assert space.cuboid_index.get_composites_by_timestep(0) == [composite]
     assert space.cuboid_index.get_composites_by_timestep(1) == [composite]
+    assert space.cuboid_index.get_composites_by_timestep(2) == [composite]
 
 
 def test_space_transforms_multiple_objects_multiple_times() -> None:
@@ -2246,9 +2341,16 @@ def test_space_transforms_multiple_objects_multiple_times() -> None:
     first_translate = np.array([4, 5, 6])
     second_translate = np.array([10, 14, 2])
     third_translate = np.array([300, 200, 100])
+    reflect = np.array([1, -1, -1])
     space.transform_by_scene(scene=0, translate=first_translate)
     space.transform_by_scene(scene=1, translate=second_translate)
     space.transform_by_name(name="input-tensor", translate=third_translate)
+    cuboid_coordinates_before = np.copy(space.cuboid_coordinates)
+    # Having two reflections should lead to the identity.
+    space.transform_by_scene(scene=1, reflect=reflect)
+    space.transform_by_scene(scene=1, reflect=reflect)
+    cuboid_coordinates_after = space.cuboid_coordinates
+    assert np.array_equal(cuboid_coordinates_before, cuboid_coordinates_after)
 
     # Check the changelog reflects the transforms, storing the previous state.
     assert space.changelog == [
@@ -2270,6 +2372,16 @@ def test_space_transforms_multiple_objects_multiple_times() -> None:
             transform=-third_translate,
             transform_name="translation",
             name="input-tensor",
+        ),
+        bb.Transform(
+            transform=reflect,
+            transform_name="reflection",
+            scene_id=1,
+        ),
+        bb.Transform(
+            transform=reflect,
+            transform_name="reflection",
+            scene_id=1,
         ),
     ]
 
@@ -2296,23 +2408,30 @@ def test_space_transforms_nothing_on_empty_selection() -> None:
     space.snapshot()
 
     translate = np.array([3, 3, 3])
+    reflect = np.array([1, -1, -1])
 
     expected_name_err_msg = "The provided name does not exist in this space."
     with pytest.raises(Exception, match=expected_name_err_msg):
         space.transform_by_name("not-a-valid-name", translate=translate)
+    with pytest.raises(Exception, match=expected_name_err_msg):
+        space.transform_by_name("not-a-valid-name", reflect=reflect)
 
     expected_timestep_err_msg = (
         "The provided timestep is invalid in this space."
     )
     with pytest.raises(Exception, match=expected_timestep_err_msg):
         space.transform_by_timestep(timestep=3, translate=translate)
+    with pytest.raises(Exception, match=expected_timestep_err_msg):
+        space.transform_by_timestep(timestep=3, reflect=reflect)
 
     # The scene is technically valid (it is the current scene), but it is empty,
     # so it silently does nothing.
     space.transform_by_scene(scene=1, translate=translate)
+    space.transform_by_scene(scene=1, reflect=reflect)
 
     # An error isn't meaningful in this case, so it silently does nothing.
     space.transform_by_coordinate(np.array([64, 32, 16]), translate=translate)
+    space.transform_by_coordinate(np.array([64, 32, 16]), reflect=reflect)
 
     # None of the above transforms have any effect and are not reflected in the
     # history.

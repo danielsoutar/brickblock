@@ -772,9 +772,11 @@ class Space:
 
         # Args
             scene: The scene of all the objects in the space to update.
-            translate: The vector by which to shift selected objects by.
+            translate: The vector by which to shift selected objects by. A zero
+                vector is a no-op.
             reflect: The vector by which to reflect selected objects by, with
-                respect to the axes of the space.
+                respect to the axes of the space. A vector that does not contain
+                both and exclusively 1s and -1s is a no-op.
         """
         primitives_to_update, composites_to_update = self._select_by_scene(
             scene
@@ -797,7 +799,16 @@ class Space:
             func = lambda obj: obj + translate  # noqa: E731
             kwargs = {"transform": -translate, "transform_name": "translation"}
         if reflect is not None:
+            # This muddled logic stems from allowing an arbitrary vector.
+            # Instead it would be better if only valid inputs could be passed.
+            unique_elements = np.unique(reflect)
+            allowed_elements = np.array([-1, 1])
+            if not set(unique_elements).issubset(set(allowed_elements)):
+                raise ValueError("Reflection may only contain 1s and -1s.")
+            degenerate_reflection = np.array([1])
             val = reflect
+            if np.array_equal(unique_elements, degenerate_reflection):
+                val = np.zeros(reflect.shape)
             func = lambda obj: obj * reflect  # noqa: E731
             kwargs = {"transform": reflect, "transform_name": "reflection"}
 

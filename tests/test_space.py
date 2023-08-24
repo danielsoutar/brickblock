@@ -2441,6 +2441,53 @@ def test_space_transforms_nothing_on_empty_selection() -> None:
     ]
 
 
+def test_space_transforms_nothing_with_trivial_transform() -> None:
+    space = bb.Space()
+
+    point = np.array([1, 2, 3])
+    space.add_cube(bb.Cube(base_vector=point))
+
+    translate = np.array([0, 0, 0])
+    # TODO: Make reflection slightly more readable/interpretable.
+    reflect = np.array([1, 1, 1])
+    space.transform_by_scene(scene=0, translate=translate)
+    space.transform_by_scene(scene=0, reflect=reflect)
+
+    # Check the changelog reflects no transforms.
+    assert space.changelog == [bb.Addition(0, None)]
+
+    # Remember to swap the ys and zs due to the current implementation issue
+    # with dims
+    # TODO: Have a transform for matplotlib and have your own representation
+    # instead.
+    swapped_point = np.array([1, 3, 2])
+
+    expected_num_entries = 10
+    assert np.array_equal(
+        space.cuboid_coordinates,
+        np.concatenate(
+            (
+                mock_coordinates_entry() + swapped_point,
+                np.zeros((expected_num_entries - 1, 6, 4, 3)),
+            ),
+            axis=0,
+        ),
+    )
+    assert np.array_equal(
+        space.cuboid_shapes,
+        np.concatenate(
+            (
+                np.array([[1, 1, 1]]),
+                np.zeros((expected_num_entries - 1, 3)),
+            ),
+            axis=0,
+        ),
+    )
+
+    assert list(space.cuboid_index.primitives()) == [0]
+    assert space.cuboid_index.get_primitives_by_timestep(0) == [0]
+
+
 def test_space_supports_composites_with_classic_style() -> None:
     ...
 

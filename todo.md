@@ -4,7 +4,7 @@ V1
 
 DOD for each of these: unit tests (visualisation involves manually checking in matplotlib)
 
-25/29 done
+26/29 done
 
 - [X] Create basic `Cube` object
 - [X] Correctly visualise a `Cube` in matplotlib
@@ -35,8 +35,13 @@ DOD for each of these: unit tests (visualisation involves manually checking in m
   - Unless you offset each object in terms of timestep as well.
 - [X] Allow mutating an object by translation (by all 4 selections, store as vector)
 - [X] Allow mutating an object by reflection (by all 4 selections, store as vector of 1s and -1s)
-- [ ] Allow mutating an object by non-negative scaling (by all 4 selections, store as vector)
-- [ ] Distinguish between 'scene' and 'non-scene' timesteps
+- [X] Allow mutating an object by non-negative scaling (by all 4 selections, store as vector)
+- [ ] Remove coordinate buffer and refactor composites to have integer IDs
+  - Shuffle matplotlib materialisation of data into a 'backend' and out of objects.py/space.py
+- [ ] Distinguish between 'scene' and 'non-scene' timesteps/have timestep tracking logic
+- [ ] Support undo() operation for timesteps
+- [ ] Support undo() operation for scenes
+- [ ] Decide whether to support undo() operation for named objects (probably not)
 - [ ] Create GIF from a multi-scene `Space`
 - [ ] Log debug info per scene (objects added/mutated/deleted, possibly camera orientation as well)
 

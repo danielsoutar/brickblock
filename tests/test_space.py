@@ -1616,8 +1616,11 @@ def test_space_transforms_primitive_by_coordinate() -> None:
     # TODO: Make reflection slightly more readable/interpretable.
     # This reflects about the x-axis.
     reflect = np.array([1, -1, -1])
+    reflected_point = shifted_point * reflect
+    scale = np.array([2, 2, 2])
     space.transform_by_coordinate(coordinate=point, translate=translate)
     space.transform_by_coordinate(coordinate=shifted_point, reflect=reflect)
+    space.transform_by_coordinate(coordinate=reflected_point, scale=scale)
 
     # Check the changelog reflects the transform, storing the previous state.
     assert space.changelog == [
@@ -1629,6 +1632,11 @@ def test_space_transforms_primitive_by_coordinate() -> None:
             transform=reflect,
             transform_name="reflection",
             coordinate=shifted_point,
+        ),
+        bb.Transform(
+            transform=1 / scale,
+            transform_name="scale",
+            coordinate=reflected_point,
         ),
     ]
 
@@ -1643,7 +1651,7 @@ def test_space_transforms_primitive_by_coordinate() -> None:
         space.cuboid_coordinates,
         np.concatenate(
             (
-                (mock_coordinates_entry() + swapped_point) * reflect,
+                (mock_coordinates_entry() + swapped_point) * reflect * scale,
                 np.zeros((expected_num_entries - 1, 6, 4, 3)),
             ),
             axis=0,
@@ -1653,17 +1661,18 @@ def test_space_transforms_primitive_by_coordinate() -> None:
         space.cuboid_shapes,
         np.concatenate(
             (
-                np.array([[1, 1, 1]]),
+                np.array([[2, -2, -2]]),
                 np.zeros((expected_num_entries - 1, 3)),
             ),
             axis=0,
         ),
     )
 
-    assert list(space.cuboid_index.primitives()) == [0, 0, 0]
+    assert list(space.cuboid_index.primitives()) == [0, 0, 0, 0]
     assert space.cuboid_index.get_primitives_by_timestep(0) == [0]
     assert space.cuboid_index.get_primitives_by_timestep(1) == [0]
     assert space.cuboid_index.get_primitives_by_timestep(2) == [0]
+    assert space.cuboid_index.get_primitives_by_timestep(3) == [0]
 
 
 def test_space_transforms_composite_by_coordinate() -> None:
@@ -1742,7 +1751,7 @@ def test_space_transforms_composite_by_coordinate() -> None:
         space.cuboid_shapes,
         np.concatenate(
             (
-                np.broadcast_to(np.array([[w, h, d]]), (num_cubes, 3)),
+                np.broadcast_to(np.array([[w, -h, -d]]), (num_cubes, 3)),
                 np.zeros((expected_num_entries - num_cubes, 3)),
             ),
             axis=0,
@@ -1841,8 +1850,8 @@ def test_space_transforms_multiple_objects_by_coordinate() -> None:
         space.cuboid_shapes,
         np.concatenate(
             (
-                np.broadcast_to(np.array([[w, h, d]]), (num_cubes, 3)),
-                np.array([[1, 1, 1]]),
+                np.broadcast_to(np.array([[w, -h, -d]]), (num_cubes, 3)),
+                np.array([[1, -1, -1]]),
                 np.zeros((expected_num_entries - num_cubes - 1, 3)),
             ),
             axis=0,
@@ -1871,8 +1880,10 @@ def test_space_transforms_primitive_by_name() -> None:
     # TODO: Make reflection slightly more readable/interpretable.
     # This reflects about the x-axis.
     reflect = np.array([1, -1, -1])
+    scale = np.array([2, 2, 2])
     space.transform_by_name(name="my-primitive", translate=translate)
     space.transform_by_name(name="my-primitive", reflect=reflect)
+    space.transform_by_name(name="my-primitive", scale=scale)
 
     # Check the changelog reflects the transform, storing the previous state.
     assert space.changelog == [
@@ -1885,6 +1896,11 @@ def test_space_transforms_primitive_by_name() -> None:
         bb.Transform(
             transform=reflect,
             transform_name="reflection",
+            name="my-primitive",
+        ),
+        bb.Transform(
+            transform=1 / scale,
+            transform_name="scale",
             name="my-primitive",
         ),
     ]
@@ -1900,7 +1916,7 @@ def test_space_transforms_primitive_by_name() -> None:
         space.cuboid_coordinates,
         np.concatenate(
             (
-                (mock_coordinates_entry() + swapped_point) * reflect,
+                (mock_coordinates_entry() + swapped_point) * reflect * scale,
                 np.zeros((expected_num_entries - 1, 6, 4, 3)),
             ),
             axis=0,
@@ -1910,17 +1926,18 @@ def test_space_transforms_primitive_by_name() -> None:
         space.cuboid_shapes,
         np.concatenate(
             (
-                np.array([[1, 1, 1]]),
+                np.array([[2, -2, -2]]),
                 np.zeros((expected_num_entries - 1, 3)),
             ),
             axis=0,
         ),
     )
 
-    assert list(space.cuboid_index.primitives()) == [0, 0, 0]
+    assert list(space.cuboid_index.primitives()) == [0, 0, 0, 0]
     assert space.cuboid_index.get_primitives_by_timestep(0) == [0]
     assert space.cuboid_index.get_primitives_by_timestep(1) == [0]
     assert space.cuboid_index.get_primitives_by_timestep(2) == [0]
+    assert space.cuboid_index.get_primitives_by_timestep(3) == [0]
 
 
 def test_space_transforms_composite_by_name() -> None:
@@ -1990,7 +2007,7 @@ def test_space_transforms_composite_by_name() -> None:
         space.cuboid_shapes,
         np.concatenate(
             (
-                np.broadcast_to(np.array([[w, h, d]]), (num_cubes, 3)),
+                np.broadcast_to(np.array([[w, -h, -d]]), (num_cubes, 3)),
                 np.zeros((expected_num_entries - num_cubes, 3)),
             ),
             axis=0,
@@ -2015,9 +2032,11 @@ def test_space_transforms_primitive_by_timestep_id() -> None:
     # TODO: Make reflection slightly more readable/interpretable.
     # This reflects about the x-axis.
     reflect = np.array([1, -1, -1])
+    scale = np.array([2, 2, 2])
     space.transform_by_timestep(timestep=0, translate=translate)
-    # Possibly counter-intuitive, but this is equally valid as timestep==1.
+    # Possibly counter-intuitive, but these are equally valid as timestep==1.
     space.transform_by_timestep(timestep=0, reflect=reflect)
+    space.transform_by_timestep(timestep=0, scale=scale)
 
     # Check the changelog reflects the transform, storing the previous state.
     assert space.changelog == [
@@ -2030,6 +2049,11 @@ def test_space_transforms_primitive_by_timestep_id() -> None:
         bb.Transform(
             transform=reflect,
             transform_name="reflection",
+            timestep_id=0,
+        ),
+        bb.Transform(
+            transform=1 / scale,
+            transform_name="scale",
             timestep_id=0,
         ),
     ]
@@ -2045,7 +2069,7 @@ def test_space_transforms_primitive_by_timestep_id() -> None:
         space.cuboid_coordinates,
         np.concatenate(
             (
-                (mock_coordinates_entry() + swapped_point) * reflect,
+                (mock_coordinates_entry() + swapped_point) * reflect * scale,
                 np.zeros((expected_num_entries - 1, 6, 4, 3)),
             ),
             axis=0,
@@ -2055,17 +2079,18 @@ def test_space_transforms_primitive_by_timestep_id() -> None:
         space.cuboid_shapes,
         np.concatenate(
             (
-                np.array([[1, 1, 1]]),
+                np.array([[2, -2, -2]]),
                 np.zeros((expected_num_entries - 1, 3)),
             ),
             axis=0,
         ),
     )
 
-    assert list(space.cuboid_index.primitives()) == [0, 0, 0]
+    assert list(space.cuboid_index.primitives()) == [0, 0, 0, 0]
     assert space.cuboid_index.get_primitives_by_timestep(0) == [0]
     assert space.cuboid_index.get_primitives_by_timestep(1) == [0]
     assert space.cuboid_index.get_primitives_by_timestep(2) == [0]
+    assert space.cuboid_index.get_primitives_by_timestep(3) == [0]
 
 
 def test_space_transforms_composite_by_timestep_id() -> None:
@@ -2134,7 +2159,7 @@ def test_space_transforms_composite_by_timestep_id() -> None:
         space.cuboid_shapes,
         np.concatenate(
             (
-                np.broadcast_to(np.array([[w, h, d]]), (num_cubes, 3)),
+                np.broadcast_to(np.array([[w, -h, -d]]), (num_cubes, 3)),
                 np.zeros((expected_num_entries - num_cubes, 3)),
             ),
             axis=0,
@@ -2159,8 +2184,10 @@ def test_space_transforms_primitive_by_scene_id() -> None:
     # TODO: Make reflection slightly more readable/interpretable.
     # This reflects about the x-axis.
     reflect = np.array([1, -1, -1])
+    scale = np.array([2, 2, 2])
     space.transform_by_scene(scene=0, translate=translate)
     space.transform_by_scene(scene=0, reflect=reflect)
+    space.transform_by_scene(scene=0, scale=scale)
 
     # Check the changelog reflects the transform, storing the previous state.
     assert space.changelog == [
@@ -2173,6 +2200,11 @@ def test_space_transforms_primitive_by_scene_id() -> None:
         bb.Transform(
             transform=reflect,
             transform_name="reflection",
+            scene_id=0,
+        ),
+        bb.Transform(
+            transform=1 / scale,
+            transform_name="scale",
             scene_id=0,
         ),
     ]
@@ -2188,7 +2220,7 @@ def test_space_transforms_primitive_by_scene_id() -> None:
         space.cuboid_coordinates,
         np.concatenate(
             (
-                (mock_coordinates_entry() + swapped_point) * reflect,
+                (mock_coordinates_entry() + swapped_point) * reflect * scale,
                 np.zeros((expected_num_entries - 1, 6, 4, 3)),
             ),
             axis=0,
@@ -2198,17 +2230,18 @@ def test_space_transforms_primitive_by_scene_id() -> None:
         space.cuboid_shapes,
         np.concatenate(
             (
-                np.array([[1, 1, 1]]),
+                np.array([[2, -2, -2]]),
                 np.zeros((expected_num_entries - 1, 3)),
             ),
             axis=0,
         ),
     )
 
-    assert list(space.cuboid_index.primitives()) == [0, 0, 0]
+    assert list(space.cuboid_index.primitives()) == [0, 0, 0, 0]
     assert space.cuboid_index.get_primitives_by_timestep(0) == [0]
     assert space.cuboid_index.get_primitives_by_timestep(1) == [0]
     assert space.cuboid_index.get_primitives_by_timestep(2) == [0]
+    assert space.cuboid_index.get_primitives_by_timestep(3) == [0]
 
 
 def test_space_transforms_composite_by_scene_id() -> None:
@@ -2276,7 +2309,7 @@ def test_space_transforms_composite_by_scene_id() -> None:
         space.cuboid_shapes,
         np.concatenate(
             (
-                np.broadcast_to(np.array([[w, h, d]]), (num_cubes, 3)),
+                np.broadcast_to(np.array([[w, -h, -d]]), (num_cubes, 3)),
                 np.zeros((expected_num_entries - num_cubes, 3)),
             ),
             axis=0,
@@ -2342,9 +2375,11 @@ def test_space_transforms_multiple_objects_multiple_times() -> None:
     second_translate = np.array([10, 14, 2])
     third_translate = np.array([300, 200, 100])
     reflect = np.array([1, -1, -1])
+    scale = np.array([2, 2, 2])
     space.transform_by_scene(scene=0, translate=first_translate)
     space.transform_by_scene(scene=1, translate=second_translate)
     space.transform_by_name(name="input-tensor", translate=third_translate)
+    space.transform_by_timestep(timestep=1, scale=scale)
     cuboid_coordinates_before = np.copy(space.cuboid_coordinates)
     # Having two reflections should lead to the identity.
     space.transform_by_scene(scene=1, reflect=reflect)
@@ -2372,6 +2407,11 @@ def test_space_transforms_multiple_objects_multiple_times() -> None:
             transform=-third_translate,
             transform_name="translation",
             name="input-tensor",
+        ),
+        bb.Transform(
+            transform=1 / scale,
+            transform_name="scale",
+            timestep_id=1,
         ),
         bb.Transform(
             transform=reflect,
@@ -2486,6 +2526,32 @@ def test_space_transforms_nothing_with_trivial_transform() -> None:
 
     assert list(space.cuboid_index.primitives()) == [0]
     assert space.cuboid_index.get_primitives_by_timestep(0) == [0]
+
+
+def test_space_scale_does_not_apply_to_composites() -> None:
+    space = bb.Space()
+
+    space.add_composite(
+        bb.CompositeCube(base_vector=np.array([1, 2, 3]), w=4, h=3, d=2)
+    )
+
+    s = np.array([2, 2, 2])
+    expected_err_msg = "Scale may only be applied to primitives."
+    with pytest.raises(ValueError, match=expected_err_msg):
+        space.transform_by_coordinate(coordinate=np.array([1, 2, 3]), scale=s)
+
+
+def test_space_scale_cannot_be_non_positive() -> None:
+    space = bb.Space()
+
+    space.add_cube(
+        bb.Cube(base_vector=np.array([1, 2, 3]), scale=2)
+    )
+
+    s = np.array([2, -2, -2])
+    expected_err_msg = "Scale may only contain positive values."
+    with pytest.raises(ValueError, match=expected_err_msg):
+        space.transform_by_coordinate(coordinate=np.array([1, 2, 3]), scale=s)
 
 
 def test_space_supports_composites_with_classic_style() -> None:

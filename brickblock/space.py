@@ -585,6 +585,7 @@ class Space:
         coordinate: np.ndarray,
         translate: np.ndarray | None = None,
         reflect: np.ndarray | None = None,
+        scale: np.ndarray | None = None,
     ) -> None:
         """
         Transform the spatial data of all objects - composite or primitive, with
@@ -608,46 +609,29 @@ class Space:
                 all objects in the space.
             translate: The vector by which to shift selected objects by.
             reflect: The vector by which to reflect selected objects by, with
-                respect to the axes of the space.
+                respect to the axes of the space. A vector that does not contain
+                exclusively 1s and -1s is a no-op, as well as vectors of all 1s.
+            scale: The vector by which to scale selected objects by, with
+                respect to the origin (distances from the origin will also be
+                scaled). Only positive scaling is supported, and only primitives
+                can be scaled. All other cases are no-ops.
         """
-        primitives_to_update, composites_to_update = self._select_by_coordinate(
-            coordinate
+        primitive_ids, composite_ids = self._select_by_coordinate(coordinate)
+        transform_kwargs = self._transform_by_ids(
+            primitive_ids, composite_ids, translate, reflect, scale
         )
-        non_zero_selection = (
-            len(primitives_to_update) > 0 or len(composites_to_update) > 0
-        )
-
-        exactly_one_set = (
-            sum([a is not None for a in [translate, reflect]]) == 1
-        )
-        if not exactly_one_set:
-            raise ValueError(
-                "Exactly one transform argument can be set when transforming "
-                "objects."
+        if transform_kwargs is not None:
+            self.changelog.append(
+                Transform(coordinate=coordinate, **transform_kwargs)
             )
-
-        if translate is not None:
-            val = translate
-            func = lambda obj: obj + translate  # noqa: E731
-            kwargs = {"transform": -translate, "transform_name": "translation"}
-        if reflect is not None:
-            val = reflect
-            func = lambda obj: obj * reflect  # noqa: E731
-            kwargs = {"transform": reflect, "transform_name": "reflection"}
-
-        non_zero_transform = np.any(val)
-
-        if not (non_zero_selection and non_zero_transform):
-            return None
-
-        self.changelog.append(Transform(coordinate=coordinate, **kwargs))
-        self._transform_by_ids(primitives_to_update, composites_to_update, func)
+            self.time_step += 1
 
     def transform_by_name(
         self,
         name: str,
         translate: np.ndarray | None = None,
         reflect: np.ndarray | None = None,
+        scale: np.ndarray | None = None,
     ) -> None:
         """
         Transform the spatial data of all objects - composite or primitive, that
@@ -663,44 +647,27 @@ class Space:
             name: The name of the object in the space to update.
             translate: The vector by which to shift selected objects by.
             reflect: The vector by which to reflect selected objects by, with
-                respect to the axes of the space.
+                respect to the axes of the space. A vector that does not contain
+                exclusively 1s and -1s is a no-op, as well as vectors of all 1s.
+            scale: The vector by which to scale selected objects by, with
+                respect to the origin (distances from the origin will also be
+                scaled). Only positive scaling is supported, and only primitives
+                can be scaled. All other cases are no-ops.
         """
-        primitives_to_update, composites_to_update = self._select_by_name(name)
-        non_zero_selection = (
-            len(primitives_to_update) > 0 or len(composites_to_update) > 0
+        primitive_ids, composite_ids = self._select_by_name(name)
+        transform_kwargs = self._transform_by_ids(
+            primitive_ids, composite_ids, translate, reflect, scale
         )
-
-        exactly_one_set = (
-            sum([a is not None for a in [translate, reflect]]) == 1
-        )
-        if not exactly_one_set:
-            raise ValueError(
-                "Exactly one transform argument can be set when transforming "
-                "objects."
-            )
-
-        if translate is not None:
-            val = translate
-            func = lambda obj: obj + translate  # noqa: E731
-            kwargs = {"transform": -translate, "transform_name": "translation"}
-        if reflect is not None:
-            val = reflect
-            func = lambda obj: obj * reflect  # noqa: E731
-            kwargs = {"transform": reflect, "transform_name": "reflection"}
-
-        non_zero_transform = np.any(val)
-
-        if not (non_zero_selection and non_zero_transform):
-            return None
-
-        self.changelog.append(Transform(name=name, **kwargs))
-        self._transform_by_ids(primitives_to_update, composites_to_update, func)
+        if transform_kwargs is not None:
+            self.changelog.append(Transform(name=name, **transform_kwargs))
+            self.time_step += 1
 
     def transform_by_timestep(
         self,
         timestep: int,
         translate: np.ndarray | None = None,
         reflect: np.ndarray | None = None,
+        scale: np.ndarray | None = None,
     ) -> None:
         """
         Transform the spatial data of all objects - composite or primitive, that
@@ -716,46 +683,29 @@ class Space:
             timestep: The timestep of all the objects in the space to update.
             translate: The vector by which to shift selected objects by.
             reflect: The vector by which to reflect selected objects by, with
-                respect to the axes of the space.
+                respect to the axes of the space. A vector that does not contain
+                exclusively 1s and -1s is a no-op, as well as vectors of all 1s.
+            scale: The vector by which to scale selected objects by, with
+                respect to the origin (distances from the origin will also be
+                scaled). Only positive scaling is supported, and only primitives
+                can be scaled. All other cases are no-ops.
         """
-        primitives_to_update, composites_to_update = self._select_by_timestep(
-            timestep
+        primitive_ids, composite_ids = self._select_by_timestep(timestep)
+        transform_kwargs = self._transform_by_ids(
+            primitive_ids, composite_ids, translate, reflect, scale
         )
-        non_zero_selection = (
-            len(primitives_to_update) > 0 or len(composites_to_update) > 0
-        )
-
-        exactly_one_set = (
-            sum([a is not None for a in [translate, reflect]]) == 1
-        )
-        if not exactly_one_set:
-            raise ValueError(
-                "Exactly one transform argument can be set when transforming "
-                "objects."
+        if transform_kwargs is not None:
+            self.changelog.append(
+                Transform(timestep_id=timestep, **transform_kwargs)
             )
-
-        if translate is not None:
-            val = translate
-            func = lambda obj: obj + translate  # noqa: E731
-            kwargs = {"transform": -translate, "transform_name": "translation"}
-        if reflect is not None:
-            val = reflect
-            func = lambda obj: obj * reflect  # noqa: E731
-            kwargs = {"transform": reflect, "transform_name": "reflection"}
-
-        non_zero_transform = np.any(val)
-
-        if not (non_zero_selection and non_zero_transform):
-            return None
-
-        self.changelog.append(Transform(timestep_id=timestep, **kwargs))
-        self._transform_by_ids(primitives_to_update, composites_to_update, func)
+            self.time_step += 1
 
     def transform_by_scene(
         self,
         scene: int,
         translate: np.ndarray | None = None,
         reflect: np.ndarray | None = None,
+        scale: np.ndarray | None = None,
     ) -> None:
         """
         Transform the spatial data of all objects - composite or primitive, that
@@ -776,17 +726,33 @@ class Space:
                 vector is a no-op.
             reflect: The vector by which to reflect selected objects by, with
                 respect to the axes of the space. A vector that does not contain
-                both and exclusively 1s and -1s is a no-op.
+                exclusively 1s and -1s is a no-op, as well as vectors of all 1s.
+            scale: The vector by which to scale selected objects by, with
+                respect to the origin (distances from the origin will also be
+                scaled). Only positive scaling is supported, and only primitives
+                can be scaled. All other cases are no-ops.
         """
-        primitives_to_update, composites_to_update = self._select_by_scene(
-            scene
+        primitive_ids, composite_ids = self._select_by_scene(scene)
+
+        transform_kwargs = self._transform_by_ids(
+            primitive_ids, composite_ids, translate, reflect, scale
         )
-        non_zero_selection = (
-            len(primitives_to_update) > 0 or len(composites_to_update) > 0
-        )
+        if transform_kwargs is not None:
+            self.changelog.append(Transform(scene_id=scene, **transform_kwargs))
+            self.time_step += 1
+
+    def _transform_by_ids(
+        self,
+        primitive_ids: list[int],
+        composite_ids: list[slice],
+        translate: np.ndarray | None = None,
+        reflect: np.ndarray | None = None,
+        scale: np.ndarray | None = None,
+    ) -> dict[str, Any] | None:
+        non_zero_selection = len(primitive_ids) > 0 or len(composite_ids) > 0
 
         exactly_one_set = (
-            sum([a is not None for a in [translate, reflect]]) == 1
+            sum([a is not None for a in [translate, reflect, scale]]) == 1
         )
         if not exactly_one_set:
             raise ValueError(
@@ -796,7 +762,8 @@ class Space:
 
         if translate is not None:
             val = translate
-            func = lambda obj: obj + translate  # noqa: E731
+            coord_func = lambda obj: obj + translate  # noqa: E731
+            shape_func = None
             kwargs = {"transform": -translate, "transform_name": "translation"}
         if reflect is not None:
             # This muddled logic stems from allowing an arbitrary vector.
@@ -809,30 +776,39 @@ class Space:
             val = reflect
             if np.array_equal(unique_elements, degenerate_reflection):
                 val = np.zeros(reflect.shape)
-            func = lambda obj: obj * reflect  # noqa: E731
+            coord_func = lambda obj: obj * reflect  # noqa: E731
+            shape_func = lambda shp: shp * reflect  # noqa: E731
             kwargs = {"transform": reflect, "transform_name": "reflection"}
+        if scale is not None:
+            # TODO: Change/remove coordinate buffer to allow scaling composites.
+            if len(composite_ids) > 0:
+                raise ValueError("Scale may only be applied to primitives.")
+            if any([v <= 0 for v in scale]):
+                raise ValueError("Scale may only contain positive values.")
+            val = scale
+            coord_func = lambda obj: obj * scale  # noqa: E731
+            shape_func = lambda shp: shp * scale  # noqa: E731
+            kwargs = {"transform": 1 / scale, "transform_name": "scale"}
 
         non_zero_transform = np.any(val)
 
         if not (non_zero_selection and non_zero_transform):
             return None
 
-        self.changelog.append(Transform(scene_id=scene, **kwargs))
-        self._transform_by_ids(primitives_to_update, composites_to_update, func)
-
-    def _transform_by_ids(
-        self,
-        primitive_ids: list[int],
-        composite_ids: list[slice],
-        func: Callable[[np.ndarray], np.ndarray],
-    ) -> None:
-        for primitive_id in primitive_ids:
-            cuboid = self.cuboid_coordinates[primitive_id]
-            self.cuboid_coordinates[primitive_id] = func(cuboid)
-
-        for composite_id in composite_ids:
-            composite = self.cuboid_coordinates[composite_id]
-            self.cuboid_coordinates[composite_id] = func(composite)
+        if coord_func is not None:
+            self.cuboid_coordinates[primitive_ids] = coord_func(
+                self.cuboid_coordinates[primitive_ids]
+            )
+            for composite_id in composite_ids:
+                composite = self.cuboid_coordinates[composite_id]
+                self.cuboid_coordinates[composite_id] = coord_func(composite)
+        if shape_func is not None:
+            self.cuboid_shapes[primitive_ids] = shape_func(
+                self.cuboid_shapes[primitive_ids]
+            )
+            for composite_id in composite_ids:
+                shapes = self.cuboid_shapes[composite_id]
+                self.cuboid_shapes[composite_id] = shape_func(shapes)
 
         for primitive_id in primitive_ids:
             self.cuboid_index.add_primitive_to_index(
@@ -847,7 +823,7 @@ class Space:
                 scene_id=self.scene_counter,
             )
 
-        self.time_step += 1
+        return kwargs
 
     # TODO: Consider whether to support `create_by_offset`, which implies
     # creating an object with certain attributes, but its position is dictated

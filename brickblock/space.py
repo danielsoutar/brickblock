@@ -1148,20 +1148,13 @@ class Space:
             ax: The matplotlib Axes object to add the primitive to.
             primitive_id: The ID of the primitive to add.
         """
-        # Create the object for matplotlib ingestion.
-        matplotlib_like_cube = Poly3DCollection(
-            self.cuboid_coordinates[primitive_id]
-        )
-        # Set the visual properties first - check if these can be moved
-        # into the Poly3DCollection constructor instead.
         visual_properties = {
             k: self.cuboid_visual_metadata[k][primitive_id]
             for k in self.cuboid_visual_metadata.keys()
         }
-        matplotlib_like_cube.set_facecolor(visual_properties["facecolor"])
-        matplotlib_like_cube.set_linewidths(visual_properties["linewidth"])
-        matplotlib_like_cube.set_edgecolor(visual_properties["edgecolor"])
-        matplotlib_like_cube.set_alpha(visual_properties["alpha"])
+        matplotlib_like_cube = Poly3DCollection(
+            self.cuboid_coordinates[primitive_id], **visual_properties
+        )
         ax.add_collection3d(matplotlib_like_cube)
 
         return ax
@@ -1178,20 +1171,13 @@ class Space:
             primitive_ids: The IDs of all the primitives to add.
         """
         for primitive_id in range(primitive_ids.start, primitive_ids.stop):
-            # Create the object for matplotlib ingestion.
-            matplotlib_like_cube = Poly3DCollection(
-                self.cuboid_coordinates[primitive_id]
-            )
-            # Set the visual properties first - check if these can be moved
-            # into the Poly3DCollection constructor instead.
             visual_properties = {
                 k: self.cuboid_visual_metadata[k][primitive_id]
                 for k in self.cuboid_visual_metadata.keys()
             }
-            matplotlib_like_cube.set_facecolor(visual_properties["facecolor"])
-            matplotlib_like_cube.set_linewidths(visual_properties["linewidth"])
-            matplotlib_like_cube.set_edgecolor(visual_properties["edgecolor"])
-            matplotlib_like_cube.set_alpha(visual_properties["alpha"])
+            matplotlib_like_cube = Poly3DCollection(
+                self.cuboid_coordinates[primitive_id], **visual_properties
+            )
             ax.add_collection3d(matplotlib_like_cube)
 
         return ax

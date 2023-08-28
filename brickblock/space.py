@@ -1115,15 +1115,32 @@ class Space:
                 for composite in composites:
                     ax = self._populate_ax_with_composite(ax, composite)
             elif isinstance(operation, Mutation):
+                # Only need to fetch data for properties that were updated.
                 for primitive in primitives:
-                    ax = self._mutate_primitive_in_ax(ax, primitive)
+                    metadata = {
+                        k: self.cuboid_visual_metadata[k][primitive]
+                        for k in operation.subject.keys()
+                    }
+                    ax = self._mutate_primitive_in_ax(ax, primitive, metadata)
                 for composite in composites:
-                    ax = self._mutate_composite_in_ax(ax, composite)
+                    metadata = {
+                        k: self.cuboid_visual_metadata[k][composite]
+                        for k in operation.subject.keys()
+                    }
+                    ax = self._mutate_composite_in_ax(ax, composite, metadata)
             elif isinstance(operation, Transform):
                 for primitive in primitives:
-                    ax = self._transform_primitive_in_ax(ax, primitive)
+                    vertices = self.cuboid_coordinates[primitive]
+                    shape = self.cuboid_shapes[primitive]
+                    ax = self._transform_primitive_in_ax(
+                        ax, primitive, operation.transform_name, vertices, shape
+                    )
                 for composite in composites:
-                    ax = self._transform_composite_in_ax(ax, composite)
+                    vertices = self.cuboid_coordinates[composite]
+                    shape = self.cuboid_shapes[composite]
+                    ax = self._transform_composite_in_ax(
+                        ax, composite, operation.transform_name, vertices, shape
+                    )
             else:
                 raise Exception(
                     "Invalid/unsupported operation encountered when rendering."
@@ -1147,9 +1164,7 @@ class Space:
         return fig, ax
 
     def _populate_ax_with_primitive(
-        self,
-        ax: plt.Axes,
-        primitive_id: int,
+        self, ax: plt.Axes, primitive_id: int
     ) -> plt.Axes:
         """
         Add the primitive with `primitive_id` to the `ax`, including both
@@ -1171,17 +1186,17 @@ class Space:
         return ax
 
     def _populate_ax_with_composite(
-        self, ax: plt.Axes, primitive_ids: slice
+        self, ax: plt.Axes, composite_id: slice
     ) -> plt.Axes:
         """
-        Add the composite with `primitive_ids` to the `ax`, including both
+        Add the composite with `composite_id` to the `ax`, including both
         coordinate and visual metadata.
 
         # Args
             ax: The matplotlib Axes object to add the primitives to.
-            primitive_ids: The IDs of all the primitives to add.
+            composite_id: The IDs of all the primitives to add.
         """
-        for primitive_id in range(primitive_ids.start, primitive_ids.stop):
+        for primitive_id in range(composite_id.start, composite_id.stop):
             visual_properties = {
                 k: self.cuboid_visual_metadata[k][primitive_id]
                 for k in self.cuboid_visual_metadata.keys()
@@ -1194,38 +1209,102 @@ class Space:
         return ax
 
     def _mutate_primitive_in_ax(
-        self, ax: plt.Axes, primitive_id: int
+        self, ax: plt.Axes, primitive_id: int, visual_properties: dict[str, Any]
     ) -> plt.Axes:
-        visual_properties = {
-            k: self.cuboid_visual_metadata[k][primitive_id]
-            for k in self.cuboid_visual_metadata.keys()
-        }
+        """
+        Mutate the visual properties of the primitive with `primitive_id` in the
+        `ax`, with `visual_properties`.
+
+        # Args
+            ax: The matplotlib Axes object containing the primitive.
+            primitive_id: The ID of the primitive to mutate.
+            visual_properties: Object containing the properties to update, and
+                their values.
+        """
         ax.collections[primitive_id].set(**visual_properties)
         return ax
 
     def _mutate_composite_in_ax(
-        self, ax: plt.Axes, primitive_ids: slice
+        self,
+        ax: plt.Axes,
+        composite_id: slice,
+        visual_properties: dict[str, Any],
     ) -> plt.Axes:
-        for primitive_id in range(primitive_ids.start, primitive_ids.stop):
-            visual_properties = {
-                k: self.cuboid_visual_metadata[k][primitive_id]
-                for k in self.cuboid_visual_metadata.keys()
-            }
+        """
+        Mutate the visual properties of the composite with `composite_id` in the
+        `ax`, with `visual_properties`.
+
+        # Args
+            ax: The matplotlib Axes object containing the composite.
+            composite_id: The ID of the composite to mutate.
+            visual_properties: Object containing the properties to update, and
+                their values.
+        """
+        for primitive_id in range(composite_id.start, composite_id.stop):
             ax.collections[primitive_id].set(**visual_properties)
         return ax
 
     def _transform_primitive_in_ax(
-        self, ax: plt.Axes, primitive_id: int
+        self,
+        ax: plt.Axes,
+        primitive_id: int,
+        transform_name: str,
+        vertices: np.ndarray,
+        shape: np.ndarray,
     ) -> plt.Axes:
-        vertices = self.cuboid_coordinates[primitive_id]
-        ax.collections[primitive_id].set_verts(vertices)
+        """
+        Transform the primitive with `primitive_id` in the `ax` according to
+        `transform_name`, with the given `vertices` and `shape`.
+
+        # Args
+            ax: The matplotlib Axes object containing the primitive.
+            primitive_id: The ID of the primitive to transform.
+            transform_name: The type of transform to apply.
+            vertices: The (potentially) updated vertices to apply.
+            shape: The (potentially) updated shape to apply.
+        """
+        if transform_name == "translation":
+            _ = shape
+            ax.collections[primitive_id].set_verts(vertices)
+        if transform_name == "reflection":
+            _ = shape
+            ax.collections[primitive_id].set_verts(vertices)
+        if transform_name == "scale":
+            _ = shape
+            ax.collections[primitive_id].set_verts(vertices)
+
         return ax
 
     def _transform_composite_in_ax(
-        self, ax: plt.Axes, primitive_ids: slice
+        self,
+        ax: plt.Axes,
+        composite_id: slice,
+        transform_name: str,
+        vertices: np.ndarray,
+        shape: np.ndarray,
     ) -> plt.Axes:
-        for primitive_id in range(primitive_ids.start, primitive_ids.stop):
-            vertices = self.cuboid_coordinates[primitive_id]
-            ax.collections[primitive_id].set_verts(vertices)
+        """
+        Transform the composite with `composite_id` in the `ax` according to
+        `transform_name`, with the given `vertices` and `shape`.
+
+        # Args
+            ax: The matplotlib Axes object containing the composite.
+            composite_id: The ID of the composite to transform.
+            transform_name: The type of transform to apply.
+            vertices: The (potentially) updated vertices to apply.
+            shape: The (potentially) updated shape to apply.
+        """
+        for primitive_id in range(composite_id.start, composite_id.stop):
+            id_offset = primitive_id - composite_id.start
+            if transform_name == "translation":
+                _ = shape
+                ax.collections[primitive_id].set_verts(vertices[id_offset])
+            if transform_name == "reflection":
+                _ = shape
+                ax.collections[primitive_id].set_verts(vertices[id_offset])
+            if transform_name == "scale":
+                raise ValueError(
+                    "Scaling for composites is not supported in this backend."
+                )
 
         return ax

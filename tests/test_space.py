@@ -2340,7 +2340,7 @@ def test_space_transforms_multiple_objects_multiple_times() -> None:
         )
     )
 
-    space.add_cube(bb.Cube(base_vector=np.array([12, 14, 3])))
+    space.add_cube(bb.Cube(base_vector=np.array([12, 14, 3]), facecolor="pink"))
 
     space.add_composite(
         bb.CompositeCube(
@@ -2373,7 +2373,7 @@ def test_space_transforms_multiple_objects_multiple_times() -> None:
 
     first_translate = np.array([4, 5, 6])
     second_translate = np.array([10, 14, 2])
-    third_translate = np.array([300, 200, 100])
+    third_translate = np.array([3, 2, 1])
     reflect = np.array([1, -1, -1])
     scale = np.array([2, 2, 2])
     space.transform_by_scene(scene=0, translate=first_translate)

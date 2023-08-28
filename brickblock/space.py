@@ -1113,9 +1113,25 @@ class Space:
             composites = self.cuboid_index.get_composites_by_timestep(timestep)
             if isinstance(operation, Addition):
                 for primitive in primitives:
-                    ax = self._populate_ax_with_primitive(ax, primitive)
+                    vertices = self.cuboid_coordinates[primitive]
+                    shape = self.cuboid_shapes[primitive]
+                    visual_properties = {
+                        k: self.cuboid_visual_metadata[k][primitive]
+                        for k in self.cuboid_visual_metadata.keys()
+                    }
+                    ax = self._populate_ax_with_primitive(
+                        ax, primitive, vertices, shape, visual_properties
+                    )
                 for composite in composites:
-                    ax = self._populate_ax_with_composite(ax, composite)
+                    vertices = self.cuboid_coordinates[composite]
+                    shape = self.cuboid_shapes[composite]
+                    visual_properties = {
+                        k: self.cuboid_visual_metadata[k][composite]
+                        for k in self.cuboid_visual_metadata.keys()
+                    }
+                    ax = self._populate_ax_with_composite(
+                        ax, composite, vertices, shape, visual_properties
+                    )
             elif isinstance(operation, Mutation):
                 # Only need to fetch data for properties that were updated.
                 for primitive in primitives:
@@ -1166,45 +1182,67 @@ class Space:
         return fig, ax
 
     def _populate_ax_with_primitive(
-        self, ax: plt.Axes, primitive_id: int
+        self,
+        ax: plt.Axes,
+        primitive_id: int,
+        vertices: np.ndarray,
+        shape: np.ndarray,
+        visual_properties: dict[str, Any],
     ) -> plt.Axes:
         """
-        Add the primitive with `primitive_id` to the `ax`, including both
-        coordinate and visual metadata.
+        Add the primitive with `primitive_id` to `ax` with the given `vertices`,
+        `shape`, and `visual_properties`.
 
         # Args
             ax: The matplotlib Axes object to add the primitive to.
             primitive_id: The ID of the primitive to add.
+            vertices: The vertices to apply.
+            shape: The shape to apply.
+            visual_properties: Object containing the properties to apply, and
+                their values.
         """
-        visual_properties = {
-            k: self.cuboid_visual_metadata[k][primitive_id]
-            for k in self.cuboid_visual_metadata.keys()
-        }
-        matplotlib_like_cube = Poly3DCollection(
-            self.cuboid_coordinates[primitive_id], **visual_properties
-        )
+        # Currently not used.
+        _, _ = primitive_id, shape
+
+        matplotlib_like_cube = Poly3DCollection(vertices, **visual_properties)
         ax.add_collection3d(matplotlib_like_cube)
 
         return ax
 
     def _populate_ax_with_composite(
-        self, ax: plt.Axes, composite_id: slice
+        self,
+        ax: plt.Axes,
+        composite_id: slice,
+        vertices: np.ndarray,
+        shape: np.ndarray,
+        visual_properties: dict[str, Any],
     ) -> plt.Axes:
         """
-        Add the composite with `composite_id` to the `ax`, including both
-        coordinate and visual metadata.
+        Add the composite with `composite_id` to `ax` with the given `vertices`,
+        `shape`, and `visual_properties`.
 
         # Args
-            ax: The matplotlib Axes object to add the primitives to.
+            ax: The matplotlib Axes object to add the composite to.
             composite_id: The IDs of all the primitives to add.
+            vertices: The vertices to apply.
+            shape: The shape to apply. Note that the shape for each entry is the
+                shape for the entire composite.
+            visual_properties: Object containing the properties to apply, and
+                their values. Note that the values may be lists, in which case
+                each entry corresponds to its respective primitive, or scalars,
+                in which case it applies to all primitives.
         """
+        # Currently not used.
+        _ = shape
+
         for primitive_id in range(composite_id.start, composite_id.stop):
-            visual_properties = {
-                k: self.cuboid_visual_metadata[k][primitive_id]
-                for k in self.cuboid_visual_metadata.keys()
+            id_offset = primitive_id - composite_id.start
+            primitive_visual_properties = {
+                k: visual_properties[k][id_offset]
+                for k in visual_properties.keys()
             }
             matplotlib_like_cube = Poly3DCollection(
-                self.cuboid_coordinates[primitive_id], **visual_properties
+                vertices[id_offset], **primitive_visual_properties
             )
             ax.add_collection3d(matplotlib_like_cube)
 
@@ -1243,7 +1281,11 @@ class Space:
                 their values.
         """
         for primitive_id in range(composite_id.start, composite_id.stop):
-            ax.collections[primitive_id].set(**visual_properties)
+            primitive_visual_properties = {
+                k: visual_properties[k][primitive_id]
+                for k in visual_properties.keys()
+            }
+            ax.collections[primitive_id].set(**primitive_visual_properties)
         return ax
 
     def _transform_primitive_in_ax(

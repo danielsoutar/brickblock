@@ -118,6 +118,8 @@ class Space:
     # TODO: Document the changelog structure (mutations are stored as primitives
     # then composites per updated field).
     changelog: list[SpaceStateChange]
+    dimensions: dict[str, int]
+    basis: np.ndarray
 
     def __init__(self) -> None:
         self.dims = np.zeros((3, 2))

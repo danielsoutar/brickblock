@@ -1106,17 +1106,28 @@ class Space:
         # TODO: This logic really belongs in a `stream()` function. The render
         # method should just get all primitive_ids and then render everything
         # from the coordinates and visual_metadata.
-        for scene_id in range(self.scene_counter + 1):
-            primitives_for_scene = self.cuboid_index.get_primitives_by_scene(
-                scene_id
-            )
-            composites_for_scene = self.cuboid_index.get_composites_by_scene(
-                scene_id
-            )
-            for primitive in primitives_for_scene:
-                ax = self._populate_ax_with_primitive(ax, primitive)
-            for composite in composites_for_scene:
-                ax = self._populate_ax_with_composite(ax, composite)
+        for timestep, operation in enumerate(self.changelog):
+            primitives = self.cuboid_index.get_primitives_by_timestep(timestep)
+            composites = self.cuboid_index.get_composites_by_timestep(timestep)
+            if isinstance(operation, Addition):
+                for primitive in primitives:
+                    ax = self._populate_ax_with_primitive(ax, primitive)
+                for composite in composites:
+                    ax = self._populate_ax_with_composite(ax, composite)
+            elif isinstance(operation, Mutation):
+                for primitive in primitives:
+                    ax = self._mutate_primitive_in_ax(ax, primitive)
+                for composite in composites:
+                    ax = self._mutate_composite_in_ax(ax, composite)
+            elif isinstance(operation, Transform):
+                for primitive in primitives:
+                    ax = self._transform_primitive_in_ax(ax, primitive)
+                for composite in composites:
+                    ax = self._transform_composite_in_ax(ax, composite)
+            else:
+                raise Exception(
+                    "Invalid/unsupported operation encountered when rendering."
+                )
 
         # Use the space's bounds to update the camera and view.
         # This is very janky but at least ensures everything is in view.
@@ -1179,5 +1190,42 @@ class Space:
                 self.cuboid_coordinates[primitive_id], **visual_properties
             )
             ax.add_collection3d(matplotlib_like_cube)
+
+        return ax
+
+    def _mutate_primitive_in_ax(
+        self, ax: plt.Axes, primitive_id: int
+    ) -> plt.Axes:
+        visual_properties = {
+            k: self.cuboid_visual_metadata[k][primitive_id]
+            for k in self.cuboid_visual_metadata.keys()
+        }
+        ax.collections[primitive_id].set(**visual_properties)
+        return ax
+
+    def _mutate_composite_in_ax(
+        self, ax: plt.Axes, primitive_ids: slice
+    ) -> plt.Axes:
+        for primitive_id in range(primitive_ids.start, primitive_ids.stop):
+            visual_properties = {
+                k: self.cuboid_visual_metadata[k][primitive_id]
+                for k in self.cuboid_visual_metadata.keys()
+            }
+            ax.collections[primitive_id].set(**visual_properties)
+        return ax
+
+    def _transform_primitive_in_ax(
+        self, ax: plt.Axes, primitive_id: int
+    ) -> plt.Axes:
+        vertices = self.cuboid_coordinates[primitive_id]
+        ax.collections[primitive_id].set_verts(vertices)
+        return ax
+
+    def _transform_composite_in_ax(
+        self, ax: plt.Axes, primitive_ids: slice
+    ) -> plt.Axes:
+        for primitive_id in range(primitive_ids.start, primitive_ids.stop):
+            vertices = self.cuboid_coordinates[primitive_id]
+            ax.collections[primitive_id].set_verts(vertices)
 
         return ax

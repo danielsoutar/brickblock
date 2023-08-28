@@ -2544,9 +2544,7 @@ def test_space_scale_does_not_apply_to_composites() -> None:
 def test_space_scale_cannot_be_non_positive() -> None:
     space = bb.Space()
 
-    space.add_cube(
-        bb.Cube(base_vector=np.array([1, 2, 3]), scale=2)
-    )
+    space.add_cube(bb.Cube(base_vector=np.array([1, 2, 3]), scale=2))
 
     s = np.array([2, -2, -2])
     expected_err_msg = "Scale may only contain positive values."

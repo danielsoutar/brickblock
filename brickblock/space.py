@@ -448,11 +448,14 @@ class Space:
         self.total = np.zeros((3, 1))
         self.num_objs = 0
         self.primitive_counter = 0
+        self.new_object_counter = 0
         self.tracked_time_step = 0
         self.time_step = 0
         self.scene_counter = 0
         self.cuboid_coordinates = np.zeros((10, 6, 4, 3))
+        self.new_base_coordinates = np.zeros((10, 3))
         self.cuboid_shapes = np.zeros((10, 3))
+        self.new_cuboid_shapes = np.zeros((10, 3))
         self.cuboid_visual_metadata = {}
         self.cuboid_index = SpaceIndex()
         self.cuboid_names = {}
@@ -551,8 +554,10 @@ class Space:
 
         # Add shape data for this cuboid.
         self.cuboid_shapes[self.primitive_counter] = cuboid.shape()
+        self.new_cuboid_shapes[self.new_object_counter] = cuboid.shape()
 
         self.cuboid_coordinates[self.primitive_counter] = cuboid.faces
+        self.new_base_coordinates[self.new_object_counter] = cuboid.faces[0][0]
 
         # Update the visual metadata store.
         for key, value in cuboid.visual_metadata().items():
@@ -568,6 +573,7 @@ class Space:
         # Update the primitive_counter.
         primitive_id = self.primitive_counter
         self.primitive_counter += 1
+        self.new_object_counter += 1
 
         return primitive_id
 
@@ -631,11 +637,13 @@ class Space:
 
         base = self.primitive_counter
         offset = base + num_cubes
-        self.cuboid_coordinates[base:offset] = composite.faces
-
         # Add shape data for this composite.
-        # In this case, broadcast the entire shape across all of its primitives.
         self.cuboid_shapes[base:offset] = composite.shape()
+        self.new_cuboid_shapes[self.new_object_counter] = composite.shape()
+
+        self.cuboid_coordinates[base:offset] = composite.faces
+        base_coordinate = composite.faces[0][0][0]
+        self.new_base_coordinates[self.new_object_counter] = base_coordinate
 
         # Update visual metadata store
         for key, value in composite.visual_metadata().items():
@@ -645,6 +653,7 @@ class Space:
                 self.cuboid_visual_metadata[key] = [value] * num_cubes
 
         self.primitive_counter += num_cubes
+        self.new_object_counter += 1
         primitive_ids = slice(base, offset)
 
         # Add to index
@@ -1380,8 +1389,8 @@ class Space:
 
         # TODO: Update outputs to ensure they only contain distinct values.
         primitive_ids = sorted(list(set(primitive_ids)))
-        # This is nasty, but it's because slices are not hashable despite being
-        # immutable. Having composite_ids as tuples is worth considering.
+        # This is nasty, and is due to slices not being hashable. Having
+        # composite_ids as tuples or ints is worth considering.
         composite_ids = sorted(
             list(
                 slice(t[0], t[1])

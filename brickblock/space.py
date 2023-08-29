@@ -11,7 +11,7 @@ from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import numpy as np
 
-from brickblock.index import SpaceIndex
+from brickblock.index import SpaceIndex, TemporalIndex
 from brickblock.objects import Cube, Cuboid, CompositeCube
 
 
@@ -458,6 +458,8 @@ class Space:
         self.new_cuboid_shapes = np.zeros((10, 3))
         self.cuboid_visual_metadata = {}
         self.cuboid_index = SpaceIndex()
+        self.new_cuboid_index = TemporalIndex()
+        self.new_composite_index = TemporalIndex()
         self.cuboid_names = {}
         self.changelog = []
         # The default mapping is W -> x-axis, H -> z-axis, D -> y-axis.
@@ -569,6 +571,9 @@ class Space:
         self.cuboid_index.add_primitive_to_index(
             self.primitive_counter, self.time_step, self.scene_counter
         )
+        self.new_cuboid_index.add_item_to_index(
+            self.new_object_counter, self.time_step, self.scene_counter
+        )
 
         # Update the primitive_counter.
         primitive_id = self.primitive_counter
@@ -659,6 +664,9 @@ class Space:
         # Add to index
         self.cuboid_index.add_composite_to_index(
             primitive_ids, self.time_step, self.scene_counter
+        )
+        self.new_composite_index.add_item_to_index(
+            self.new_object_counter, self.time_step, self.scene_counter
         )
 
         # TODO: Consider how to implement 'styles'.
@@ -1409,8 +1417,12 @@ class Space:
         Note that valid scenes must have 1+ transforms - i.e. adding,
         deleting, or mutating an object, must be present in a scene.
         """
-        expected_num_scenes = self.scene_counter + 1
-        if not self.cuboid_index.current_scene_is_valid(expected_num_scenes):
+        scene = self.scene_counter + 1
+        referenced_cuboids = self.new_cuboid_index.current_scene_is_valid(scene)
+        referenced_composites = self.new_composite_index.current_scene_is_valid(
+            scene
+        )
+        if not (referenced_cuboids or referenced_composites):
             raise Exception(
                 "A snapshot must include at least one addition, mutation, or "
                 "deletion in the given scene."

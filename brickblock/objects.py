@@ -66,7 +66,8 @@ class Cube:
             alpha = 0.0
 
         # Check base_vector is 3D.
-        is_3d = base_vector.flatten().shape == (3,)
+        base_vector = base_vector.flatten()
+        is_3d = base_vector.shape == (3,)
         if not is_3d:
             raise ValueError(
                 "Cube objects are three-dimensional, the base vector should be "
@@ -271,7 +272,8 @@ class Cuboid:
             alpha = 0.0
 
         # Check base_vector is 3D.
-        is_3d = base_vector.flatten().shape == (3,)
+        base_vector = base_vector.flatten()
+        is_3d = base_vector.shape == (3,)
         if not is_3d:
             raise ValueError(
                 "Cuboid objects are three-dimensional, the base vector should "
@@ -479,7 +481,8 @@ class CompositeCube:
             alpha = 0.0
 
         # Check base_vector is 3D.
-        is_3d = base_vector.flatten().shape == (3,)
+        base_vector = base_vector.flatten()
+        is_3d = base_vector.shape == (3,)
         if not is_3d:
             raise ValueError(
                 "Composite objects are three-dimensional, the base vector "

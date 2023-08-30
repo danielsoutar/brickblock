@@ -443,6 +443,7 @@ class Space:
     visualisation_backend: VisualisationBackend
 
     def __init__(self) -> None:
+        self.old_dims = np.zeros((3, 2))
         self.dims = np.zeros((3, 2))
         self.mean = np.zeros((3, 1))
         self.total = np.zeros((3, 1))
@@ -489,7 +490,8 @@ class Space:
         self.num_objs += 1
         self.changelog.append(Addition(self.time_step, None))
         self.time_step += 1
-        self._update_bounds(slice(old_primitive_id, old_primitive_id + 1))
+        self._old_update_bounds(slice(old_primitive_id, old_primitive_id + 1))
+        self._update_bounds(primitive_id)
 
     def add_cuboid(self, cuboid: Cuboid) -> None:
         """
@@ -501,7 +503,8 @@ class Space:
         self.num_objs += 1
         self.changelog.append(Addition(self.time_step, None))
         self.time_step += 1
-        self._update_bounds(slice(old_primitive_id, old_primitive_id + 1))
+        self._old_update_bounds(slice(old_primitive_id, old_primitive_id + 1))
+        self._update_bounds(primitive_id)
 
     def add_composite(self, composite: CompositeCube) -> None:
         """
@@ -513,7 +516,8 @@ class Space:
         self.num_objs += 1
         self.changelog.append(Addition(self.time_step, None))
         self.time_step += 1
-        self._update_bounds(old_composite_id)
+        self._old_update_bounds(old_composite_id)
+        self._update_bounds(composite_id)
 
     def _add_cuboid_primitive(self, cuboid: Cube | Cuboid) -> int:
         """
@@ -547,6 +551,7 @@ class Space:
                 ]
             ).reshape((3, 2))
 
+        self.old_dims = dim
         self.dims = dim
 
         # Update the coordinate data, resizing if necessary.
@@ -639,6 +644,7 @@ class Space:
                 ]
             ).reshape((3, 2))
 
+        self.old_dims = dim
         self.dims = dim
 
         # Update coordinate array
@@ -767,7 +773,7 @@ class Space:
                 )
             self.old_cuboid_names[name] = object_ids
 
-    def _update_bounds(self, primitive_ids: slice) -> None:
+    def _old_update_bounds(self, primitive_ids: slice) -> None:
         """
         Update the bounding box of the space, based on the primitives given by
         `primitive_ids`.
@@ -788,6 +794,31 @@ class Space:
         )
         given_mins = np.min(primitives, axis=0)
         given_maxes = np.max(primitives, axis=0)
+
+        self.old_dims[:, 0] = np.minimum(self.old_dims[:, 0], given_mins.T)
+        self.old_dims[:, 1] = np.maximum(self.old_dims[:, 1], given_maxes.T)
+
+    def _update_bounds(self, object_id: int) -> None:
+        """
+        Update the bounding box of the space, based on the object given by
+        `object_id`.
+
+        The bounds of the space are updated regardless of whether or not the
+        provided object is visible.
+
+        # Args
+            object_id: The object for which coordinate and shape data is used to
+                update the bounding box of this space.
+        """
+        row_vec = (1, 3)
+        coordinate = self.base_coordinates[object_id].reshape(row_vec)
+        shape = self.cuboid_shapes[object_id].reshape(row_vec)
+        # Shape is always stored in WHD order, so convert.
+        shape = self._convert_basis(shape)
+        limits = np.concatenate((coordinate, coordinate + shape), axis=0)
+
+        given_mins = np.min(limits, axis=0)
+        given_maxes = np.max(limits, axis=0)
 
         self.dims[:, 0] = np.minimum(self.dims[:, 0], given_mins.T)
         self.dims[:, 1] = np.maximum(self.dims[:, 1], given_maxes.T)
@@ -1377,7 +1408,7 @@ class Space:
 
         self.changelog.append(Addition(self.time_step, None))
         self.time_step += 1
-        self._update_bounds(slice(min_id, max_id + 1))
+        self._old_update_bounds(slice(min_id, max_id + 1))
 
     def _old_select_by_coordinate(
         self, coordinate: np.ndarray

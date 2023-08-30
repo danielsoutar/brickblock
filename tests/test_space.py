@@ -68,20 +68,22 @@ def test_space_creation() -> None:
     assert np.array_equal(space.mean, np.zeros((3, 1)))
     assert np.array_equal(space.total, np.zeros((3, 1)))
     assert space.num_objs == 0
-    assert space.primitive_counter == 0
+    assert space.object_counter == 0
     assert space.time_step == 0
     assert space.scene_counter == 0
-    assert np.array_equal(space.cuboid_coordinates, np.zeros((10, 6, 4, 3)))
-    assert np.array_equal(space.old_cuboid_shapes, np.zeros((10, 3)))
-    assert space.old_cuboid_visual_metadata == {}
-    assert space.old_cuboid_index is not None
+    assert np.array_equal(space.base_coordinates, np.zeros((10, 3)))
+    assert np.array_equal(space.cuboid_shapes, np.zeros((10, 3)))
+    assert space.cuboid_visual_metadata == {}
+    assert space.cuboid_index is not None
+    assert space.composite_index is not None
     assert space.changelog == []
 
 
 def test_space_snapshot_creates_a_scene() -> None:
     space = bb.Space()
 
-    cube = bb.Cube(base_vector=np.array([0, 0, 0]), scale=1.0)
+    point = np.array([0, 0, 0]).reshape((1, 3))
+    cube = bb.Cube(base_vector=point, scale=1.0)
     space.add_cube(cube)
     space.snapshot()
 
@@ -89,45 +91,37 @@ def test_space_snapshot_creates_a_scene() -> None:
     assert np.array_equal(space.mean, np.array([[0.5], [0.5], [0.5]]))
     assert np.array_equal(space.total, np.array([[0.5], [0.5], [0.5]]))
     assert space.num_objs == 1
-    assert space.primitive_counter == 1
+    assert space.object_counter == 1
     assert space.time_step == 1
     assert space.scene_counter == 1
-    expected_num_entries = 10
+    empty_entries = 9
     assert np.array_equal(
-        space.cuboid_coordinates,
-        np.concatenate(
-            (
-                mock_coordinates_entry(),
-                np.zeros((expected_num_entries - 1, 6, 4, 3)),
-            ),
-            axis=0,
-        ),
+        space.base_coordinates,
+        np.concatenate((point, np.zeros((empty_entries, 3))), axis=0),
     )
     assert np.array_equal(
-        space.old_cuboid_shapes,
-        np.concatenate(
-            (np.ones((1, 3)), np.zeros((expected_num_entries - 1, 3))),
-            axis=0,
-        ),
+        space.cuboid_shapes,
+        np.concatenate((np.ones((1, 3)), np.zeros((empty_entries, 3))), axis=0),
     )
-    assert space.old_cuboid_visual_metadata == {
+    assert space.cuboid_visual_metadata == {
         "facecolor": [None],
         "linewidth": [0.1],
         "edgecolor": ["black"],
         "alpha": [0.0],
     }
-    assert list(space.old_cuboid_index.primitives()) == [0]
+    assert list(space.cuboid_index.items()) == [0]
     assert space.changelog == [bb.Addition(timestep_id=0, name=None)]
 
 
 def test_space_multiple_snapshots_create_multiple_scenes() -> None:
     space = bb.Space()
 
-    cube = bb.Cube(base_vector=np.array([0, 0, 0]), scale=1.0)
+    point = np.array([0, 0, 0]).reshape((1, 3))
+    cube = bb.Cube(base_vector=point, scale=1.0)
     space.add_cube(cube)
     space.snapshot()
 
-    second_cube = bb.Cube(base_vector=np.array([3, 3, 3]), scale=1.0)
+    second_cube = bb.Cube(base_vector=point + 3, scale=1.0)
     space.add_cube(second_cube)
     space.snapshot()
 
@@ -135,41 +129,30 @@ def test_space_multiple_snapshots_create_multiple_scenes() -> None:
     assert np.array_equal(space.mean, np.array([[2.0], [2.0], [2.0]]))
     assert np.array_equal(space.total, np.array([[4.0], [4.0], [4.0]]))
     assert space.num_objs == 2
-    assert space.primitive_counter == 2
+    assert space.object_counter == 2
     assert space.time_step == 2
     assert space.scene_counter == 2
-    expected_num_entries = 10
+    empty_entries = 8
     assert np.array_equal(
-        space.cuboid_coordinates,
+        space.base_coordinates,
         np.concatenate(
-            (
-                mock_coordinates_entry(),
-                mock_coordinates_entry() + 3,
-                np.zeros((expected_num_entries - 2, 6, 4, 3)),
-            ),
-            axis=0,
+            (point, point + 3, np.zeros((empty_entries, 3))), axis=0
         ),
     )
     assert np.array_equal(
-        space.old_cuboid_shapes,
-        np.concatenate(
-            (
-                np.ones((2, 3)),
-                np.zeros((expected_num_entries - 2, 3)),
-            ),
-            axis=0,
-        ),
+        space.cuboid_shapes,
+        np.concatenate((np.ones((2, 3)), np.zeros((empty_entries, 3))), axis=0),
     )
-    assert space.old_cuboid_visual_metadata == {
+    assert space.cuboid_visual_metadata == {
         "facecolor": [None, None],
         "linewidth": [0.1, 0.1],
         "edgecolor": ["black", "black"],
         "alpha": [0.0, 0.0],
     }
-    assert space.old_cuboid_index.get_primitives_by_timestep(0) == [0]
-    assert space.old_cuboid_index.get_primitives_by_timestep(1) == [1]
-    assert space.old_cuboid_index.get_primitives_by_scene(0) == [0]
-    assert space.old_cuboid_index.get_primitives_by_scene(1) == [1]
+    assert space.cuboid_index.get_items_by_timestep(0) == [0]
+    assert space.cuboid_index.get_items_by_timestep(1) == [1]
+    assert space.cuboid_index.get_items_by_scene(0) == [0]
+    assert space.cuboid_index.get_items_by_scene(1) == [1]
     assert space.changelog == [
         bb.Addition(timestep_id=0, name=None),
         bb.Addition(timestep_id=1, name=None),
@@ -251,49 +234,39 @@ def test_space_creates_valid_axes_on_render_multiple_scenes() -> None:
 def test_space_add_multiple_cubes_in_single_scene() -> None:
     space = bb.Space()
 
-    cube = bb.Cube(base_vector=np.array([0, 0, 0]), scale=1.0)
-    second_cube = bb.Cube(base_vector=np.array([3, 3, 3]), scale=1.0)
+    point = np.array([0, 0, 0]).reshape((1, 3))
+    cube = bb.Cube(base_vector=point, scale=1.0)
+    second_cube = bb.Cube(base_vector=point + 3, scale=1.0)
 
     space.add_cube(cube)
     space.add_cube(second_cube)
     space.snapshot()
 
     assert space.num_objs == 2
-    assert space.primitive_counter == 2
+    assert space.object_counter == 2
     assert space.time_step == 2
     assert space.scene_counter == 1
 
-    expected_num_entries = 10
+    empty_entries = 8
+    empty_entries_arr = np.zeros((empty_entries, 3))
+
     assert np.array_equal(
-        space.cuboid_coordinates,
-        np.concatenate(
-            (
-                mock_coordinates_entry(),
-                mock_coordinates_entry() + 3,
-                np.zeros((expected_num_entries - 2, 6, 4, 3)),
-            ),
-            axis=0,
-        ),
+        space.base_coordinates,
+        np.concatenate((point, point + 3, empty_entries_arr), axis=0),
     )
     assert np.array_equal(
-        space.old_cuboid_shapes,
-        np.concatenate(
-            (
-                np.ones((2, 3)),
-                np.zeros((expected_num_entries - 2, 3)),
-            ),
-            axis=0,
-        ),
+        space.cuboid_shapes,
+        np.concatenate((np.ones((2, 3)), empty_entries_arr), axis=0),
     )
-    assert space.old_cuboid_visual_metadata == {
+    assert space.cuboid_visual_metadata == {
         "facecolor": [None, None],
         "linewidth": [0.1, 0.1],
         "edgecolor": ["black", "black"],
         "alpha": [0.0, 0.0],
     }
-    assert space.old_cuboid_index.get_primitives_by_timestep(0) == [0]
-    assert space.old_cuboid_index.get_primitives_by_timestep(1) == [1]
-    assert space.old_cuboid_index.get_primitives_by_scene(0) == [0, 1]
+    assert space.cuboid_index.get_items_by_timestep(0) == [0]
+    assert space.cuboid_index.get_items_by_timestep(1) == [1]
+    assert space.cuboid_index.get_items_by_scene(0) == [0, 1]
     assert space.changelog == [
         bb.Addition(timestep_id=0, name=None),
         bb.Addition(timestep_id=1, name=None),
@@ -384,7 +357,7 @@ def test_space_can_customise_cube_visual_properties() -> None:
         alpha=alpha,
     )
     space.add_cube(cube)
-    assert space.old_cuboid_visual_metadata == {
+    assert space.cuboid_visual_metadata == {
         "facecolor": [(red, green, blue)],
         "linewidth": [linewidth],
         "edgecolor": ["black"],
@@ -412,10 +385,9 @@ def test_space_can_customise_cube_visual_properties() -> None:
 def test_space_can_add_composite_cube() -> None:
     space = bb.Space()
 
+    point = np.array([0, 0, 0]).reshape((1, 3))
     w, h, d = 4, 3, 2
-    composite = bb.CompositeCube(base_vector=np.array([0, 0, 0]), w=w, h=h, d=d)
-
-    num_cubes = w * h * d
+    composite = bb.CompositeCube(base_vector=point, w=w, h=h, d=d)
 
     space.add_composite(composite)
     space.snapshot()
@@ -424,54 +396,31 @@ def test_space_can_add_composite_cube() -> None:
     assert np.array_equal(space.mean, np.array([[2.0], [1.0], [1.5]]))
     assert np.array_equal(space.total, np.array([[2.0], [1.0], [1.5]]))
     assert space.num_objs == 1
-    assert space.primitive_counter == num_cubes
+    assert space.object_counter == 1
     assert space.time_step == 1
     assert space.scene_counter == 1
 
-    # The initial number of entries is 10, and the array size is doubled on
-    # overflow. Hence we'd expect re-allocating 40 entries when overflowing 20.
-    expected_num_entries = 40
-    width = np.array([1, 0, 0])
-    height = np.array([0, 0, 1])
-    depth = np.array([0, 1, 0])
+    empty_entries = 9
+    empty_entries_arr = np.zeros((empty_entries, 3))
+
+    expected_shape = np.array([w, h, d]).reshape((1, 3))
 
     assert np.array_equal(
-        space.cuboid_coordinates,
-        np.concatenate(
-            (
-                *[
-                    mock_coordinates_entry()
-                    + (w * width)
-                    + (h * height)
-                    + (d * depth)
-                    for (w, h, d) in itertools.product(
-                        range(w), range(h), range(d)
-                    )
-                ],
-                np.zeros((expected_num_entries - num_cubes, 6, 4, 3)),
-            ),
-            axis=0,
-        ),
+        space.base_coordinates,
+        np.concatenate((point, empty_entries_arr), axis=0),
     )
     assert np.array_equal(
-        space.old_cuboid_shapes,
-        np.concatenate(
-            (
-                np.broadcast_to(np.array([w, h, d]), (num_cubes, 3)),
-                np.zeros((expected_num_entries - num_cubes, 3)),
-            ),
-            axis=0,
-        ),
+        space.cuboid_shapes,
+        np.concatenate((expected_shape, empty_entries_arr), axis=0),
     )
-    assert space.old_cuboid_visual_metadata == {
-        "facecolor": [None] * num_cubes,
-        "linewidth": [0.1] * num_cubes,
-        "edgecolor": ["black"] * num_cubes,
-        "alpha": [0.0] * num_cubes,
+    assert space.cuboid_visual_metadata == {
+        "facecolor": [None],
+        "linewidth": [0.1],
+        "edgecolor": ["black"],
+        "alpha": [0.0],
     }
-    composite = slice(0, num_cubes)
-    assert space.old_cuboid_index.get_composites_by_timestep(0) == [composite]
-    assert space.old_cuboid_index.get_composites_by_scene(0) == [composite]
+    assert space.composite_index.get_items_by_timestep(0) == [0]
+    assert space.composite_index.get_items_by_scene(0) == [0]
     assert space.changelog == [bb.Addition(timestep_id=0, name=None)]
 
 
@@ -515,8 +464,9 @@ def test_space_creates_valid_axes_on_render_for_composite() -> None:
 def test_space_can_add_cuboid() -> None:
     space = bb.Space()
 
+    point = np.array([0, 0, 0]).reshape((1, 3))
     w, h, d = 4, 2, 6
-    cuboid = bb.Cuboid(base_vector=np.array([0, 0, 0]), w=w, h=h, d=d)
+    cuboid = bb.Cuboid(base_vector=point, w=w, h=h, d=d)
 
     space.add_cuboid(cuboid)
     space.snapshot()
@@ -525,38 +475,29 @@ def test_space_can_add_cuboid() -> None:
     assert np.array_equal(space.mean, np.array([[2], [3], [1]]))
     assert np.array_equal(space.total, np.array([[2], [3], [1]]))
     assert space.num_objs == 1
-    assert space.primitive_counter == 1
+    assert space.object_counter == 1
     assert space.time_step == 1
     assert space.scene_counter == 1
-    expected_num_entries = 10
+
+    empty_entries = 9
+    expected_shape = np.array([[4, 2, 6]]).reshape((1, 3))
+
     assert np.array_equal(
-        space.cuboid_coordinates,
-        np.concatenate(
-            (
-                mock_cuboid_coordinates_entry(),
-                np.zeros((expected_num_entries - 1, 6, 4, 3)),
-            ),
-            axis=0,
-        ),
+        space.base_coordinates,
+        np.concatenate((point, np.zeros((empty_entries, 3))), axis=0),
     )
     assert np.array_equal(
-        space.old_cuboid_shapes,
-        np.concatenate(
-            (
-                np.array([[4, 2, 6]]),
-                np.zeros((expected_num_entries - 1, 3)),
-            ),
-            axis=0,
-        ),
+        space.cuboid_shapes,
+        np.concatenate((expected_shape, np.zeros((empty_entries, 3))), axis=0),
     )
-    assert space.old_cuboid_visual_metadata == {
+    assert space.cuboid_visual_metadata == {
         "facecolor": [None],
         "linewidth": [0.1],
         "edgecolor": ["black"],
         "alpha": [0.0],
     }
-    assert space.old_cuboid_index.get_primitives_by_timestep(0) == [0]
-    assert space.old_cuboid_index.get_primitives_by_scene(0) == [0]
+    assert space.cuboid_index.get_items_by_timestep(0) == [0]
+    assert space.cuboid_index.get_items_by_scene(0) == [0]
 
     assert space.changelog == [bb.Addition(timestep_id=0, name=None)]
 
@@ -1281,7 +1222,7 @@ def test_space_creates_cuboid_from_offset_with_selections() -> None:
     # TODO: Have a transform for matplotlib and have your own representation
     # instead.
     expected_dims = np.array([[0, 46], [0, 14], [0, 14]])
-    assert np.array_equal(space.dims, expected_dims)
+    assert np.array_equal(space.old_dims, expected_dims)
     expected_mean = np.array([[20], [4], [4]])
     assert np.array_equal(space.mean, expected_mean)
     # TODO: Remove the total field as it's not yet needed (+ probably won't be).
@@ -1360,7 +1301,7 @@ def test_space_creates_composites_from_offset_with_selections() -> None:
     # TODO: Have a transform for matplotlib and have your own representation
     # instead.
     expected_dims = np.array([[0, 47], [0, 14], [0, 16]])
-    assert np.array_equal(space.dims, expected_dims)
+    assert np.array_equal(space.old_dims, expected_dims)
     expected_mean = np.array([[20.5], [4], [5]])
     assert np.array_equal(space.mean, expected_mean)
     # TODO: Remove the total field as it's not yet needed (+ probably won't be).
@@ -2254,32 +2195,22 @@ def test_space_transforms_nothing_with_trivial_transform() -> None:
     # with dims
     # TODO: Have a transform for matplotlib and have your own representation
     # instead.
-    swapped_point = np.array([1, 3, 2])
+    swapped_point = np.array([1, 3, 2]).reshape((1, 3))
+    expected_point = swapped_point
+    expected_shape = np.array([1, 1, 1]).reshape((1, 3))
 
-    expected_num_entries = 10
+    empty_entries = 9
     assert np.array_equal(
-        space.cuboid_coordinates,
-        np.concatenate(
-            (
-                mock_coordinates_entry() + swapped_point,
-                np.zeros((expected_num_entries - 1, 6, 4, 3)),
-            ),
-            axis=0,
-        ),
+        space.base_coordinates,
+        np.concatenate((expected_point, np.zeros((empty_entries, 3))), axis=0),
     )
     assert np.array_equal(
-        space.old_cuboid_shapes,
-        np.concatenate(
-            (
-                np.array([[1, 1, 1]]),
-                np.zeros((expected_num_entries - 1, 3)),
-            ),
-            axis=0,
-        ),
+        space.cuboid_shapes,
+        np.concatenate((expected_shape, np.zeros((empty_entries, 3))), axis=0),
     )
 
-    assert list(space.old_cuboid_index.primitives()) == [0]
-    assert space.old_cuboid_index.get_primitives_by_timestep(0) == [0]
+    assert list(space.cuboid_index.items()) == [0]
+    assert space.cuboid_index.get_items_by_timestep(0) == [0]
 
 
 def test_space_scale_does_not_apply_to_composites() -> None:

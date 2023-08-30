@@ -11,7 +11,7 @@ from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import numpy as np
 
-from brickblock.index import SpaceIndex, TemporalIndex
+from brickblock.index import TemporalIndex
 from brickblock.objects import Cube, Cuboid, CompositeCube
 
 

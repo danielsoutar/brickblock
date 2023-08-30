@@ -462,6 +462,7 @@ class Space:
         self.cuboid_index = TemporalIndex()
         self.composite_index = TemporalIndex()
         self.old_cuboid_names = {}
+        self.cuboid_names = {}
         self.changelog = []
         # The default mapping is W -> x-axis, H -> z-axis, D -> y-axis.
         # TODO: Decouple from this fixed basis - should swap height/depth.
@@ -482,34 +483,37 @@ class Space:
         """
         Add a Cube primitive to the space.
         """
-        primitive_id = self._add_cuboid_primitive(cube)
+        old_primitive_id, primitive_id = self._add_cuboid_primitive(cube)
+        self._old_add_name(cube.name, [[old_primitive_id], None])
         self._add_name(cube.name, [[primitive_id], None])
         self.num_objs += 1
         self.changelog.append(Addition(self.time_step, None))
         self.time_step += 1
-        self._update_bounds(slice(primitive_id, primitive_id + 1))
+        self._update_bounds(slice(old_primitive_id, old_primitive_id + 1))
 
     def add_cuboid(self, cuboid: Cuboid) -> None:
         """
         Add a Cuboid primitive to the space.
         """
-        primitive_id = self._add_cuboid_primitive(cuboid)
+        old_primitive_id, primitive_id = self._add_cuboid_primitive(cuboid)
+        self._old_add_name(cuboid.name, [[old_primitive_id], None])
         self._add_name(cuboid.name, [[primitive_id], None])
         self.num_objs += 1
         self.changelog.append(Addition(self.time_step, None))
         self.time_step += 1
-        self._update_bounds(slice(primitive_id, primitive_id + 1))
+        self._update_bounds(slice(old_primitive_id, old_primitive_id + 1))
 
     def add_composite(self, composite: CompositeCube) -> None:
         """
         Add a CompositeCube object to the space.
         """
-        composite_id = self._add_cuboid_composite(composite)
+        old_composite_id, composite_id = self._add_cuboid_composite(composite)
+        self._old_add_name(composite.name, [None, [old_composite_id]])
         self._add_name(composite.name, [None, [composite_id]])
         self.num_objs += 1
         self.changelog.append(Addition(self.time_step, None))
         self.time_step += 1
-        self._update_bounds(composite_id)
+        self._update_bounds(old_composite_id)
 
     def _add_cuboid_primitive(self, cuboid: Cube | Cuboid) -> int:
         """
@@ -554,6 +558,19 @@ class Space:
                 (2 * current_no_of_entries, *self.cuboid_coordinates.shape[1:]),
                 refcheck=False,
             )
+        current_no_of_entries = self.base_coordinates.shape[0]
+        if self.object_counter >= current_no_of_entries:
+            # refcheck set to False since this avoids issues with the debugger
+            # referencing the array!
+            self.base_coordinates.resize(
+                (2 * current_no_of_entries, self.base_coordinates.shape[1]),
+                refcheck=False,
+            )
+            # Repeat this for the shape array as well.
+            self.cuboid_shapes.resize(
+                (2 * current_no_of_entries, self.cuboid_shapes.shape[1]),
+                refcheck=False,
+            )
 
         # Add shape data for this cuboid.
         self.old_cuboid_shapes[self.primitive_counter] = cuboid.shape()
@@ -566,8 +583,10 @@ class Space:
         for key, value in cuboid.visual_metadata().items():
             if key in self.old_cuboid_visual_metadata.keys():
                 self.old_cuboid_visual_metadata[key].append(value)
+                self.cuboid_visual_metadata[key].append(value)
             else:
                 self.old_cuboid_visual_metadata[key] = [value]
+                self.cuboid_visual_metadata[key] = [value]
 
         self.old_cuboid_index.add_primitive_to_index(
             self.primitive_counter, self.time_step, self.scene_counter
@@ -577,13 +596,14 @@ class Space:
         )
 
         # Update the primitive_counter.
-        primitive_id = self.primitive_counter
+        old_primitive_id = self.primitive_counter
+        primitive_id = self.object_counter
         self.primitive_counter += 1
         self.object_counter += 1
 
-        return primitive_id
+        return old_primitive_id, primitive_id
 
-    def _add_cuboid_composite(self, composite: CompositeCube) -> slice:
+    def _add_cuboid_composite(self, composite: CompositeCube) -> int:
         num_cubes = composite.faces.shape[0]
 
         # Update bounding box
@@ -640,6 +660,19 @@ class Space:
                 (2 * current_no_of_entries, self.old_cuboid_shapes.shape[1]),
                 refcheck=False,
             )
+        current_no_of_entries = self.base_coordinates.shape[0]
+        if self.object_counter >= current_no_of_entries:
+            # refcheck set to False since this avoids issues with the debugger
+            # referencing the array!
+            self.base_coordinates.resize(
+                (2 * current_no_of_entries, self.base_coordinates.shape[1]),
+                refcheck=False,
+            )
+            # Repeat this for the shape array as well.
+            self.cuboid_shapes.resize(
+                (2 * current_no_of_entries, self.cuboid_shapes.shape[1]),
+                refcheck=False,
+            )
 
         base = self.primitive_counter
         offset = base + num_cubes
@@ -655,11 +688,11 @@ class Space:
         for key, value in composite.visual_metadata().items():
             if key in self.old_cuboid_visual_metadata.keys():
                 self.old_cuboid_visual_metadata[key].extend([value] * num_cubes)
+                self.cuboid_visual_metadata[key].append(value)
             else:
                 self.old_cuboid_visual_metadata[key] = [value] * num_cubes
+                self.cuboid_visual_metadata[key] = [value]
 
-        self.primitive_counter += num_cubes
-        self.object_counter += 1
         primitive_ids = slice(base, offset)
 
         # Add to index
@@ -675,9 +708,39 @@ class Space:
             raise NotImplementedError("Currently, styles are not supported.")
             ...
 
-        return primitive_ids
+        composite_id = self.object_counter
+        self.primitive_counter += num_cubes
+        self.object_counter += 1
+
+        return primitive_ids, composite_id
 
     def _add_name(
+        self,
+        name: str | None,
+        object_ids: tuple[list[int] | None, list[int] | None],
+    ) -> None:
+        """
+        Add an entry for `name` for the given `object_ids`, if specified.
+
+        It is an error to add an entry for a name that already exists.
+
+        # Args
+            name: An optional name that references each ID in `object_ids`.
+            object_ids: The primitive/composite ID(s) to name. Can contain both
+                primitives and composites. There must be at least one valid ID.
+        """
+        if name is not None:
+            if name in self.cuboid_names.keys():
+                raise Exception(
+                    f"There already exists an object with name {name}."
+                )
+            if object_ids[0] is None and object_ids[1] is None:
+                raise Exception(
+                    "The entity to name has no IDs associated with it."
+                )
+            self.cuboid_names[name] = object_ids
+
+    def _old_add_name(
         self,
         name: str | None,
         object_ids: tuple[list[int] | None, list[slice] | None],
@@ -1279,8 +1342,10 @@ class Space:
                 **visual_metadata,
                 name=None,
             )
-            new_primitive_id = self._add_cuboid_primitive(cuboid)
-            new_primitive_ids.append(new_primitive_id)
+            new_old_primitive_id, new_primitive_id = self._add_cuboid_primitive(
+                cuboid
+            )
+            new_primitive_ids.append(new_old_primitive_id)
             self.num_objs += 1
 
         new_composite_ids = []
@@ -1299,16 +1364,15 @@ class Space:
                 self.cuboid_coordinates[start][0][0]
             )
             shape = tuple(int(val) for val in self.old_cuboid_shapes[start])
-            new_composite_ids.append(
-                self._add_cuboid_composite(
-                    CompositeCube(
-                        transformed_base + offset,
-                        *shape,
-                        **visual_metadata,
-                        name=None,
-                    )
+            new_old_composite_id, new_composite_id = self._add_cuboid_composite(
+                CompositeCube(
+                    transformed_base + offset,
+                    *shape,
+                    **visual_metadata,
+                    name=None,
                 )
             )
+            new_composite_ids.append(new_old_composite_id)
             self.num_objs += 1
 
         if len(new_primitive_ids) > 0:

@@ -583,9 +583,7 @@ def test_space_can_add_named_objects() -> None:
     space = bb.Space()
 
     w, h, d = 4, 4, 3
-    num_cubes_in_input_tensor = w * h * d
     f_w, f_h, f_d = 2, 2, 3
-    num_cubes_in_filter_tensor = f_w * f_h * f_d
 
     input_tensor = bb.CompositeCube(
         base_vector=np.array([0, 0, 0]),
@@ -604,19 +602,11 @@ def test_space_can_add_named_objects() -> None:
     space.add_composite(input_tensor)
     space.add_composite(filter_tensor)
     space.snapshot()
-    _, ax = space.render()
+    space.render()
 
-    assert space.old_cuboid_names == {
-        "input-tensor": [None, [slice(0, num_cubes_in_input_tensor)]],
-        "filter-tensor": [
-            None,
-            [
-                slice(
-                    num_cubes_in_input_tensor,
-                    num_cubes_in_input_tensor + num_cubes_in_filter_tensor,
-                )
-            ],
-        ],
+    assert space.cuboid_names == {
+        "input-tensor": [None, [0]],
+        "filter-tensor": [None, [1]],
     }
 
 
@@ -779,7 +769,7 @@ def test_space_mutates_primitive_by_name() -> None:
 
     assert space.old_cuboid_visual_metadata["facecolor"][0] is None
     assert space.old_cuboid_visual_metadata["alpha"][0] == 0.0
-    assert list(space.old_cuboid_names.keys()) == ["my-cube"]
+    assert list(space.cuboid_names.keys()) == ["my-cube"]
 
     space.mutate_by_name(name="my-cube", facecolor="red", alpha=0.3)
 
@@ -797,7 +787,7 @@ def test_space_mutates_primitive_by_name() -> None:
 
     assert space.old_cuboid_visual_metadata["facecolor"][0] == "red"
     assert space.old_cuboid_visual_metadata["alpha"][0] == 0.3
-    assert list(space.old_cuboid_names.keys()) == ["my-cube"]
+    assert list(space.cuboid_names.keys()) == ["my-cube"]
 
     assert list(space.old_cuboid_index.primitives()) == [0, 0]
     assert space.old_cuboid_index.get_primitives_by_timestep(0) == [0]

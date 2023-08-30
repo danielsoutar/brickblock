@@ -830,8 +830,8 @@ def test_space_mutates_primitive_by_timestep_id() -> None:
 
     space.add_cube(bb.Cube(base_vector=np.array([0, 0, 0])))
 
-    assert space.old_cuboid_visual_metadata["facecolor"][0] is None
-    assert space.old_cuboid_visual_metadata["alpha"][0] == 0.0
+    assert space.cuboid_visual_metadata["facecolor"][0] is None
+    assert space.cuboid_visual_metadata["alpha"][0] == 0.0
 
     space.mutate_by_timestep(timestep=0, facecolor="red", alpha=0.3)
 
@@ -847,12 +847,12 @@ def test_space_mutates_primitive_by_timestep_id() -> None:
         ),
     ]
 
-    assert space.old_cuboid_visual_metadata["facecolor"][0] == "red"
-    assert space.old_cuboid_visual_metadata["alpha"][0] == 0.3
+    assert space.cuboid_visual_metadata["facecolor"][0] == "red"
+    assert space.cuboid_visual_metadata["alpha"][0] == 0.3
 
-    assert list(space.old_cuboid_index.primitives()) == [0, 0]
-    assert space.old_cuboid_index.get_primitives_by_timestep(0) == [0]
-    assert space.old_cuboid_index.get_primitives_by_timestep(1) == [0]
+    assert list(space.cuboid_index.items()) == [0, 0]
+    assert space.cuboid_index.get_items_by_timestep(0) == [0]
+    assert space.cuboid_index.get_items_by_timestep(1) == [0]
 
 
 def test_space_mutates_composite_by_timestep_id() -> None:
@@ -870,12 +870,9 @@ def test_space_mutates_composite_by_timestep_id() -> None:
         )
     )
 
-    num_cubes = 4 * 3 * 2
-
-    for i in range(num_cubes):
-        assert space.old_cuboid_visual_metadata["facecolor"][i] == "yellow"
-        assert space.old_cuboid_visual_metadata["alpha"][i] == 0.3
-        assert space.old_cuboid_visual_metadata["linewidth"][i] == 0.5
+    assert space.cuboid_visual_metadata["facecolor"][0] == "yellow"
+    assert space.cuboid_visual_metadata["alpha"][0] == 0.3
+    assert space.cuboid_visual_metadata["linewidth"][0] == 0.5
 
     space.mutate_by_timestep(timestep=0, facecolor=None, alpha=0.0)
 
@@ -891,16 +888,13 @@ def test_space_mutates_composite_by_timestep_id() -> None:
         ),
     ]
 
-    for i in range(num_cubes):
-        assert space.old_cuboid_visual_metadata["facecolor"][i] is None
-        assert space.old_cuboid_visual_metadata["alpha"][i] == 0.0
-        assert space.old_cuboid_visual_metadata["linewidth"][i] == 0.5
+    assert space.cuboid_visual_metadata["facecolor"][0] is None
+    assert space.cuboid_visual_metadata["alpha"][0] == 0.0
+    assert space.cuboid_visual_metadata["linewidth"][0] == 0.5
 
-    composite = slice(0, num_cubes)
-
-    assert list(space.old_cuboid_index.composites()) == [composite, composite]
-    assert space.old_cuboid_index.get_composites_by_timestep(0) == [composite]
-    assert space.old_cuboid_index.get_composites_by_timestep(1) == [composite]
+    assert list(space.composite_index.items()) == [0, 0]
+    assert space.composite_index.get_items_by_timestep(0) == [0]
+    assert space.composite_index.get_items_by_timestep(1) == [0]
 
 
 def test_space_mutates_primitive_by_scene_id() -> None:

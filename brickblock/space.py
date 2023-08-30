@@ -898,7 +898,7 @@ class Space:
         if not (non_zero_selection and non_empty_kwargs):
             return None
 
-        previous_state = self._old_mutate_by_ids(
+        previous_state = self._mutate_by_ids(
             primitives_to_update, composites_to_update, **kwargs
         )
         self.changelog.append(
@@ -1151,7 +1151,7 @@ class Space:
                 scaled). Only positive scaling is supported, and only primitives
                 can be scaled. All other cases are no-ops.
         """
-        primitive_ids, composite_ids = self._select_by_timestep(timestep)
+        primitive_ids, composite_ids = self._old_select_by_timestep(timestep)
         transform_kwargs = self._transform_by_ids(
             primitive_ids, composite_ids, translate, reflect, scale
         )
@@ -1346,7 +1346,7 @@ class Space:
         if name is not None:
             val, func = name, self._old_select_by_name
         if timestep is not None:
-            val, func = timestep, self._select_by_timestep
+            val, func = timestep, self._old_select_by_timestep
         if scene is not None:
             val, func = scene, self._old_select_by_scene
 
@@ -1543,7 +1543,7 @@ class Space:
 
         return primitive_ids, composite_ids
 
-    def _select_by_timestep(
+    def _old_select_by_timestep(
         self, timestep: int
     ) -> tuple[list[int], list[slice]]:
         if (timestep < 0) or (timestep > self.time_step):
@@ -1555,6 +1555,18 @@ class Space:
         composite_ids = self.old_cuboid_index.get_composites_by_timestep(
             timestep
         )
+
+        # TODO: Update outputs to ensure they only contain distinct values.
+        # TODO: Check whether this is an issue for timesteps.
+
+        return primitive_ids, composite_ids
+
+    def _select_by_timestep(self, timestep: int) -> tuple[list[int], list[int]]:
+        if (timestep < 0) or (timestep > self.time_step):
+            raise ValueError("The provided timestep is invalid in this space.")
+
+        primitive_ids = self.cuboid_index.get_items_by_timestep(timestep)
+        composite_ids = self.composite_index.get_items_by_timestep(timestep)
 
         # TODO: Update outputs to ensure they only contain distinct values.
         # TODO: Check whether this is an issue for timesteps.

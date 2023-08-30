@@ -448,19 +448,20 @@ class Space:
         self.total = np.zeros((3, 1))
         self.num_objs = 0
         self.primitive_counter = 0
-        self.new_object_counter = 0
+        self.object_counter = 0
         self.tracked_time_step = 0
         self.time_step = 0
         self.scene_counter = 0
         self.cuboid_coordinates = np.zeros((10, 6, 4, 3))
-        self.new_base_coordinates = np.zeros((10, 3))
+        self.base_coordinates = np.zeros((10, 3))
+        self.old_cuboid_shapes = np.zeros((10, 3))
         self.cuboid_shapes = np.zeros((10, 3))
-        self.new_cuboid_shapes = np.zeros((10, 3))
+        self.old_cuboid_visual_metadata = {}
         self.cuboid_visual_metadata = {}
-        self.cuboid_index = SpaceIndex()
-        self.new_cuboid_index = TemporalIndex()
-        self.new_composite_index = TemporalIndex()
-        self.cuboid_names = {}
+        self.old_cuboid_index = SpaceIndex()
+        self.cuboid_index = TemporalIndex()
+        self.composite_index = TemporalIndex()
+        self.old_cuboid_names = {}
         self.changelog = []
         # The default mapping is W -> x-axis, H -> z-axis, D -> y-axis.
         # TODO: Decouple from this fixed basis - should swap height/depth.
@@ -555,30 +556,30 @@ class Space:
             )
 
         # Add shape data for this cuboid.
-        self.cuboid_shapes[self.primitive_counter] = cuboid.shape()
-        self.new_cuboid_shapes[self.new_object_counter] = cuboid.shape()
+        self.old_cuboid_shapes[self.primitive_counter] = cuboid.shape()
+        self.cuboid_shapes[self.object_counter] = cuboid.shape()
 
         self.cuboid_coordinates[self.primitive_counter] = cuboid.faces
-        self.new_base_coordinates[self.new_object_counter] = cuboid.faces[0][0]
+        self.base_coordinates[self.object_counter] = cuboid.faces[0][0]
 
         # Update the visual metadata store.
         for key, value in cuboid.visual_metadata().items():
-            if key in self.cuboid_visual_metadata.keys():
-                self.cuboid_visual_metadata[key].append(value)
+            if key in self.old_cuboid_visual_metadata.keys():
+                self.old_cuboid_visual_metadata[key].append(value)
             else:
-                self.cuboid_visual_metadata[key] = [value]
+                self.old_cuboid_visual_metadata[key] = [value]
 
-        self.cuboid_index.add_primitive_to_index(
+        self.old_cuboid_index.add_primitive_to_index(
             self.primitive_counter, self.time_step, self.scene_counter
         )
-        self.new_cuboid_index.add_item_to_index(
-            self.new_object_counter, self.time_step, self.scene_counter
+        self.cuboid_index.add_item_to_index(
+            self.object_counter, self.time_step, self.scene_counter
         )
 
         # Update the primitive_counter.
         primitive_id = self.primitive_counter
         self.primitive_counter += 1
-        self.new_object_counter += 1
+        self.object_counter += 1
 
         return primitive_id
 
@@ -635,38 +636,38 @@ class Space:
                 refcheck=False,
             )
             # Repeat this for the shape array as well.
-            self.cuboid_shapes.resize(
-                (2 * current_no_of_entries, self.cuboid_shapes.shape[1]),
+            self.old_cuboid_shapes.resize(
+                (2 * current_no_of_entries, self.old_cuboid_shapes.shape[1]),
                 refcheck=False,
             )
 
         base = self.primitive_counter
         offset = base + num_cubes
         # Add shape data for this composite.
-        self.cuboid_shapes[base:offset] = composite.shape()
-        self.new_cuboid_shapes[self.new_object_counter] = composite.shape()
+        self.old_cuboid_shapes[base:offset] = composite.shape()
+        self.cuboid_shapes[self.object_counter] = composite.shape()
 
         self.cuboid_coordinates[base:offset] = composite.faces
         base_coordinate = composite.faces[0][0][0]
-        self.new_base_coordinates[self.new_object_counter] = base_coordinate
+        self.base_coordinates[self.object_counter] = base_coordinate
 
         # Update visual metadata store
         for key, value in composite.visual_metadata().items():
-            if key in self.cuboid_visual_metadata.keys():
-                self.cuboid_visual_metadata[key].extend([value] * num_cubes)
+            if key in self.old_cuboid_visual_metadata.keys():
+                self.old_cuboid_visual_metadata[key].extend([value] * num_cubes)
             else:
-                self.cuboid_visual_metadata[key] = [value] * num_cubes
+                self.old_cuboid_visual_metadata[key] = [value] * num_cubes
 
         self.primitive_counter += num_cubes
-        self.new_object_counter += 1
+        self.object_counter += 1
         primitive_ids = slice(base, offset)
 
         # Add to index
-        self.cuboid_index.add_composite_to_index(
+        self.old_cuboid_index.add_composite_to_index(
             primitive_ids, self.time_step, self.scene_counter
         )
-        self.new_composite_index.add_item_to_index(
-            self.new_object_counter, self.time_step, self.scene_counter
+        self.composite_index.add_item_to_index(
+            self.object_counter, self.time_step, self.scene_counter
         )
 
         # TODO: Consider how to implement 'styles'.
@@ -693,7 +694,7 @@ class Space:
                 non-empty. There must be at least one valid ID.
         """
         if name is not None:
-            if name in self.cuboid_names.keys():
+            if name in self.old_cuboid_names.keys():
                 raise Exception(
                     f"There already exists an object with name {name}."
                 )
@@ -701,7 +702,7 @@ class Space:
                 raise Exception(
                     "The entity to name has no IDs associated with it."
                 )
-            self.cuboid_names[name] = object_ids
+            self.old_cuboid_names[name] = object_ids
 
     def _update_bounds(self, primitive_ids: slice) -> None:
         """
@@ -890,30 +891,34 @@ class Space:
         """
         before_mutation_kwargs = {}
         for key in kwargs.keys():
-            if key not in self.cuboid_visual_metadata.keys():
+            if key not in self.old_cuboid_visual_metadata.keys():
                 raise KeyError(
                     "The provided key doesn't match any valid visual property."
                 )
             before_mutation_kwargs[key] = []
             for primitive_id in primitive_ids:
-                old_val = self.cuboid_visual_metadata[key][primitive_id]
+                old_val = self.old_cuboid_visual_metadata[key][primitive_id]
                 before_mutation_kwargs[key].append(old_val)
-                self.cuboid_visual_metadata[key][primitive_id] = kwargs[key]
+                self.old_cuboid_visual_metadata[key][primitive_id] = kwargs[key]
             for composite_id in composite_ids:
                 N = composite_id.stop - composite_id.start
-                old_val = self.cuboid_visual_metadata[key][composite_id.start]
+                old_val = self.old_cuboid_visual_metadata[key][
+                    composite_id.start
+                ]
                 before_mutation_kwargs[key].append(old_val)
                 broadcast_val = [kwargs[key]] * N
-                self.cuboid_visual_metadata[key][composite_id] = broadcast_val
+                self.old_cuboid_visual_metadata[key][
+                    composite_id
+                ] = broadcast_val
 
         for primitive_id in primitive_ids:
-            self.cuboid_index.add_primitive_to_index(
+            self.old_cuboid_index.add_primitive_to_index(
                 primitive_id,
                 timestep_id=self.time_step,
                 scene_id=self.scene_counter,
             )
         for composite_id in composite_ids:
-            self.cuboid_index.add_composite_to_index(
+            self.old_cuboid_index.add_composite_to_index(
                 composite_id,
                 timestep_id=self.time_step,
                 scene_id=self.scene_counter,
@@ -1145,21 +1150,21 @@ class Space:
                 composite = self.cuboid_coordinates[composite_id]
                 self.cuboid_coordinates[composite_id] = coord_func(composite)
         if shape_func is not None:
-            self.cuboid_shapes[primitive_ids] = shape_func(
-                self.cuboid_shapes[primitive_ids]
+            self.old_cuboid_shapes[primitive_ids] = shape_func(
+                self.old_cuboid_shapes[primitive_ids]
             )
             for composite_id in composite_ids:
-                shapes = self.cuboid_shapes[composite_id]
-                self.cuboid_shapes[composite_id] = shape_func(shapes)
+                shapes = self.old_cuboid_shapes[composite_id]
+                self.old_cuboid_shapes[composite_id] = shape_func(shapes)
 
         for primitive_id in primitive_ids:
-            self.cuboid_index.add_primitive_to_index(
+            self.old_cuboid_index.add_primitive_to_index(
                 primitive_id,
                 timestep_id=self.time_step,
                 scene_id=self.scene_counter,
             )
         for composite_id in composite_ids:
-            self.cuboid_index.add_composite_to_index(
+            self.old_cuboid_index.add_composite_to_index(
                 composite_id,
                 timestep_id=self.time_step,
                 scene_id=self.scene_counter,
@@ -1242,7 +1247,7 @@ class Space:
         for i in range(total_number_of_ids):
             kwargs_for_id = {}
             for key in kwargs.keys():
-                if key not in self.cuboid_visual_metadata.keys():
+                if key not in self.old_cuboid_visual_metadata.keys():
                     raise KeyError(
                         "The provided key doesn't match any valid visual "
                         "property."
@@ -1256,8 +1261,8 @@ class Space:
         new_primitive_ids = []
         for primitive, vis_met_data in zip(primitive_ids, interleaved_kwargs):
             visual_metadata = {
-                key: self.cuboid_visual_metadata[key][primitive]
-                for key in self.cuboid_visual_metadata.keys()
+                key: self.old_cuboid_visual_metadata[key][primitive]
+                for key in self.old_cuboid_visual_metadata.keys()
             }
             # Take the visual metadata, with the user-provided ones taking
             # precedence.
@@ -1270,7 +1275,7 @@ class Space:
             )
             cuboid = Cuboid(
                 transformed_base + offset,
-                *self.cuboid_shapes[primitive],
+                *self.old_cuboid_shapes[primitive],
                 **visual_metadata,
                 name=None,
             )
@@ -1282,8 +1287,8 @@ class Space:
         for composite, vis_met_data in zip(composite_ids, interleaved_kwargs):
             start = composite.start
             visual_metadata = {
-                key: self.cuboid_visual_metadata[key][start]
-                for key in self.cuboid_visual_metadata.keys()
+                key: self.old_cuboid_visual_metadata[key][start]
+                for key in self.old_cuboid_visual_metadata.keys()
             }
             # Take the visual metadata, with the user-provided ones taking
             # precedence.
@@ -1293,7 +1298,7 @@ class Space:
             transformed_base = self._convert_basis(
                 self.cuboid_coordinates[start][0][0]
             )
-            shape = tuple(int(val) for val in self.cuboid_shapes[start])
+            shape = tuple(int(val) for val in self.old_cuboid_shapes[start])
             new_composite_ids.append(
                 self._add_cuboid_composite(
                     CompositeCube(
@@ -1347,8 +1352,8 @@ class Space:
         # you don't consider it a match anyway. That means you can just compare
         # against the first value of the slices in the composite buffer.
 
-        primitive_id = next(self.cuboid_index.primitives(), None)
-        composite_slice = next(self.cuboid_index.composites(), None)
+        primitive_id = next(self.old_cuboid_index.primitives(), None)
+        composite_slice = next(self.old_cuboid_index.composites(), None)
 
         # For each index, check if it's a primitive or composite. If it is,
         # add it to the relevant output buffer/increment the relevant iterator.
@@ -1356,18 +1361,18 @@ class Space:
         for idx in matching_base_vectors:
             if primitive_id is not None and primitive_id == idx:
                 primitives_to_update.append(primitive_id)
-                primitive_id = next(self.cuboid_index.primitives(), None)
+                primitive_id = next(self.old_cuboid_index.primitives(), None)
             if composite_slice is not None and composite_slice.start == idx:
                 composites_to_update.append(composite_slice)
-                composite_slice = next(self.cuboid_index.composites(), None)
+                composite_slice = next(self.old_cuboid_index.composites(), None)
 
         return primitives_to_update, composites_to_update
 
     def _select_by_name(self, name: str) -> tuple[list[int], list[slice]]:
-        if name not in self.cuboid_names.keys():
+        if name not in self.old_cuboid_names.keys():
             raise ValueError("The provided name does not exist in this space.")
 
-        primitive_ids, composite_ids = self.cuboid_names[name]
+        primitive_ids, composite_ids = self.old_cuboid_names[name]
 
         primitive_ids = primitive_ids if primitive_ids is not None else []
         composite_ids = composite_ids if composite_ids is not None else []
@@ -1380,8 +1385,12 @@ class Space:
         if (timestep < 0) or (timestep > self.time_step):
             raise ValueError("The provided timestep is invalid in this space.")
 
-        primitive_ids = self.cuboid_index.get_primitives_by_timestep(timestep)
-        composite_ids = self.cuboid_index.get_composites_by_timestep(timestep)
+        primitive_ids = self.old_cuboid_index.get_primitives_by_timestep(
+            timestep
+        )
+        composite_ids = self.old_cuboid_index.get_composites_by_timestep(
+            timestep
+        )
 
         # TODO: Update outputs to ensure they only contain distinct values.
         # TODO: Check whether this is an issue for timesteps.
@@ -1392,8 +1401,8 @@ class Space:
         if (scene < 0) or (scene > self.scene_counter):
             raise ValueError("The provided scene ID is invalid in this space.")
 
-        primitive_ids = self.cuboid_index.get_primitives_by_scene(scene)
-        composite_ids = self.cuboid_index.get_composites_by_scene(scene)
+        primitive_ids = self.old_cuboid_index.get_primitives_by_scene(scene)
+        composite_ids = self.old_cuboid_index.get_composites_by_scene(scene)
 
         # TODO: Update outputs to ensure they only contain distinct values.
         primitive_ids = sorted(list(set(primitive_ids)))
@@ -1418,8 +1427,8 @@ class Space:
         deleting, or mutating an object, must be present in a scene.
         """
         scene = self.scene_counter + 1
-        referenced_cuboids = self.new_cuboid_index.current_scene_is_valid(scene)
-        referenced_composites = self.new_composite_index.current_scene_is_valid(
+        referenced_cuboids = self.cuboid_index.current_scene_is_valid(scene)
+        referenced_composites = self.composite_index.current_scene_is_valid(
             scene
         )
         if not (referenced_cuboids or referenced_composites):
@@ -1449,18 +1458,22 @@ class Space:
         time_slice = slice(self.tracked_time_step, len(self.changelog))
         time_range = range(self.tracked_time_step, len(self.changelog))
         for timestep, operation in zip(time_range, self.changelog[time_slice]):
-            primitives = self.cuboid_index.get_primitives_by_timestep(timestep)
-            composites = self.cuboid_index.get_composites_by_timestep(timestep)
+            primitives = self.old_cuboid_index.get_primitives_by_timestep(
+                timestep
+            )
+            composites = self.old_cuboid_index.get_composites_by_timestep(
+                timestep
+            )
             if isinstance(operation, Addition):
                 for primitive in primitives:
                     # Change of basis to WHD/XYZ format for the base point.
                     base_coordinate = self._convert_basis(
                         self.cuboid_coordinates[primitive][0][0]
                     )
-                    shape = self.cuboid_shapes[primitive]
+                    shape = self.old_cuboid_shapes[primitive]
                     visual_properties = {
-                        k: self.cuboid_visual_metadata[k][primitive]
-                        for k in self.cuboid_visual_metadata.keys()
+                        k: self.old_cuboid_visual_metadata[k][primitive]
+                        for k in self.old_cuboid_visual_metadata.keys()
                     }
                     self.visualisation_backend.populate_with_primitive(
                         primitive, base_coordinate, shape, visual_properties
@@ -1469,10 +1482,10 @@ class Space:
                     base_coordinate = self._convert_basis(
                         self.cuboid_coordinates[composite][0][0][0]
                     )
-                    shape = self.cuboid_shapes[composite][0]
+                    shape = self.old_cuboid_shapes[composite][0]
                     visual_properties = {
-                        k: self.cuboid_visual_metadata[k][composite]
-                        for k in self.cuboid_visual_metadata.keys()
+                        k: self.old_cuboid_visual_metadata[k][composite]
+                        for k in self.old_cuboid_visual_metadata.keys()
                     }
                     self.visualisation_backend.populate_with_composite(
                         composite, base_coordinate, shape, visual_properties
@@ -1481,7 +1494,7 @@ class Space:
                 # Only need to fetch data for properties that were updated.
                 for primitive in primitives:
                     metadata = {
-                        k: self.cuboid_visual_metadata[k][primitive]
+                        k: self.old_cuboid_visual_metadata[k][primitive]
                         for k in operation.subject.keys()
                     }
                     self.visualisation_backend.mutate_primitive(
@@ -1489,7 +1502,7 @@ class Space:
                     )
                 for composite in composites:
                     metadata = {
-                        k: self.cuboid_visual_metadata[k][composite]
+                        k: self.old_cuboid_visual_metadata[k][composite]
                         for k in operation.subject.keys()
                     }
                     self.visualisation_backend.mutate_composite(
@@ -1498,13 +1511,13 @@ class Space:
             elif isinstance(operation, Transform):
                 for primitive in primitives:
                     vertices = self.cuboid_coordinates[primitive]
-                    shape = self.cuboid_shapes[primitive]
+                    shape = self.old_cuboid_shapes[primitive]
                     self.visualisation_backend.transform_primitive(
                         primitive, operation.transform_name, vertices, shape
                     )
                 for composite in composites:
                     vertices = self.cuboid_coordinates[composite]
-                    shape = self.cuboid_shapes[composite]
+                    shape = self.old_cuboid_shapes[composite]
                     self.visualisation_backend.transform_composite(
                         composite, operation.transform_name, vertices, shape
                     )

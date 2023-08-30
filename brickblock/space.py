@@ -433,7 +433,7 @@ class Space:
     cuboid_coordinates: np.ndarray
     cuboid_shapes: np.ndarray
     cuboid_visual_metadata: dict[str, list]
-    cuboid_index: SpaceIndex
+    cuboid_index: TemporalIndex
     cuboid_names: dict[str, tuple[list[int], list[slice]]]
     # TODO: Document the changelog structure (mutations are stored as primitives
     # then composites per updated field).
@@ -825,9 +825,10 @@ class Space:
             kwargs: Sequence of named arguments that contain updated visual
                 property values.
         """
-        primitives_to_update, composites_to_update = self._select_by_coordinate(
-            coordinate
-        )
+        (
+            primitives_to_update,
+            composites_to_update,
+        ) = self._old_select_by_coordinate(coordinate)
         non_zero_selection = (
             len(primitives_to_update) > 0 or len(composites_to_update) > 0
         )
@@ -837,7 +838,7 @@ class Space:
         if not (non_zero_selection and non_empty_kwargs):
             return None
 
-        previous_state = self._mutate_by_ids(
+        previous_state = self._old_mutate_by_ids(
             primitives_to_update, composites_to_update, **kwargs
         )
         self.changelog.append(
@@ -867,7 +868,7 @@ class Space:
         if not (non_zero_selection and non_empty_kwargs):
             return None
 
-        previous_state = self._mutate_by_ids(
+        previous_state = self._old_mutate_by_ids(
             primitives_to_update, composites_to_update, **kwargs
         )
         self.changelog.append(Mutation(subject=previous_state, name=name))
@@ -898,7 +899,7 @@ class Space:
         if not (non_zero_selection and non_empty_kwargs):
             return None
 
-        previous_state = self._mutate_by_ids(
+        previous_state = self._old_mutate_by_ids(
             primitives_to_update, composites_to_update, **kwargs
         )
         self.changelog.append(
@@ -930,12 +931,12 @@ class Space:
         if not (non_zero_selection and non_empty_kwargs):
             return None
 
-        previous_state = self._mutate_by_ids(
+        previous_state = self._old_mutate_by_ids(
             primitives_to_update, composites_to_update, **kwargs
         )
         self.changelog.append(Mutation(subject=previous_state, scene_id=scene))
 
-    def _mutate_by_ids(
+    def _old_mutate_by_ids(
         self, primitive_ids: list[int], composite_ids: list[slice], **kwargs
     ) -> dict[str, Any]:
         """
@@ -990,6 +991,55 @@ class Space:
         self.time_step += 1
         return before_mutation_kwargs
 
+    def _mutate_by_ids(
+        self, primitive_ids: list[int], composite_ids: list[int], **kwargs
+    ) -> dict[str, Any]:
+        """
+        Mutate the visual metadata of all primitives and composites (given by
+        `primitive_ids` and `composite_ids` respectively) with the named
+        arguments in `kwargs`, and return the previous version of the metadata.
+
+        There is assumed to be at least one primitive or composite to update,
+        and `kwargs` is assumed to be non-empty.
+
+        # Args
+            primitive_ids: The IDs of all the primitives in the space to update.
+            composite_ids: The IDs of all the composites in the space to update.
+            kwargs: Sequence of named arguments that contain updated visual
+                property values.
+        """
+        before_mutation_kwargs = {}
+        for key in kwargs.keys():
+            if key not in self.cuboid_visual_metadata.keys():
+                raise KeyError(
+                    "The provided key doesn't match any valid visual property."
+                )
+            before_mutation_kwargs[key] = []
+            for primitive_id in primitive_ids:
+                old_val = self.cuboid_visual_metadata[key][primitive_id]
+                before_mutation_kwargs[key].append(old_val)
+                self.cuboid_visual_metadata[key][primitive_id] = kwargs[key]
+            for composite_id in composite_ids:
+                old_val = self.cuboid_visual_metadata[key][composite_id]
+                before_mutation_kwargs[key].append(old_val)
+                self.cuboid_visual_metadata[key][composite_id] = kwargs[key]
+
+        for primitive_id in primitive_ids:
+            self.cuboid_index.add_item_to_index(
+                primitive_id,
+                timestep_id=self.time_step,
+                scene_id=self.scene_counter,
+            )
+        for composite_id in composite_ids:
+            self.composite_index.add_item_to_index(
+                composite_id,
+                timestep_id=self.time_step,
+                scene_id=self.scene_counter,
+            )
+
+        self.time_step += 1
+        return before_mutation_kwargs
+
     def transform_by_coordinate(
         self,
         coordinate: np.ndarray,
@@ -1026,7 +1076,9 @@ class Space:
                 scaled). Only positive scaling is supported, and only primitives
                 can be scaled. All other cases are no-ops.
         """
-        primitive_ids, composite_ids = self._select_by_coordinate(coordinate)
+        primitive_ids, composite_ids = self._old_select_by_coordinate(
+            coordinate
+        )
         transform_kwargs = self._transform_by_ids(
             primitive_ids, composite_ids, translate, reflect, scale
         )
@@ -1291,7 +1343,7 @@ class Space:
             )
 
         if coordinate is not None:
-            val, func = coordinate, self._select_by_coordinate
+            val, func = coordinate, self._old_select_by_coordinate
         if name is not None:
             val, func = name, self._select_by_name
         if timestep is not None:
@@ -1389,7 +1441,7 @@ class Space:
         self.time_step += 1
         self._update_bounds(slice(min_id, max_id + 1))
 
-    def _select_by_coordinate(
+    def _old_select_by_coordinate(
         self, coordinate: np.ndarray
     ) -> tuple[list[int], list[slice]]:
         if coordinate.shape != (3,):
@@ -1429,6 +1481,44 @@ class Space:
             if composite_slice is not None and composite_slice.start == idx:
                 composites_to_update.append(composite_slice)
                 composite_slice = next(self.old_cuboid_index.composites(), None)
+
+        return primitives_to_update, composites_to_update
+
+    def _select_by_coordinate(
+        self, coordinate: np.ndarray
+    ) -> tuple[list[int], list[int]]:
+        if coordinate.shape != (3,):
+            raise ValueError(
+                "Coordinates are three-dimensional, the input vector should be "
+                "3D."
+            )
+
+        # Map the coordinate to the correct representation.
+        # TODO: Decouple the user from a fixed basis.
+        coordinate = self._convert_basis(coordinate)
+
+        # First gather the IDs of primitive entries that match the coordinate.
+        matching_base_vectors = []
+        primitives_to_update, composites_to_update = [], []
+
+        for idx in range(self.object_counter):
+            base_coordinate = self.base_coordinates[idx]
+            if np.array_equal(base_coordinate, coordinate):
+                matching_base_vectors.append(idx)
+
+        primitive_id = next(self.cuboid_index.items(), None)
+        composite_id = next(self.composite_index.items(), None)
+
+        # For each index, check if it's a primitive or composite. If it is,
+        # add it to the relevant output buffer/increment the relevant iterator.
+        # If the relevant iterator is exhausted, use a default of None.
+        for idx in matching_base_vectors:
+            if primitive_id is not None and primitive_id == idx:
+                primitives_to_update.append(primitive_id)
+                primitive_id = next(self.cuboid_index.items(), None)
+            if composite_id is not None and composite_id == idx:
+                composites_to_update.append(composite_id)
+                composite_id = next(self.composite_index.items(), None)
 
         return primitives_to_update, composites_to_update
 

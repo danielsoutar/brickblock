@@ -1562,35 +1562,26 @@ def test_space_transforms_primitive_by_coordinate() -> None:
     # with dims
     # TODO: Have a transform for matplotlib and have your own representation
     # instead.
-    swapped_point = np.array([1, 3, 2]) + translate
+    swapped_point = np.array([1, 3, 2])
+    expected_point = (swapped_point + translate) * reflect * scale
+    expected_point = expected_point.reshape((1, 3))
+    expected_shape = np.array([[2, -2, -2]])
 
-    expected_num_entries = 10
+    empty_entries = 9
     assert np.array_equal(
-        space.cuboid_coordinates,
-        np.concatenate(
-            (
-                (mock_coordinates_entry() + swapped_point) * reflect * scale,
-                np.zeros((expected_num_entries - 1, 6, 4, 3)),
-            ),
-            axis=0,
-        ),
+        space.base_coordinates,
+        np.concatenate((expected_point, np.zeros((empty_entries, 3))), axis=0),
     )
     assert np.array_equal(
-        space.old_cuboid_shapes,
-        np.concatenate(
-            (
-                np.array([[2, -2, -2]]),
-                np.zeros((expected_num_entries - 1, 3)),
-            ),
-            axis=0,
-        ),
+        space.cuboid_shapes,
+        np.concatenate((expected_shape, np.zeros((empty_entries, 3))), axis=0),
     )
 
-    assert list(space.old_cuboid_index.primitives()) == [0, 0, 0, 0]
-    assert space.old_cuboid_index.get_primitives_by_timestep(0) == [0]
-    assert space.old_cuboid_index.get_primitives_by_timestep(1) == [0]
-    assert space.old_cuboid_index.get_primitives_by_timestep(2) == [0]
-    assert space.old_cuboid_index.get_primitives_by_timestep(3) == [0]
+    assert list(space.cuboid_index.items()) == [0, 0, 0, 0]
+    assert space.cuboid_index.get_items_by_timestep(0) == [0]
+    assert space.cuboid_index.get_items_by_timestep(1) == [0]
+    assert space.cuboid_index.get_items_by_timestep(2) == [0]
+    assert space.cuboid_index.get_items_by_timestep(3) == [0]
 
 
 def test_space_transforms_composite_by_coordinate() -> None:
@@ -1609,8 +1600,6 @@ def test_space_transforms_composite_by_coordinate() -> None:
             linewidth=0.5,
         )
     )
-
-    num_cubes = w * h * d
 
     translate = np.array([3, 3, 3])
     shifted_point = point + translate
@@ -1639,53 +1628,25 @@ def test_space_transforms_composite_by_coordinate() -> None:
     # with dims
     # TODO: Have a transform for matplotlib and have your own representation
     # instead.
-    swapped_point = np.array([1, 3, 2]) + translate
-    width = np.array([1, 0, 0])
-    height = np.array([0, 0, 1])
-    depth = np.array([0, 1, 0])
+    swapped_point = np.array([1, 3, 2])
+    expected_point = (swapped_point + translate) * reflect
+    expected_point = expected_point.reshape((1, 3))
+    expected_shape = np.array([[w, h, d]]) * reflect
 
-    def make_sub_cubes():
-        return [
-            mock_coordinates_entry()
-            + swapped_point
-            + (w * width)
-            + (h * height)
-            + (d * depth)
-            for (w, h, d) in itertools.product(range(w), range(h), range(d))
-        ]
-
-    expected_num_entries = 40
+    empty_entries = 9
     assert np.array_equal(
-        space.cuboid_coordinates,
-        np.concatenate(
-            (
-                *(make_sub_cubes() * reflect),
-                np.zeros((expected_num_entries - num_cubes, 6, 4, 3)),
-            ),
-            axis=0,
-        ),
+        space.base_coordinates,
+        np.concatenate((expected_point, np.zeros((empty_entries, 3))), axis=0),
     )
     assert np.array_equal(
-        space.old_cuboid_shapes,
-        np.concatenate(
-            (
-                np.broadcast_to(np.array([[w, -h, -d]]), (num_cubes, 3)),
-                np.zeros((expected_num_entries - num_cubes, 3)),
-            ),
-            axis=0,
-        ),
+        space.cuboid_shapes,
+        np.concatenate((expected_shape, np.zeros((empty_entries, 3))), axis=0),
     )
 
-    composite = slice(0, num_cubes)
-
-    assert list(space.old_cuboid_index.composites()) == [
-        composite,
-        composite,
-        composite,
-    ]
-    assert space.old_cuboid_index.get_composites_by_timestep(0) == [composite]
-    assert space.old_cuboid_index.get_composites_by_timestep(1) == [composite]
-    assert space.old_cuboid_index.get_composites_by_timestep(2) == [composite]
+    assert list(space.composite_index.items()) == [0, 0, 0]
+    assert space.composite_index.get_items_by_timestep(0) == [0]
+    assert space.composite_index.get_items_by_timestep(1) == [0]
+    assert space.composite_index.get_items_by_timestep(2) == [0]
 
 
 def test_space_transforms_multiple_objects_by_coordinate() -> None:
@@ -1704,8 +1665,6 @@ def test_space_transforms_multiple_objects_by_coordinate() -> None:
             linewidth=0.5,
         )
     )
-
-    num_cubes = w * h * d
 
     space.add_cube(bb.Cube(base_vector=point))
 
@@ -1737,55 +1696,37 @@ def test_space_transforms_multiple_objects_by_coordinate() -> None:
     # with dims
     # TODO: Have a transform for matplotlib and have your own representation
     # instead.
-    swapped_point = np.array([1, 3, 2]) + translate
-    width = np.array([1, 0, 0])
-    height = np.array([0, 0, 1])
-    depth = np.array([0, 1, 0])
+    swapped_point = np.array([1, 3, 2])
+    expected_point = (swapped_point + translate) * reflect
+    expected_point = expected_point.reshape((1, 3))
 
-    def make_sub_cubes():
-        return [
-            mock_coordinates_entry()
-            + swapped_point
-            + (w * width)
-            + (h * height)
-            + (d * depth)
-            for (w, h, d) in itertools.product(range(w), range(h), range(d))
-        ]
-
-    expected_num_entries = 40
+    empty_entries = 8
     assert np.array_equal(
-        space.cuboid_coordinates,
+        space.base_coordinates,
         np.concatenate(
-            (
-                *(make_sub_cubes() * reflect),
-                (mock_coordinates_entry() + swapped_point) * reflect,
-                np.zeros((expected_num_entries - num_cubes - 1, 6, 4, 3)),
-            ),
-            axis=0,
-        ),
-    )
-    assert np.array_equal(
-        space.old_cuboid_shapes,
-        np.concatenate(
-            (
-                np.broadcast_to(np.array([[w, -h, -d]]), (num_cubes, 3)),
-                np.array([[1, -1, -1]]),
-                np.zeros((expected_num_entries - num_cubes - 1, 3)),
-            ),
+            (expected_point, expected_point, np.zeros((empty_entries, 3))),
             axis=0,
         ),
     )
 
-    composite = slice(0, num_cubes)
+    composite_shape = np.array([[w, -h, -d]])
+    cube_shape = np.array([[1, -1, -1]])
+    assert np.array_equal(
+        space.cuboid_shapes,
+        np.concatenate(
+            (composite_shape, cube_shape, np.zeros((empty_entries, 3))),
+            axis=0,
+        ),
+    )
 
-    assert list(space.old_cuboid_index.primitives()) == [num_cubes] * 3
-    assert list(space.old_cuboid_index.composites()) == [composite] * 3
-    assert space.old_cuboid_index.get_composites_by_timestep(0) == [composite]
-    assert space.old_cuboid_index.get_primitives_by_timestep(1) == [num_cubes]
-    assert space.old_cuboid_index.get_primitives_by_timestep(2) == [num_cubes]
-    assert space.old_cuboid_index.get_composites_by_timestep(2) == [composite]
-    assert space.old_cuboid_index.get_primitives_by_timestep(3) == [num_cubes]
-    assert space.old_cuboid_index.get_composites_by_timestep(3) == [composite]
+    assert list(space.cuboid_index.items()) == [1, 1, 1]
+    assert list(space.composite_index.items()) == [0, 0, 0]
+    assert space.composite_index.get_items_by_timestep(0) == [0]
+    assert space.cuboid_index.get_items_by_timestep(1) == [1]
+    assert space.cuboid_index.get_items_by_timestep(2) == [1]
+    assert space.composite_index.get_items_by_timestep(2) == [0]
+    assert space.cuboid_index.get_items_by_timestep(3) == [1]
+    assert space.composite_index.get_items_by_timestep(3) == [0]
 
 
 def test_space_transforms_primitive_by_name() -> None:
@@ -1827,35 +1768,26 @@ def test_space_transforms_primitive_by_name() -> None:
     # with dims
     # TODO: Have a transform for matplotlib and have your own representation
     # instead.
-    swapped_point = np.array([1, 3, 2]) + translate
+    swapped_point = np.array([1, 3, 2])
+    expected_point = (swapped_point + translate) * reflect * scale
+    expected_point = expected_point.reshape((1, 3))
+    expected_shape = np.array([[2, -2, -2]])
 
-    expected_num_entries = 10
+    empty_entries = 9
     assert np.array_equal(
-        space.cuboid_coordinates,
-        np.concatenate(
-            (
-                (mock_coordinates_entry() + swapped_point) * reflect * scale,
-                np.zeros((expected_num_entries - 1, 6, 4, 3)),
-            ),
-            axis=0,
-        ),
+        space.base_coordinates,
+        np.concatenate((expected_point, np.zeros((empty_entries, 3))), axis=0),
     )
     assert np.array_equal(
-        space.old_cuboid_shapes,
-        np.concatenate(
-            (
-                np.array([[2, -2, -2]]),
-                np.zeros((expected_num_entries - 1, 3)),
-            ),
-            axis=0,
-        ),
+        space.cuboid_shapes,
+        np.concatenate((expected_shape, np.zeros((empty_entries, 3))), axis=0),
     )
 
-    assert list(space.old_cuboid_index.primitives()) == [0, 0, 0, 0]
-    assert space.old_cuboid_index.get_primitives_by_timestep(0) == [0]
-    assert space.old_cuboid_index.get_primitives_by_timestep(1) == [0]
-    assert space.old_cuboid_index.get_primitives_by_timestep(2) == [0]
-    assert space.old_cuboid_index.get_primitives_by_timestep(3) == [0]
+    assert list(space.cuboid_index.items()) == [0, 0, 0, 0]
+    assert space.cuboid_index.get_items_by_timestep(0) == [0]
+    assert space.cuboid_index.get_items_by_timestep(1) == [0]
+    assert space.cuboid_index.get_items_by_timestep(2) == [0]
+    assert space.cuboid_index.get_items_by_timestep(3) == [0]
 
 
 def test_space_transforms_composite_by_name() -> None:
@@ -1866,8 +1798,6 @@ def test_space_transforms_composite_by_name() -> None:
     space.add_composite(
         bb.CompositeCube(base_vector=point, w=w, h=h, d=d, name="my-composite")
     )
-
-    num_cubes = w * h * d
 
     translate = np.array([3, 3, 3])
     # TODO: Make reflection slightly more readable/interpretable.
@@ -1895,49 +1825,25 @@ def test_space_transforms_composite_by_name() -> None:
     # with dims
     # TODO: Have a transform for matplotlib and have your own representation
     # instead.
-    swapped_point = np.array([1, 3, 2]) + translate
-    width = np.array([1, 0, 0])
-    height = np.array([0, 0, 1])
-    depth = np.array([0, 1, 0])
+    swapped_point = np.array([1, 3, 2])
+    expected_point = (swapped_point + translate) * reflect
+    expected_point = expected_point.reshape((1, 3))
+    expected_shape = np.array([[w, h, d]]) * reflect
 
-    def make_sub_cubes():
-        return [
-            mock_coordinates_entry()
-            + swapped_point
-            + (w * width)
-            + (h * height)
-            + (d * depth)
-            for (w, h, d) in itertools.product(range(w), range(h), range(d))
-        ]
-
-    expected_num_entries = 40
+    empty_entries = 9
     assert np.array_equal(
-        space.cuboid_coordinates,
-        np.concatenate(
-            (
-                *(make_sub_cubes() * reflect),
-                np.zeros((expected_num_entries - num_cubes, 6, 4, 3)),
-            ),
-            axis=0,
-        ),
+        space.base_coordinates,
+        np.concatenate((expected_point, np.zeros((empty_entries, 3))), axis=0),
     )
     assert np.array_equal(
-        space.old_cuboid_shapes,
-        np.concatenate(
-            (
-                np.broadcast_to(np.array([[w, -h, -d]]), (num_cubes, 3)),
-                np.zeros((expected_num_entries - num_cubes, 3)),
-            ),
-            axis=0,
-        ),
+        space.cuboid_shapes,
+        np.concatenate((expected_shape, np.zeros((empty_entries, 3))), axis=0),
     )
 
-    composite = slice(0, num_cubes)
-
-    assert list(space.old_cuboid_index.composites()) == [composite] * 3
-    assert space.old_cuboid_index.get_composites_by_timestep(0) == [composite]
-    assert space.old_cuboid_index.get_composites_by_timestep(1) == [composite]
-    assert space.old_cuboid_index.get_composites_by_timestep(2) == [composite]
+    assert list(space.composite_index.items()) == [0, 0, 0]
+    assert space.composite_index.get_items_by_timestep(0) == [0]
+    assert space.composite_index.get_items_by_timestep(1) == [0]
+    assert space.composite_index.get_items_by_timestep(2) == [0]
 
 
 def test_space_transforms_primitive_by_timestep_id() -> None:
@@ -1980,35 +1886,26 @@ def test_space_transforms_primitive_by_timestep_id() -> None:
     # with dims
     # TODO: Have a transform for matplotlib and have your own representation
     # instead.
-    swapped_point = np.array([1, 3, 2]) + translate
+    swapped_point = np.array([1, 3, 2])
+    expected_point = (swapped_point + translate) * reflect * scale
+    expected_point = expected_point.reshape((1, 3))
+    expected_shape = np.array([[2, -2, -2]])
 
-    expected_num_entries = 10
+    empty_entries = 9
     assert np.array_equal(
-        space.cuboid_coordinates,
-        np.concatenate(
-            (
-                (mock_coordinates_entry() + swapped_point) * reflect * scale,
-                np.zeros((expected_num_entries - 1, 6, 4, 3)),
-            ),
-            axis=0,
-        ),
+        space.base_coordinates,
+        np.concatenate((expected_point, np.zeros((empty_entries, 3))), axis=0),
     )
     assert np.array_equal(
-        space.old_cuboid_shapes,
-        np.concatenate(
-            (
-                np.array([[2, -2, -2]]),
-                np.zeros((expected_num_entries - 1, 3)),
-            ),
-            axis=0,
-        ),
+        space.cuboid_shapes,
+        np.concatenate((expected_shape, np.zeros((empty_entries, 3))), axis=0),
     )
 
-    assert list(space.old_cuboid_index.primitives()) == [0, 0, 0, 0]
-    assert space.old_cuboid_index.get_primitives_by_timestep(0) == [0]
-    assert space.old_cuboid_index.get_primitives_by_timestep(1) == [0]
-    assert space.old_cuboid_index.get_primitives_by_timestep(2) == [0]
-    assert space.old_cuboid_index.get_primitives_by_timestep(3) == [0]
+    assert list(space.cuboid_index.items()) == [0, 0, 0, 0]
+    assert space.cuboid_index.get_items_by_timestep(0) == [0]
+    assert space.cuboid_index.get_items_by_timestep(1) == [0]
+    assert space.cuboid_index.get_items_by_timestep(2) == [0]
+    assert space.cuboid_index.get_items_by_timestep(3) == [0]
 
 
 def test_space_transforms_composite_by_timestep_id() -> None:
@@ -2017,8 +1914,6 @@ def test_space_transforms_composite_by_timestep_id() -> None:
     point = np.array([1, 2, 3])
     w, h, d = 4, 3, 2
     space.add_composite(bb.CompositeCube(base_vector=point, w=w, h=h, d=d))
-
-    num_cubes = w * h * d
 
     translate = np.array([3, 3, 3])
     # TODO: Make reflection slightly more readable/interpretable.
@@ -2047,49 +1942,25 @@ def test_space_transforms_composite_by_timestep_id() -> None:
     # with dims
     # TODO: Have a transform for matplotlib and have your own representation
     # instead.
-    swapped_point = np.array([1, 3, 2]) + translate
-    width = np.array([1, 0, 0])
-    height = np.array([0, 0, 1])
-    depth = np.array([0, 1, 0])
+    swapped_point = np.array([1, 3, 2])
+    expected_point = (swapped_point + translate) * reflect
+    expected_point = expected_point.reshape((1, 3))
+    expected_shape = np.array([[w, h, d]]) * reflect
 
-    def make_sub_cubes():
-        return [
-            mock_coordinates_entry()
-            + swapped_point
-            + (w * width)
-            + (h * height)
-            + (d * depth)
-            for (w, h, d) in itertools.product(range(w), range(h), range(d))
-        ]
-
-    expected_num_entries = 40
+    empty_entries = 9
     assert np.array_equal(
-        space.cuboid_coordinates,
-        np.concatenate(
-            (
-                *(make_sub_cubes() * reflect),
-                np.zeros((expected_num_entries - num_cubes, 6, 4, 3)),
-            ),
-            axis=0,
-        ),
+        space.base_coordinates,
+        np.concatenate((expected_point, np.zeros((empty_entries, 3))), axis=0),
     )
     assert np.array_equal(
-        space.old_cuboid_shapes,
-        np.concatenate(
-            (
-                np.broadcast_to(np.array([[w, -h, -d]]), (num_cubes, 3)),
-                np.zeros((expected_num_entries - num_cubes, 3)),
-            ),
-            axis=0,
-        ),
+        space.cuboid_shapes,
+        np.concatenate((expected_shape, np.zeros((empty_entries, 3))), axis=0),
     )
 
-    composite = slice(0, num_cubes)
-
-    assert list(space.old_cuboid_index.composites()) == [composite] * 3
-    assert space.old_cuboid_index.get_composites_by_timestep(0) == [composite]
-    assert space.old_cuboid_index.get_composites_by_timestep(1) == [composite]
-    assert space.old_cuboid_index.get_composites_by_timestep(2) == [composite]
+    assert list(space.composite_index.items()) == [0, 0, 0]
+    assert space.composite_index.get_items_by_timestep(0) == [0]
+    assert space.composite_index.get_items_by_timestep(1) == [0]
+    assert space.composite_index.get_items_by_timestep(2) == [0]
 
 
 def test_space_transforms_primitive_by_scene_id() -> None:
@@ -2131,35 +2002,26 @@ def test_space_transforms_primitive_by_scene_id() -> None:
     # with dims
     # TODO: Have a transform for matplotlib and have your own representation
     # instead.
-    swapped_point = np.array([1, 3, 2]) + translate
+    swapped_point = np.array([1, 3, 2])
+    expected_point = (swapped_point + translate) * reflect * scale
+    expected_point = expected_point.reshape((1, 3))
+    expected_shape = np.array([[2, -2, -2]])
 
-    expected_num_entries = 10
+    empty_entries = 9
     assert np.array_equal(
-        space.cuboid_coordinates,
-        np.concatenate(
-            (
-                (mock_coordinates_entry() + swapped_point) * reflect * scale,
-                np.zeros((expected_num_entries - 1, 6, 4, 3)),
-            ),
-            axis=0,
-        ),
+        space.base_coordinates,
+        np.concatenate((expected_point, np.zeros((empty_entries, 3))), axis=0),
     )
     assert np.array_equal(
-        space.old_cuboid_shapes,
-        np.concatenate(
-            (
-                np.array([[2, -2, -2]]),
-                np.zeros((expected_num_entries - 1, 3)),
-            ),
-            axis=0,
-        ),
+        space.cuboid_shapes,
+        np.concatenate((expected_shape, np.zeros((empty_entries, 3))), axis=0),
     )
 
-    assert list(space.old_cuboid_index.primitives()) == [0, 0, 0, 0]
-    assert space.old_cuboid_index.get_primitives_by_timestep(0) == [0]
-    assert space.old_cuboid_index.get_primitives_by_timestep(1) == [0]
-    assert space.old_cuboid_index.get_primitives_by_timestep(2) == [0]
-    assert space.old_cuboid_index.get_primitives_by_timestep(3) == [0]
+    assert list(space.cuboid_index.items()) == [0, 0, 0, 0]
+    assert space.cuboid_index.get_items_by_timestep(0) == [0]
+    assert space.cuboid_index.get_items_by_timestep(1) == [0]
+    assert space.cuboid_index.get_items_by_timestep(2) == [0]
+    assert space.cuboid_index.get_items_by_timestep(3) == [0]
 
 
 def test_space_transforms_composite_by_scene_id() -> None:
@@ -2168,8 +2030,6 @@ def test_space_transforms_composite_by_scene_id() -> None:
     point = np.array([1, 2, 3])
     w, h, d = 4, 3, 2
     space.add_composite(bb.CompositeCube(base_vector=point, w=w, h=h, d=d))
-
-    num_cubes = w * h * d
 
     translate = np.array([3, 3, 3])
     # TODO: Make reflection slightly more readable/interpretable.
@@ -2197,49 +2057,25 @@ def test_space_transforms_composite_by_scene_id() -> None:
     # with dims
     # TODO: Have a transform for matplotlib and have your own representation
     # instead.
-    swapped_point = np.array([1, 3, 2]) + translate
-    width = np.array([1, 0, 0])
-    height = np.array([0, 0, 1])
-    depth = np.array([0, 1, 0])
+    swapped_point = np.array([1, 3, 2])
+    expected_point = (swapped_point + translate) * reflect
+    expected_point = expected_point.reshape((1, 3))
+    expected_shape = np.array([[w, h, d]]) * reflect
 
-    def make_sub_cubes():
-        return [
-            mock_coordinates_entry()
-            + swapped_point
-            + (w * width)
-            + (h * height)
-            + (d * depth)
-            for (w, h, d) in itertools.product(range(w), range(h), range(d))
-        ]
-
-    expected_num_entries = 40
+    empty_entries = 9
     assert np.array_equal(
-        space.cuboid_coordinates,
-        np.concatenate(
-            (
-                *(make_sub_cubes() * reflect),
-                np.zeros((expected_num_entries - num_cubes, 6, 4, 3)),
-            ),
-            axis=0,
-        ),
+        space.base_coordinates,
+        np.concatenate((expected_point, np.zeros((empty_entries, 3))), axis=0),
     )
     assert np.array_equal(
-        space.old_cuboid_shapes,
-        np.concatenate(
-            (
-                np.broadcast_to(np.array([[w, -h, -d]]), (num_cubes, 3)),
-                np.zeros((expected_num_entries - num_cubes, 3)),
-            ),
-            axis=0,
-        ),
+        space.cuboid_shapes,
+        np.concatenate((expected_shape, np.zeros((empty_entries, 3))), axis=0),
     )
 
-    composite = slice(0, num_cubes)
-
-    assert list(space.old_cuboid_index.composites()) == [composite] * 3
-    assert space.old_cuboid_index.get_composites_by_timestep(0) == [composite]
-    assert space.old_cuboid_index.get_composites_by_timestep(1) == [composite]
-    assert space.old_cuboid_index.get_composites_by_timestep(2) == [composite]
+    assert list(space.composite_index.items()) == [0, 0, 0]
+    assert space.composite_index.get_items_by_timestep(0) == [0]
+    assert space.composite_index.get_items_by_timestep(1) == [0]
+    assert space.composite_index.get_items_by_timestep(2) == [0]
 
 
 def test_space_transforms_multiple_objects_multiple_times() -> None:

@@ -1075,9 +1075,7 @@ class Space:
                 scaled). Only positive scaling is supported, and only primitives
                 can be scaled. All other cases are no-ops.
         """
-        primitive_ids, composite_ids = self._old_select_by_coordinate(
-            coordinate
-        )
+        primitive_ids, composite_ids = self._select_by_coordinate(coordinate)
         transform_kwargs = self._transform_by_ids(
             primitive_ids, composite_ids, translate, reflect, scale
         )
@@ -1115,7 +1113,7 @@ class Space:
                 scaled). Only positive scaling is supported, and only primitives
                 can be scaled. All other cases are no-ops.
         """
-        primitive_ids, composite_ids = self._old_select_by_name(name)
+        primitive_ids, composite_ids = self._select_by_name(name)
         transform_kwargs = self._transform_by_ids(
             primitive_ids, composite_ids, translate, reflect, scale
         )
@@ -1151,7 +1149,7 @@ class Space:
                 scaled). Only positive scaling is supported, and only primitives
                 can be scaled. All other cases are no-ops.
         """
-        primitive_ids, composite_ids = self._old_select_by_timestep(timestep)
+        primitive_ids, composite_ids = self._select_by_timestep(timestep)
         transform_kwargs = self._transform_by_ids(
             primitive_ids, composite_ids, translate, reflect, scale
         )
@@ -1193,7 +1191,7 @@ class Space:
                 scaled). Only positive scaling is supported, and only primitives
                 can be scaled. All other cases are no-ops.
         """
-        primitive_ids, composite_ids = self._old_select_by_scene(scene)
+        primitive_ids, composite_ids = self._select_by_scene(scene)
 
         transform_kwargs = self._transform_by_ids(
             primitive_ids, composite_ids, translate, reflect, scale
@@ -1202,7 +1200,7 @@ class Space:
             self.changelog.append(Transform(scene_id=scene, **transform_kwargs))
             self.time_step += 1
 
-    def _transform_by_ids(
+    def _old_transform_by_ids(
         self,
         primitive_ids: list[int],
         composite_ids: list[slice],
@@ -1279,6 +1277,86 @@ class Space:
             )
         for composite_id in composite_ids:
             self.old_cuboid_index.add_composite_to_index(
+                composite_id,
+                timestep_id=self.time_step,
+                scene_id=self.scene_counter,
+            )
+
+        return kwargs
+
+    def _transform_by_ids(
+        self,
+        primitive_ids: list[int],
+        composite_ids: list[int],
+        translate: np.ndarray | None = None,
+        reflect: np.ndarray | None = None,
+        scale: np.ndarray | None = None,
+    ) -> dict[str, Any] | None:
+        non_zero_selection = len(primitive_ids) > 0 or len(composite_ids) > 0
+
+        exactly_one_set = (
+            sum([a is not None for a in [translate, reflect, scale]]) == 1
+        )
+        if not exactly_one_set:
+            raise ValueError(
+                "Exactly one transform argument can be set when transforming "
+                "objects."
+            )
+
+        if translate is not None:
+            val = translate
+            coord_func = lambda obj: obj + translate  # noqa: E731
+            shape_func = None
+            kwargs = {"transform": -translate, "transform_name": "translation"}
+        if reflect is not None:
+            # This muddled logic stems from allowing an arbitrary vector.
+            # Instead it would be better if only valid inputs could be passed.
+            unique_elements = np.unique(reflect)
+            allowed_elements = np.array([-1, 1])
+            if not set(unique_elements).issubset(set(allowed_elements)):
+                raise ValueError("Reflection may only contain 1s and -1s.")
+            degenerate_reflection = np.array([1])
+            val = reflect
+            if np.array_equal(unique_elements, degenerate_reflection):
+                val = np.zeros(reflect.shape)
+            coord_func = lambda obj: obj * reflect  # noqa: E731
+            shape_func = lambda shp: shp * reflect  # noqa: E731
+            kwargs = {"transform": reflect, "transform_name": "reflection"}
+        if scale is not None:
+            # TODO: Change/remove coordinate buffer to allow scaling composites.
+            if len(composite_ids) > 0:
+                raise ValueError("Scale may only be applied to primitives.")
+            if any([v <= 0 for v in scale]):
+                raise ValueError("Scale may only contain positive values.")
+            val = scale
+            coord_func = lambda obj: obj * scale  # noqa: E731
+            shape_func = lambda shp: shp * scale  # noqa: E731
+            kwargs = {"transform": 1 / scale, "transform_name": "scale"}
+
+        non_zero_transform = np.any(val)
+
+        if not (non_zero_selection and non_zero_transform):
+            return None
+
+        if coord_func is not None:
+            joined_ids = primitive_ids + composite_ids
+            self.base_coordinates[joined_ids] = coord_func(
+                self.base_coordinates[joined_ids]
+            )
+        if shape_func is not None:
+            joined_ids = primitive_ids + composite_ids
+            self.cuboid_shapes[joined_ids] = shape_func(
+                self.cuboid_shapes[joined_ids]
+            )
+
+        for primitive_id in primitive_ids:
+            self.cuboid_index.add_item_to_index(
+                primitive_id,
+                timestep_id=self.time_step,
+                scene_id=self.scene_counter,
+            )
+        for composite_id in composite_ids:
+            self.composite_index.add_item_to_index(
                 composite_id,
                 timestep_id=self.time_step,
                 scene_id=self.scene_counter,

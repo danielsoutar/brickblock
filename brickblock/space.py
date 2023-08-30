@@ -825,10 +825,9 @@ class Space:
             kwargs: Sequence of named arguments that contain updated visual
                 property values.
         """
-        (
-            primitives_to_update,
-            composites_to_update,
-        ) = self._old_select_by_coordinate(coordinate)
+        primitives_to_update, composites_to_update = self._select_by_coordinate(
+            coordinate
+        )
         non_zero_selection = (
             len(primitives_to_update) > 0 or len(composites_to_update) > 0
         )
@@ -838,7 +837,7 @@ class Space:
         if not (non_zero_selection and non_empty_kwargs):
             return None
 
-        previous_state = self._old_mutate_by_ids(
+        previous_state = self._mutate_by_ids(
             primitives_to_update, composites_to_update, **kwargs
         )
         self.changelog.append(

@@ -755,8 +755,8 @@ def test_space_mutates_primitive_by_name() -> None:
 
     space.add_cube(bb.Cube(base_vector=np.array([0, 0, 0]), name="my-cube"))
 
-    assert space.old_cuboid_visual_metadata["facecolor"][0] is None
-    assert space.old_cuboid_visual_metadata["alpha"][0] == 0.0
+    assert space.cuboid_visual_metadata["facecolor"][0] is None
+    assert space.cuboid_visual_metadata["alpha"][0] == 0.0
     assert list(space.cuboid_names.keys()) == ["my-cube"]
 
     space.mutate_by_name(name="my-cube", facecolor="red", alpha=0.3)
@@ -773,13 +773,13 @@ def test_space_mutates_primitive_by_name() -> None:
         ),
     ]
 
-    assert space.old_cuboid_visual_metadata["facecolor"][0] == "red"
-    assert space.old_cuboid_visual_metadata["alpha"][0] == 0.3
+    assert space.cuboid_visual_metadata["facecolor"][0] == "red"
+    assert space.cuboid_visual_metadata["alpha"][0] == 0.3
     assert list(space.cuboid_names.keys()) == ["my-cube"]
 
-    assert list(space.old_cuboid_index.primitives()) == [0, 0]
-    assert space.old_cuboid_index.get_primitives_by_timestep(0) == [0]
-    assert space.old_cuboid_index.get_primitives_by_timestep(1) == [0]
+    assert list(space.cuboid_index.items()) == [0, 0]
+    assert space.cuboid_index.get_items_by_timestep(0) == [0]
+    assert space.cuboid_index.get_items_by_timestep(1) == [0]
 
 
 def test_space_mutates_composite_by_name() -> None:
@@ -798,12 +798,9 @@ def test_space_mutates_composite_by_name() -> None:
         )
     )
 
-    num_cubes = 4 * 3 * 2
-
-    for i in range(num_cubes):
-        assert space.old_cuboid_visual_metadata["facecolor"][i] == "yellow"
-        assert space.old_cuboid_visual_metadata["alpha"][i] == 0.3
-        assert space.old_cuboid_visual_metadata["linewidth"][i] == 0.5
+    assert space.cuboid_visual_metadata["facecolor"][0] == "yellow"
+    assert space.cuboid_visual_metadata["alpha"][0] == 0.3
+    assert space.cuboid_visual_metadata["linewidth"][0] == 0.5
 
     space.mutate_by_name(name="my-composite", facecolor=None, alpha=0.0)
 
@@ -819,16 +816,13 @@ def test_space_mutates_composite_by_name() -> None:
         ),
     ]
 
-    for i in range(num_cubes):
-        assert space.old_cuboid_visual_metadata["facecolor"][i] is None
-        assert space.old_cuboid_visual_metadata["alpha"][i] == 0.0
-        assert space.old_cuboid_visual_metadata["linewidth"][i] == 0.5
+    assert space.cuboid_visual_metadata["facecolor"][0] is None
+    assert space.cuboid_visual_metadata["alpha"][0] == 0.0
+    assert space.cuboid_visual_metadata["linewidth"][0] == 0.5
 
-    composite = slice(0, num_cubes)
-
-    assert list(space.old_cuboid_index.composites()) == [composite, composite]
-    assert space.old_cuboid_index.get_composites_by_timestep(0) == [composite]
-    assert space.old_cuboid_index.get_composites_by_timestep(1) == [composite]
+    assert list(space.composite_index.items()) == [0, 0]
+    assert space.composite_index.get_items_by_timestep(0) == [0]
+    assert space.composite_index.get_items_by_timestep(1) == [0]
 
 
 def test_space_mutates_primitive_by_timestep_id() -> None:
@@ -914,8 +908,8 @@ def test_space_mutates_primitive_by_scene_id() -> None:
 
     space.add_cube(bb.Cube(base_vector=np.array([0, 0, 0])))
 
-    assert space.old_cuboid_visual_metadata["facecolor"][0] is None
-    assert space.old_cuboid_visual_metadata["alpha"][0] == 0.0
+    assert space.cuboid_visual_metadata["facecolor"][0] is None
+    assert space.cuboid_visual_metadata["alpha"][0] == 0.0
 
     space.mutate_by_scene(scene=0, facecolor="red", alpha=0.3)
 
@@ -931,12 +925,12 @@ def test_space_mutates_primitive_by_scene_id() -> None:
         ),
     ]
 
-    assert space.old_cuboid_visual_metadata["facecolor"][0] == "red"
-    assert space.old_cuboid_visual_metadata["alpha"][0] == 0.3
+    assert space.cuboid_visual_metadata["facecolor"][0] == "red"
+    assert space.cuboid_visual_metadata["alpha"][0] == 0.3
 
-    assert list(space.old_cuboid_index.primitives()) == [0, 0]
-    assert space.old_cuboid_index.get_primitives_by_timestep(0) == [0]
-    assert space.old_cuboid_index.get_primitives_by_timestep(1) == [0]
+    assert list(space.cuboid_index.items()) == [0, 0]
+    assert space.cuboid_index.get_items_by_timestep(0) == [0]
+    assert space.cuboid_index.get_items_by_timestep(1) == [0]
 
 
 def test_space_mutates_composite_by_scene_id() -> None:
@@ -954,12 +948,9 @@ def test_space_mutates_composite_by_scene_id() -> None:
         )
     )
 
-    num_cubes = 4 * 3 * 2
-
-    for i in range(num_cubes):
-        assert space.old_cuboid_visual_metadata["facecolor"][i] == "yellow"
-        assert space.old_cuboid_visual_metadata["alpha"][i] == 0.3
-        assert space.old_cuboid_visual_metadata["linewidth"][i] == 0.5
+    assert space.cuboid_visual_metadata["facecolor"][0] == "yellow"
+    assert space.cuboid_visual_metadata["alpha"][0] == 0.3
+    assert space.cuboid_visual_metadata["linewidth"][0] == 0.5
 
     space.mutate_by_scene(scene=0, facecolor=None, alpha=0.0)
 
@@ -975,16 +966,13 @@ def test_space_mutates_composite_by_scene_id() -> None:
         ),
     ]
 
-    for i in range(num_cubes):
-        assert space.old_cuboid_visual_metadata["facecolor"][i] is None
-        assert space.old_cuboid_visual_metadata["alpha"][i] == 0.0
-        assert space.old_cuboid_visual_metadata["linewidth"][i] == 0.5
+    assert space.cuboid_visual_metadata["facecolor"][0] is None
+    assert space.cuboid_visual_metadata["alpha"][0] == 0.0
+    assert space.cuboid_visual_metadata["linewidth"][0] == 0.5
 
-    composite = slice(0, num_cubes)
-
-    assert list(space.old_cuboid_index.composites()) == [composite, composite]
-    assert space.old_cuboid_index.get_composites_by_timestep(0) == [composite]
-    assert space.old_cuboid_index.get_composites_by_timestep(1) == [composite]
+    assert list(space.composite_index.items()) == [0, 0]
+    assert space.composite_index.get_items_by_timestep(0) == [0]
+    assert space.composite_index.get_items_by_timestep(1) == [0]
 
 
 def test_space_mutates_multiple_objects_by_scene_id() -> None:
@@ -1034,41 +1022,20 @@ def test_space_mutates_multiple_objects_by_scene_id() -> None:
         )
     )
 
-    num_cubes_input_tensor = 4 * 3 * 2
-    num_cubes_filter_tensor = 3 * 3 * 2
-    num_cubes_unchanged_tensor = 5 * 5 * 2
+    face_colors = [None, None, "red", "orange"]
+    alphas = [0.3, 0, 0.5, 0.6]
+    linewidths = [0.5, 0.1, 0.7, 0.8]
 
-    for i in range(num_cubes_input_tensor):
-        assert space.old_cuboid_visual_metadata["facecolor"][i] is None
-        assert space.old_cuboid_visual_metadata["alpha"][i] == 0.3
-        assert space.old_cuboid_visual_metadata["linewidth"][i] == 0.5
-
-    offset = num_cubes_input_tensor
-
-    assert space.old_cuboid_visual_metadata["facecolor"][offset] is None
-    assert space.old_cuboid_visual_metadata["alpha"][offset] == 0
-    assert space.old_cuboid_visual_metadata["linewidth"][offset] == 0.1
-
-    for i in range(num_cubes_filter_tensor):
-        offset = num_cubes_input_tensor + 1
-        assert (
-            space.old_cuboid_visual_metadata["facecolor"][offset + i] == "red"
-        )
-        assert space.old_cuboid_visual_metadata["alpha"][offset + i] == 0.5
-        assert space.old_cuboid_visual_metadata["linewidth"][offset + i] == 0.7
-
-    for i in range(num_cubes_unchanged_tensor):
-        offset = num_cubes_input_tensor + 1 + num_cubes_filter_tensor
-        assert (
-            space.old_cuboid_visual_metadata["facecolor"][offset + i]
-            == "orange"
-        )
-        assert space.old_cuboid_visual_metadata["alpha"][offset + i] == 0.6
-        assert space.old_cuboid_visual_metadata["linewidth"][offset + i] == 0.8
+    for i in range(4):
+        assert space.cuboid_visual_metadata["facecolor"][i] == face_colors[i]
+        assert space.cuboid_visual_metadata["alpha"][i] == alphas[i]
+        assert space.cuboid_visual_metadata["linewidth"][i] == linewidths[i]
 
     space.mutate_by_scene(scene=0, facecolor="black", alpha=0.9, linewidth=0.1)
 
     # Check the changelog reflects the mutation, storing the previous state.
+    # TODO: Fix the issue of unintuitive ordering in the mutation subject,
+    # currently values are inserted primitives-first.
     assert space.changelog == [
         bb.Addition(0, None),
         bb.Addition(1, None),
@@ -1084,57 +1051,25 @@ def test_space_mutates_multiple_objects_by_scene_id() -> None:
         ),
     ]
 
-    for i in range(num_cubes_input_tensor + num_cubes_filter_tensor + 1):
-        assert space.old_cuboid_visual_metadata["facecolor"][i] == "black"
-        assert space.old_cuboid_visual_metadata["alpha"][i] == 0.9
-        assert space.old_cuboid_visual_metadata["linewidth"][i] == 0.1
+    for i in range(3):
+        assert space.cuboid_visual_metadata["facecolor"][i] == "black"
+        assert space.cuboid_visual_metadata["alpha"][i] == 0.9
+        assert space.cuboid_visual_metadata["linewidth"][i] == 0.1
 
-    for i in range(num_cubes_unchanged_tensor):
-        offset = num_cubes_input_tensor + num_cubes_filter_tensor + 1
-        assert (
-            space.old_cuboid_visual_metadata["facecolor"][offset + i]
-            == "orange"
-        )
-        assert space.old_cuboid_visual_metadata["alpha"][offset + i] == 0.6
-        assert space.old_cuboid_visual_metadata["linewidth"][offset + i] == 0.8
+    assert space.cuboid_visual_metadata["facecolor"][3]
+    assert space.cuboid_visual_metadata["alpha"][3] == 0.6
+    assert space.cuboid_visual_metadata["linewidth"][3] == 0.8
 
-    input_N = num_cubes_input_tensor + 1
-    filter_N = num_cubes_filter_tensor
-    unchanged_N = num_cubes_unchanged_tensor
+    assert list(space.cuboid_index.items()) == [1, 1]
+    assert space.cuboid_index.get_items_by_timestep(1) == [1]
+    assert space.cuboid_index.get_items_by_timestep(4) == [1]
+    assert space.cuboid_index.get_items_by_scene(0) == [1]
+    assert space.cuboid_index.get_items_by_scene(1) == [1]
 
-    first_composite = slice(0, input_N - 1)
-    second_composite = slice(input_N, input_N + filter_N)
-    last_composite = slice(input_N + filter_N, input_N + filter_N + unchanged_N)
-
-    assert list(space.old_cuboid_index.primitives()) == [
-        input_N - 1,
-        input_N - 1,
-    ]
-    assert space.old_cuboid_index.get_primitives_by_timestep(1) == [input_N - 1]
-    assert space.old_cuboid_index.get_primitives_by_timestep(4) == [input_N - 1]
-    assert space.old_cuboid_index.get_primitives_by_scene(0) == [input_N - 1]
-    assert space.old_cuboid_index.get_primitives_by_scene(1) == [input_N - 1]
-
-    assert list(space.old_cuboid_index.composites()) == [
-        first_composite,
-        second_composite,
-        last_composite,
-        first_composite,
-        second_composite,
-    ]
-    assert space.old_cuboid_index.get_composites_by_timestep(4) == [
-        first_composite,
-        second_composite,
-    ]
-    assert space.old_cuboid_index.get_composites_by_scene(0) == [
-        first_composite,
-        second_composite,
-    ]
-    assert space.old_cuboid_index.get_composites_by_scene(1) == [
-        last_composite,
-        first_composite,
-        second_composite,
-    ]
+    assert list(space.composite_index.items()) == [0, 2, 3, 0, 2]
+    assert space.composite_index.get_items_by_timestep(4) == [0, 2]
+    assert space.composite_index.get_items_by_scene(0) == [0, 2]
+    assert space.composite_index.get_items_by_scene(1) == [3, 0, 2]
 
 
 def test_space_mutates_multiple_objects_multiple_times() -> None:

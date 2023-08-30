@@ -867,7 +867,7 @@ class Space:
         if not (non_zero_selection and non_empty_kwargs):
             return None
 
-        previous_state = self._old_mutate_by_ids(
+        previous_state = self._mutate_by_ids(
             primitives_to_update, composites_to_update, **kwargs
         )
         self.changelog.append(Mutation(subject=previous_state, name=name))
@@ -930,7 +930,7 @@ class Space:
         if not (non_zero_selection and non_empty_kwargs):
             return None
 
-        previous_state = self._old_mutate_by_ids(
+        previous_state = self._mutate_by_ids(
             primitives_to_update, composites_to_update, **kwargs
         )
         self.changelog.append(Mutation(subject=previous_state, scene_id=scene))
@@ -1115,7 +1115,7 @@ class Space:
                 scaled). Only positive scaling is supported, and only primitives
                 can be scaled. All other cases are no-ops.
         """
-        primitive_ids, composite_ids = self._select_by_name(name)
+        primitive_ids, composite_ids = self._old_select_by_name(name)
         transform_kwargs = self._transform_by_ids(
             primitive_ids, composite_ids, translate, reflect, scale
         )
@@ -1193,7 +1193,7 @@ class Space:
                 scaled). Only positive scaling is supported, and only primitives
                 can be scaled. All other cases are no-ops.
         """
-        primitive_ids, composite_ids = self._select_by_scene(scene)
+        primitive_ids, composite_ids = self._old_select_by_scene(scene)
 
         transform_kwargs = self._transform_by_ids(
             primitive_ids, composite_ids, translate, reflect, scale
@@ -1344,11 +1344,11 @@ class Space:
         if coordinate is not None:
             val, func = coordinate, self._old_select_by_coordinate
         if name is not None:
-            val, func = name, self._select_by_name
+            val, func = name, self._old_select_by_name
         if timestep is not None:
             val, func = timestep, self._select_by_timestep
         if scene is not None:
-            val, func = scene, self._select_by_scene
+            val, func = scene, self._old_select_by_scene
 
         primitive_ids, composite_ids = func(val)
 
@@ -1521,11 +1521,22 @@ class Space:
 
         return primitives_to_update, composites_to_update
 
-    def _select_by_name(self, name: str) -> tuple[list[int], list[slice]]:
+    def _old_select_by_name(self, name: str) -> tuple[list[int], list[slice]]:
         if name not in self.old_cuboid_names.keys():
             raise ValueError("The provided name does not exist in this space.")
 
         primitive_ids, composite_ids = self.old_cuboid_names[name]
+
+        primitive_ids = primitive_ids if primitive_ids is not None else []
+        composite_ids = composite_ids if composite_ids is not None else []
+
+        return primitive_ids, composite_ids
+
+    def _select_by_name(self, name: str) -> tuple[list[int], list[int]]:
+        if name not in self.cuboid_names.keys():
+            raise ValueError("The provided name does not exist in this space.")
+
+        primitive_ids, composite_ids = self.cuboid_names[name]
 
         primitive_ids = primitive_ids if primitive_ids is not None else []
         composite_ids = composite_ids if composite_ids is not None else []
@@ -1550,7 +1561,7 @@ class Space:
 
         return primitive_ids, composite_ids
 
-    def _select_by_scene(self, scene: int) -> tuple[list[int], list[slice]]:
+    def _old_select_by_scene(self, scene: int) -> tuple[list[int], list[slice]]:
         if (scene < 0) or (scene > self.scene_counter):
             raise ValueError("The provided scene ID is invalid in this space.")
 
@@ -1569,6 +1580,19 @@ class Space:
                 )
             )
         )
+
+        return primitive_ids, composite_ids
+
+    def _select_by_scene(self, scene: int) -> tuple[list[int], list[int]]:
+        if (scene < 0) or (scene > self.scene_counter):
+            raise ValueError("The provided scene ID is invalid in this space.")
+
+        primitive_ids = self.cuboid_index.get_items_by_scene(scene)
+        composite_ids = self.composite_index.get_items_by_scene(scene)
+
+        # TODO: This could ideally be more efficient.
+        primitive_ids = sorted(list(set(primitive_ids)))
+        composite_ids = sorted(list(set(composite_ids)))
 
         return primitive_ids, composite_ids
 

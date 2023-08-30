@@ -1208,79 +1208,89 @@ def test_space_updates_bounds_with_multiple_objects() -> None:
 def test_space_creates_cuboid_from_offset_with_selections() -> None:
     space = bb.Space()
 
-    base_point = np.array([0, 0, 0])
+    base_point = np.array([0, 0, 0]).reshape((1, 3))
     space.add_cube(bb.Cube(base_vector=base_point, scale=2.0, name="my-cube"))
 
-    space.clone_by_offset(np.array([12, 0, 0]), coordinate=base_point)
-    space.clone_by_offset(np.array([0, 12, 0]), name="my-cube")
-    space.clone_by_offset(np.array([0, 0, 12]), timestep=0)
+    first_offset = np.array([12, 0, 0]).reshape((1, 3))
+    second_offset = np.array([0, 12, 0]).reshape((1, 3))
+    third_offset = np.array([0, 0, 12]).reshape((1, 3))
+    fourth_offset = np.array([32, 0, 0]).reshape((1, 3))
+
+    space.clone_by_offset(first_offset, coordinate=base_point)
+    space.clone_by_offset(second_offset, name="my-cube")
+    space.clone_by_offset(third_offset, timestep=0)
     space.snapshot()
-    space.clone_by_offset(np.array([32, 0, 0]), scene=0)
+    space.clone_by_offset(fourth_offset, scene=0)
 
     # Remember to swap the ys and zs due to the current implementation issue
     # with dims
     # TODO: Have a transform for matplotlib and have your own representation
     # instead.
     expected_dims = np.array([[0, 46], [0, 14], [0, 14]])
-    assert np.array_equal(space.old_dims, expected_dims)
+    assert np.array_equal(space.dims, expected_dims)
     expected_mean = np.array([[20], [4], [4]])
     assert np.array_equal(space.mean, expected_mean)
     # TODO: Remove the total field as it's not yet needed (+ probably won't be).
     expected_total = np.array([[160], [32], [32]])
     assert np.array_equal(space.total, expected_total)
     assert space.num_objs == 8
-    assert space.primitive_counter == 8
+    assert space.object_counter == 8
     assert space.time_step == 5
     assert space.scene_counter == 1
-    expected_num_entries = 8
-    expected_coordinate_entry = mock_coordinates_entry() * 2
-    sup_width_offset = np.array([32, 0, 0])
-    sub_width_offset = np.array([12, 0, 0])
-    height_offset = np.array([0, 0, 12])
-    depth_offset = np.array([0, 12, 0])
 
-    expected_coordinates = np.concatenate(
-        (
-            expected_coordinate_entry,
-            expected_coordinate_entry + sub_width_offset,
-            expected_coordinate_entry + height_offset,
-            expected_coordinate_entry + depth_offset,
-            expected_coordinate_entry + sup_width_offset,
-            expected_coordinate_entry + sup_width_offset + sub_width_offset,
-            expected_coordinate_entry + sup_width_offset + height_offset,
-            expected_coordinate_entry + sup_width_offset + depth_offset,
-            np.zeros((10 - expected_num_entries, 6, 4, 3)),
-        ),
-        axis=0,
-    )
-    assert np.array_equal(space.cuboid_coordinates, expected_coordinates)
+    empty_entries = 2
+    expected_point = base_point
+    # Swap the coordinates of the offsets, as they are swapped internally.
+    swapped_second_offset = np.array([0, 0, 12]).reshape((1, 3))
+    swapped_third_offset = np.array([0, 12, 0]).reshape((1, 3))
+
+    expected_shape = np.array([2, 2, 2]).reshape((1, 3))
+
     assert np.array_equal(
-        space.old_cuboid_shapes,
+        space.base_coordinates,
         np.concatenate(
             (
-                np.full((expected_num_entries, 3), 2),
-                np.zeros((10 - expected_num_entries, 3)),
+                expected_point,
+                expected_point + first_offset,
+                expected_point + swapped_second_offset,
+                expected_point + swapped_third_offset,
+                expected_point + fourth_offset,
+                expected_point + first_offset + fourth_offset,
+                expected_point + swapped_second_offset + fourth_offset,
+                expected_point + swapped_third_offset + fourth_offset,
+                np.zeros((empty_entries, 3)),
+            )
+        ),
+    )
+    assert np.array_equal(
+        space.cuboid_shapes,
+        np.concatenate(
+            (
+                np.broadcast_to(expected_shape, (10 - empty_entries, 3)),
+                np.zeros((empty_entries, 3)),
             ),
             axis=0,
         ),
     )
-    assert space.old_cuboid_visual_metadata == {
-        "facecolor": [None] * expected_num_entries,
-        "linewidth": [0.1] * expected_num_entries,
-        "edgecolor": ["black"] * expected_num_entries,
-        "alpha": [0.0] * expected_num_entries,
+
+    N = space.object_counter
+    assert space.cuboid_visual_metadata == {
+        "facecolor": [None] * N,
+        "linewidth": [0.1] * N,
+        "edgecolor": ["black"] * N,
+        "alpha": [0.0] * N,
     }
-    assert list(space.old_cuboid_index.primitives()) == [
-        i for i in range(expected_num_entries)
-    ]
+    # TODO: Addition needs an optional referent - otherwise cannot distinguish
+    # between manual population or populating with clone_by.
     assert space.changelog == [bb.Addition(i, None) for i in range(5)]
-    assert space.old_cuboid_index.get_primitives_by_timestep(4) == [4, 5, 6, 7]
+    assert list(space.cuboid_index.items()) == [i for i in range(8)]
+    assert space.cuboid_index.get_items_by_timestep(4) == [4, 5, 6, 7]
 
 
 def test_space_creates_composites_from_offset_with_selections() -> None:
     space = bb.Space()
 
-    base_point = np.array([0, 0, 0])
+    base_point = np.array([0, 0, 0]).reshape((1, 3))
     w, h, d = 3, 4, 2
     space.add_composite(
         bb.CompositeCube(
@@ -1288,94 +1298,81 @@ def test_space_creates_composites_from_offset_with_selections() -> None:
         )
     )
 
-    space.clone_by_offset(np.array([12, 0, 0]), coordinate=base_point)
+    first_offset = np.array([12, 0, 0]).reshape((1, 3))
+    second_offset = np.array([0, 12, 0]).reshape((1, 3))
+    third_offset = np.array([0, 0, 12]).reshape((1, 3))
+    fourth_offset = np.array([32, 0, 0]).reshape((1, 3))
+
+    space.clone_by_offset(first_offset, coordinate=base_point)
     # This should be treated as a no-op.
-    space.clone_by_offset(np.array([12, 0, 0]), coordinate=base_point + 37)
-    space.clone_by_offset(np.array([0, 12, 0]), name="my-composite")
-    space.clone_by_offset(np.array([0, 0, 12]), timestep=0)
+    space.clone_by_offset(first_offset, coordinate=base_point + 37)
+    space.clone_by_offset(second_offset, name="my-composite")
+    space.clone_by_offset(third_offset, timestep=0)
     space.snapshot()
-    space.clone_by_offset(np.array([32, 0, 0]), scene=0)
+    space.clone_by_offset(fourth_offset, scene=0)
 
     # Remember to swap the ys and zs due to the current implementation issue
     # with dims
     # TODO: Have a transform for matplotlib and have your own representation
     # instead.
     expected_dims = np.array([[0, 47], [0, 14], [0, 16]])
-    assert np.array_equal(space.old_dims, expected_dims)
+    assert np.array_equal(space.dims, expected_dims)
     expected_mean = np.array([[20.5], [4], [5]])
     assert np.array_equal(space.mean, expected_mean)
     # TODO: Remove the total field as it's not yet needed (+ probably won't be).
     expected_total = np.array([[164], [32], [40]])
     assert np.array_equal(space.total, expected_total)
     assert space.num_objs == 8
-    num_cubes_per_composite = w * h * d
-    assert space.primitive_counter == num_cubes_per_composite * 8
+    assert space.object_counter == 8
     assert space.time_step == 5
     assert space.scene_counter == 1
-    expected_num_entries = num_cubes_per_composite * 8
-    width = np.array([1, 0, 0])
-    height = np.array([0, 0, 1])
-    depth = np.array([0, 1, 0])
 
-    expected_coordinate_entry = np.squeeze(
-        np.array(
-            [
-                mock_coordinates_entry()
-                + (w * width)
-                + (h * height)
-                + (d * depth)
-                for (w, h, d) in itertools.product(range(w), range(h), range(d))
-            ]
-        )
-    )
-    sup_width_offset = np.array([32, 0, 0])
-    sub_width_offset = np.array([12, 0, 0])
-    height_offset = np.array([0, 0, 12])
-    depth_offset = np.array([0, 12, 0])
+    empty_entries = 2
+    expected_point = base_point
+    # Swap the coordinates of the offsets, as they are swapped internally.
+    swapped_second_offset = np.array([0, 0, 12]).reshape((1, 3))
+    swapped_third_offset = np.array([0, 12, 0]).reshape((1, 3))
 
-    expected_coordinates = np.concatenate(
-        (
-            expected_coordinate_entry,
-            expected_coordinate_entry + sub_width_offset,
-            expected_coordinate_entry + height_offset,
-            expected_coordinate_entry + depth_offset,
-            expected_coordinate_entry + sup_width_offset,
-            expected_coordinate_entry + sup_width_offset + sub_width_offset,
-            expected_coordinate_entry + sup_width_offset + height_offset,
-            expected_coordinate_entry + sup_width_offset + depth_offset,
-            np.zeros((320 - expected_num_entries, 6, 4, 3)),
-        ),
-        axis=0,
-    )
-    assert np.array_equal(space.cuboid_coordinates, expected_coordinates)
+    expected_shape = np.array([3, 4, 2]).reshape((1, 3))
+
     assert np.array_equal(
-        space.old_cuboid_shapes,
+        space.base_coordinates,
         np.concatenate(
             (
-                np.broadcast_to(
-                    np.array([[3, 4, 2]]), (expected_num_entries, 3)
-                ),
-                np.zeros((320 - expected_num_entries, 3)),
+                expected_point,
+                expected_point + first_offset,
+                expected_point + swapped_second_offset,
+                expected_point + swapped_third_offset,
+                expected_point + fourth_offset,
+                expected_point + first_offset + fourth_offset,
+                expected_point + swapped_second_offset + fourth_offset,
+                expected_point + swapped_third_offset + fourth_offset,
+                np.zeros((empty_entries, 3)),
+            )
+        ),
+    )
+    assert np.array_equal(
+        space.cuboid_shapes,
+        np.concatenate(
+            (
+                np.broadcast_to(expected_shape, (10 - empty_entries, 3)),
+                np.zeros((empty_entries, 3)),
             ),
             axis=0,
         ),
     )
-    assert space.old_cuboid_visual_metadata == {
-        "facecolor": [None] * expected_num_entries,
-        "linewidth": [0.1] * expected_num_entries,
-        "edgecolor": ["black"] * expected_num_entries,
-        "alpha": [0.0] * expected_num_entries,
+    N = space.object_counter
+    assert space.cuboid_visual_metadata == {
+        "facecolor": [None] * N,
+        "linewidth": [0.1] * N,
+        "edgecolor": ["black"] * N,
+        "alpha": [0.0] * N,
     }
-    assert list(space.old_cuboid_index.composites()) == [
-        slice(i, i + 24) for i in range(0, 192, 24)
-    ]
+    # TODO: Addition needs an optional referent - otherwise cannot distinguish
+    # between manual population or populating with clone_by.
     assert space.changelog == [bb.Addition(i, None) for i in range(5)]
-    assert space.old_cuboid_index.get_composites_by_timestep(4) == [
-        slice(4 * 24, 5 * 24),
-        slice(5 * 24, 6 * 24),
-        slice(6 * 24, 7 * 24),
-        slice(7 * 24, 8 * 24),
-    ]
+    assert list(space.composite_index.items()) == [i for i in range(8)]
+    assert space.composite_index.get_items_by_timestep(4) == [4, 5, 6, 7]
 
 
 def test_space_create_from_offset_only_uses_one_selection() -> None:
@@ -1430,18 +1427,17 @@ def test_space_creates_composites_from_offset_with_updated_visuals() -> None:
     space.clone_by_offset(np.array([0, 0, 12]), timestep=0)
     space.snapshot()
     # Check the iterable case.
-    num_cubes_per_composite = w * h * d
     new_face_colors = ["black", "brown", "green", "blue"]
     new_edge_colors = ["white", "black", "purple", "white"]
     all_face_colors = [
         primitive_fc
         for fc in [None, "blue", None, None] + new_face_colors
-        for primitive_fc in [fc] * num_cubes_per_composite
+        for primitive_fc in [fc]
     ]
     all_edge_colors = [
         primitive_ec
         for ec in ["black", "white", "black", "black"] + new_edge_colors
-        for primitive_ec in [ec] * num_cubes_per_composite
+        for primitive_ec in [ec]
     ]
     # By default the alpha should be 1.0 when face colors are set, but we make
     # that explicit here for clarity.
@@ -1453,14 +1449,11 @@ def test_space_creates_composites_from_offset_with_updated_visuals() -> None:
         alpha=[1.0] * 4,
     )
 
-    assert space.old_cuboid_visual_metadata == {
+    assert space.cuboid_visual_metadata == {
         "facecolor": all_face_colors,
-        "linewidth": [0.1] * (8 * num_cubes_per_composite),
+        "linewidth": [0.1] * 8,
         "edgecolor": all_edge_colors,
-        "alpha": ([0.0] * num_cubes_per_composite)
-        + ([0.2] * num_cubes_per_composite)
-        + [0.0] * (2 * num_cubes_per_composite)
-        + [1.0] * (4 * num_cubes_per_composite),
+        "alpha": [0.0, 0.2, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0],
     }
 
 

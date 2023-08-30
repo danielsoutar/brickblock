@@ -491,7 +491,7 @@ class Space:
         self.changelog.append(Addition(self.time_step, None))
         self.time_step += 1
         self._old_update_bounds(slice(old_primitive_id, old_primitive_id + 1))
-        self._update_bounds(primitive_id)
+        self._update_bounds(slice(primitive_id, primitive_id + 1))
 
     def add_cuboid(self, cuboid: Cuboid) -> None:
         """
@@ -504,7 +504,7 @@ class Space:
         self.changelog.append(Addition(self.time_step, None))
         self.time_step += 1
         self._old_update_bounds(slice(old_primitive_id, old_primitive_id + 1))
-        self._update_bounds(primitive_id)
+        self._update_bounds(slice(primitive_id, primitive_id + 1))
 
     def add_composite(self, composite: CompositeCube) -> None:
         """
@@ -517,7 +517,7 @@ class Space:
         self.changelog.append(Addition(self.time_step, None))
         self.time_step += 1
         self._old_update_bounds(old_composite_id)
-        self._update_bounds(composite_id)
+        self._update_bounds(slice(composite_id, composite_id + 1))
 
     def _add_cuboid_primitive(self, cuboid: Cube | Cuboid) -> int:
         """
@@ -798,24 +798,28 @@ class Space:
         self.old_dims[:, 0] = np.minimum(self.old_dims[:, 0], given_mins.T)
         self.old_dims[:, 1] = np.maximum(self.old_dims[:, 1], given_maxes.T)
 
-    def _update_bounds(self, object_id: int) -> None:
+    def _update_bounds(self, object_ids: slice) -> None:
         """
-        Update the bounding box of the space, based on the object given by
-        `object_id`.
+        Update the bounding box of the space, based on the objects given by
+        `object_ids`.
+
+        Whether one or more objects are given, the space will update its bounds
+        over the extrema in both cases.
 
         The bounds of the space are updated regardless of whether or not the
-        provided object is visible.
+        provided objects are visible.
 
         # Args
-            object_id: The object for which coordinate and shape data is used to
-                update the bounding box of this space.
+            object_ids: The objects for which coordinate data is used to update
+                the bounding box of this space.
         """
-        row_vec = (1, 3)
-        coordinate = self.base_coordinates[object_id].reshape(row_vec)
-        shape = self.cuboid_shapes[object_id].reshape(row_vec)
+        N = object_ids.stop - object_ids.start
+        row_vecs = (N, 3)
+        coordinates = self.base_coordinates[object_ids].reshape(row_vecs)
+        shapes = self.cuboid_shapes[object_ids].reshape(row_vecs)
         # Shape is always stored in WHD order, so convert.
-        shape = self._convert_basis(shape)
-        limits = np.concatenate((coordinate, coordinate + shape), axis=0)
+        shapes = self._convert_basis(shapes)
+        limits = np.concatenate((coordinates, coordinates + shapes), axis=0)
 
         given_mins = np.min(limits, axis=0)
         given_maxes = np.max(limits, axis=0)
@@ -1312,13 +1316,13 @@ class Space:
             )
 
         if coordinate is not None:
-            val, func = coordinate, self._old_select_by_coordinate
+            val, func = coordinate, self._select_by_coordinate
         if name is not None:
-            val, func = name, self._old_select_by_name
+            val, func = name, self._select_by_name
         if timestep is not None:
-            val, func = timestep, self._old_select_by_timestep
+            val, func = timestep, self._select_by_timestep
         if scene is not None:
-            val, func = scene, self._old_select_by_scene
+            val, func = scene, self._select_by_scene
 
         primitive_ids, composite_ids = func(val)
 
@@ -1331,7 +1335,7 @@ class Space:
         for i in range(total_number_of_ids):
             kwargs_for_id = {}
             for key in kwargs.keys():
-                if key not in self.old_cuboid_visual_metadata.keys():
+                if key not in self.cuboid_visual_metadata.keys():
                     raise KeyError(
                         "The provided key doesn't match any valid visual "
                         "property."
@@ -1345,8 +1349,8 @@ class Space:
         new_primitive_ids = []
         for primitive, vis_met_data in zip(primitive_ids, interleaved_kwargs):
             visual_metadata = {
-                key: self.old_cuboid_visual_metadata[key][primitive]
-                for key in self.old_cuboid_visual_metadata.keys()
+                key: self.cuboid_visual_metadata[key][primitive]
+                for key in self.cuboid_visual_metadata.keys()
             }
             # Take the visual metadata, with the user-provided ones taking
             # precedence.
@@ -1355,26 +1359,25 @@ class Space:
             # Swap the axes around here - otherwise you will get double-swapping
             # of the dimensions.
             transformed_base = self._convert_basis(
-                self.cuboid_coordinates[primitive][0][0]
+                self.base_coordinates[primitive]
             )
             cuboid = Cuboid(
                 transformed_base + offset,
-                *self.old_cuboid_shapes[primitive],
+                *self.cuboid_shapes[primitive],
                 **visual_metadata,
                 name=None,
             )
             new_old_primitive_id, new_primitive_id = self._add_cuboid_primitive(
                 cuboid
             )
-            new_primitive_ids.append(new_old_primitive_id)
+            new_primitive_ids.append(new_primitive_id)
             self.num_objs += 1
 
         new_composite_ids = []
         for composite, vis_met_data in zip(composite_ids, interleaved_kwargs):
-            start = composite.start
             visual_metadata = {
-                key: self.old_cuboid_visual_metadata[key][start]
-                for key in self.old_cuboid_visual_metadata.keys()
+                key: self.cuboid_visual_metadata[key][composite]
+                for key in self.cuboid_visual_metadata.keys()
             }
             # Take the visual metadata, with the user-provided ones taking
             # precedence.
@@ -1382,9 +1385,9 @@ class Space:
             # Swap the axes around here - otherwise you will get double-swapping
             # of the dimensions.
             transformed_base = self._convert_basis(
-                self.cuboid_coordinates[start][0][0]
+                self.base_coordinates[composite]
             )
-            shape = tuple(int(val) for val in self.old_cuboid_shapes[start])
+            shape = tuple(int(val) for val in self.cuboid_shapes[composite])
             new_old_composite_id, new_composite_id = self._add_cuboid_composite(
                 CompositeCube(
                     transformed_base + offset,
@@ -1393,22 +1396,22 @@ class Space:
                     name=None,
                 )
             )
-            new_composite_ids.append(new_old_composite_id)
+            new_composite_ids.append(new_composite_id)
             self.num_objs += 1
 
         if len(new_primitive_ids) > 0:
             min_id = new_primitive_ids[0]
         else:
-            min_id = new_composite_ids[0].start
+            min_id = new_composite_ids[0]
 
         if len(new_composite_ids) == 0:
             max_id = new_primitive_ids[-1]
         else:
-            max_id = new_composite_ids[-1].stop - 1
+            max_id = new_composite_ids[-1]
 
         self.changelog.append(Addition(self.time_step, None))
         self.time_step += 1
-        self._old_update_bounds(slice(min_id, max_id + 1))
+        self._update_bounds(slice(min_id, max_id + 1))
 
     def _old_select_by_coordinate(
         self, coordinate: np.ndarray
@@ -1456,6 +1459,8 @@ class Space:
     def _select_by_coordinate(
         self, coordinate: np.ndarray
     ) -> tuple[list[int], list[int]]:
+        # TODO: Decide on standard shapes/layouts for the API.
+        coordinate = coordinate.flatten()
         if coordinate.shape != (3,):
             raise ValueError(
                 "Coordinates are three-dimensional, the input vector should be "

@@ -68,6 +68,114 @@ class Deletion(SpaceStateChange):
     name: str | None
 
 
+def materialise_vertices_for_primitive(
+    base: np.ndarray, shape: np.ndarray
+) -> np.ndarray:
+    w = shape[0] * np.array([1, 0, 0])
+    h = shape[1] * np.array([0, 0, 1])
+    d = shape[2] * np.array([0, 1, 0])
+    # Shorthand convention is to have the 'bottom-left-front' point as
+    # the base, with points defining width/height/depth of the cube
+    # after (using the left-hand rule).
+    # Note: the ordering of points matters.
+    points = np.array(
+        [
+            # bottom-left-front
+            base,
+            # bottom-left-back
+            base + d,
+            # bottom-right-back
+            base + w + d,
+            # bottom-right-front
+            base + w,
+            # top-left-front
+            base + h,
+            # top-left-back
+            base + h + d,
+            # top-right-back
+            base + h + w + d,
+            # top-right-front
+            base + h + w,
+        ]
+    )
+
+    return np.array(
+        [
+            (points[0], points[1], points[2], points[3]),  # bottom
+            (points[0], points[4], points[7], points[3]),  # front face
+            (points[0], points[1], points[5], points[4]),  # left face
+            (points[3], points[7], points[6], points[2]),  # right face
+            (points[1], points[5], points[6], points[2]),  # back face
+            (points[4], points[5], points[6], points[7]),  # top
+        ]
+    ).reshape((6, 4, 3))
+
+
+def materialise_vertices_for_composite(
+    base: np.ndarray, shape: np.ndarray
+) -> np.ndarray:
+    cube_w = np.array([1, 0, 0])
+    cube_h = np.array([0, 0, 1])
+    cube_d = np.array([0, 1, 0])
+    width_basis_vector = cube_w
+    height_basis_vector = cube_h
+    depth_basis_vector = cube_d
+    # Shorthand convention is to have the 'bottom-left-front' point as
+    # the base, with points defining width/height/depth of the cube
+    # after (using the left-hand rule).
+    # Note: the ordering of points matters.
+    all_cube_points = np.array(
+        [
+            # bottom-left-front
+            base,
+            # bottom-left-back
+            base + cube_d,
+            # bottom-right-back
+            base + cube_w + cube_d,
+            # bottom-right-front
+            base + cube_w,
+            # top-left-front
+            base + cube_h,
+            # top-left-back
+            base + cube_h + cube_d,
+            # top-right-back
+            base + cube_h + cube_w + cube_d,
+            # top-right-front
+            base + cube_h + cube_w,
+        ]
+    )
+
+    composite_ranges = list(map(range, map(int, shape)))
+    all_cubes_all_points = np.array(
+        [
+            all_cube_points
+            + (w * width_basis_vector)
+            + (h * height_basis_vector)
+            + (d * depth_basis_vector)
+            for (w, h, d) in itertools.product(*composite_ranges)
+        ]
+    )
+
+    num_cubes = int(math.prod(shape))
+    ps = all_cubes_all_points.reshape((num_cubes, 8, 3))
+
+    all_cube_faces = np.array(
+        [
+            [
+                (ps[i][0], ps[i][1], ps[i][2], ps[i][3]),  # bottom
+                (ps[i][0], ps[i][4], ps[i][7], ps[i][3]),  # front face
+                (ps[i][0], ps[i][1], ps[i][5], ps[i][4]),  # left face
+                (ps[i][3], ps[i][7], ps[i][6], ps[i][2]),  # right face
+                (ps[i][1], ps[i][5], ps[i][6], ps[i][2]),  # back face
+                (ps[i][4], ps[i][5], ps[i][6], ps[i][7]),  # top
+            ]
+            for i in range(num_cubes)
+        ]
+    )
+
+    return all_cube_faces.reshape((num_cubes, 6, 4, 3))
+
+
 class VisualisationBackend:
     def __init__(self, space_transform: np.ndarray) -> None:
         self.figure_not_initialised = True
@@ -92,112 +200,6 @@ class VisualisationBackend:
 
     def _convert_basis(self, coordinate: np.ndarray) -> np.ndarray:
         return np.dot(coordinate, self.basis)
-
-    def _materialise_vertices_for_primitive(
-        self, base: np.ndarray, shape: np.ndarray
-    ) -> np.ndarray:
-        w = shape[0] * np.array([1, 0, 0])
-        h = shape[1] * np.array([0, 0, 1])
-        d = shape[2] * np.array([0, 1, 0])
-        # Shorthand convention is to have the 'bottom-left-front' point as
-        # the base, with points defining width/height/depth of the cube
-        # after (using the left-hand rule).
-        # Note: the ordering of points matters.
-        points = np.array(
-            [
-                # bottom-left-front
-                base,
-                # bottom-left-back
-                base + d,
-                # bottom-right-back
-                base + w + d,
-                # bottom-right-front
-                base + w,
-                # top-left-front
-                base + h,
-                # top-left-back
-                base + h + d,
-                # top-right-back
-                base + h + w + d,
-                # top-right-front
-                base + h + w,
-            ]
-        )
-
-        return np.array(
-            [
-                (points[0], points[1], points[2], points[3]),  # bottom
-                (points[0], points[4], points[7], points[3]),  # front face
-                (points[0], points[1], points[5], points[4]),  # left face
-                (points[3], points[7], points[6], points[2]),  # right face
-                (points[1], points[5], points[6], points[2]),  # back face
-                (points[4], points[5], points[6], points[7]),  # top
-            ]
-        ).reshape((6, 4, 3))
-
-    def _materialise_vertices_for_composite(
-        self, base: np.ndarray, shape: np.ndarray
-    ) -> np.ndarray:
-        cube_w = np.array([1, 0, 0])
-        cube_h = np.array([0, 0, 1])
-        cube_d = np.array([0, 1, 0])
-        width_basis_vector = cube_w
-        height_basis_vector = cube_h
-        depth_basis_vector = cube_d
-        # Shorthand convention is to have the 'bottom-left-front' point as
-        # the base, with points defining width/height/depth of the cube
-        # after (using the left-hand rule).
-        # Note: the ordering of points matters.
-        all_cube_points = np.array(
-            [
-                # bottom-left-front
-                base,
-                # bottom-left-back
-                base + cube_d,
-                # bottom-right-back
-                base + cube_w + cube_d,
-                # bottom-right-front
-                base + cube_w,
-                # top-left-front
-                base + cube_h,
-                # top-left-back
-                base + cube_h + cube_d,
-                # top-right-back
-                base + cube_h + cube_w + cube_d,
-                # top-right-front
-                base + cube_h + cube_w,
-            ]
-        )
-
-        composite_ranges = list(map(range, map(int, shape)))
-        all_cubes_all_points = np.array(
-            [
-                all_cube_points
-                + (w * width_basis_vector)
-                + (h * height_basis_vector)
-                + (d * depth_basis_vector)
-                for (w, h, d) in itertools.product(*composite_ranges)
-            ]
-        )
-
-        num_cubes = int(math.prod(shape))
-        ps = all_cubes_all_points.reshape((num_cubes, 8, 3))
-
-        all_cube_faces = np.array(
-            [
-                [
-                    (ps[i][0], ps[i][1], ps[i][2], ps[i][3]),  # bottom
-                    (ps[i][0], ps[i][4], ps[i][7], ps[i][3]),  # front face
-                    (ps[i][0], ps[i][1], ps[i][5], ps[i][4]),  # left face
-                    (ps[i][3], ps[i][7], ps[i][6], ps[i][2]),  # right face
-                    (ps[i][1], ps[i][5], ps[i][6], ps[i][2]),  # back face
-                    (ps[i][4], ps[i][5], ps[i][6], ps[i][7]),  # top
-                ]
-                for i in range(num_cubes)
-            ]
-        )
-
-        return all_cube_faces.reshape((num_cubes, 6, 4, 3))
 
     def populate_with_primitive(
         self,
@@ -227,7 +229,7 @@ class VisualisationBackend:
         if self.figure_not_initialised:
             self._initialise_figure_and_ax()
 
-        materialised_vertices = self._materialise_vertices_for_primitive(
+        materialised_vertices = materialise_vertices_for_primitive(
             self._convert_basis(base_coordinate), shape
         )
         self._collections_per_object.append(1)
@@ -269,7 +271,7 @@ class VisualisationBackend:
         if self.figure_not_initialised:
             self._initialise_figure_and_ax()
 
-        materialised_vertices = self._materialise_vertices_for_composite(
+        materialised_vertices = materialise_vertices_for_composite(
             self._convert_basis(base_coordinate), shape
         )
         volume = math.prod(shape)
@@ -353,7 +355,7 @@ class VisualisationBackend:
         if self.figure_not_initialised:
             self._initialise_figure_and_ax()
 
-        materialised_vertices = self._materialise_vertices_for_composite(
+        materialised_vertices = materialise_vertices_for_primitive(
             self._convert_basis(base_coordinate), shape
         )
 
@@ -388,7 +390,7 @@ class VisualisationBackend:
         if self.figure_not_initialised:
             self._initialise_figure_and_ax()
 
-        materialised_vertices = self._materialise_vertices_for_composite(
+        materialised_vertices = materialise_vertices_for_composite(
             self._convert_basis(base_coordinate), shape
         )
 
@@ -492,9 +494,6 @@ class Space:
         self.basis[self.dimensions["depth"], 2] = 1
         self.visualisation_backend = VisualisationBackend(self.basis)
 
-    def _convert_basis(self, coordinate: np.ndarray) -> np.ndarray:
-        return np.dot(coordinate, self.basis)
-
     def add_cube(self, cube: Cube) -> None:
         """
         Add a Cube primitive to the space.
@@ -537,26 +536,29 @@ class Space:
             cuboid: Primitive Cube/Cuboid to add to the space's various data
             structures.
         """
-        cuboid_bounding_box = cuboid.bounding_box()
-        cuboid_mean = np.mean(cuboid.points(), axis=0).reshape((3, 1))
+        base = cuboid.base.reshape((3, 1))
+        shape = np.array(cuboid.shape()).reshape((3, 1))
+        cuboid_mean = (base + (base + shape)) / 2
+        cuboid_bounding_box = np.concatenate((base, base + shape), axis=1)
 
         # Update the bounding box - via total, mean, and dims.
         self.total += cuboid_mean
 
-        self.mean = self.total / (self.num_objs + 1)
+        self.mean = self.total / (self.object_counter + 1)
 
         if self.object_counter == 0:
             dim = cuboid_bounding_box
         else:
             # Since there are multiple objects, ensure the resulting dimensions
             # of the surrounding box are the extrema of the objects within.
+            cbb = cuboid_bounding_box
             dim = np.array(
                 [
                     [
-                        min(self.dims[i][0], cuboid_bounding_box[i][0]),
-                        max(self.dims[i][1], cuboid_bounding_box[i][1]),
+                        min(self.dims[i][0], cbb[i][0], cbb[i][1]),
+                        max(self.dims[i][1], cbb[i][0], cbb[i][1]),
                     ]
-                    for i in range(len(cuboid_bounding_box))
+                    for i in range(len(cbb))
                 ]
             ).reshape((3, 2))
 
@@ -588,7 +590,7 @@ class Space:
         # Add shape data for this cuboid.
         self.cuboid_shapes[self.object_counter] = cuboid.shape()
 
-        self.base_coordinates[self.object_counter] = cuboid.faces[0][0]
+        self.base_coordinates[self.object_counter] = cuboid.base
 
         # Update the visual metadata store.
         for key, value in cuboid.visual_metadata().items():
@@ -609,35 +611,29 @@ class Space:
 
     def _add_cuboid_composite(self, composite: CompositeCube) -> int:
         # Update bounding box
-        flattened_faces = composite.faces.reshape((-1, 3))
-        self.total += np.mean(flattened_faces, axis=0).reshape((3, 1))
+        base = composite.base.reshape((3, 1))
+        shape = np.array(composite.shape()).reshape((3, 1))
+        composite_mean = (base + (base + shape)) / 2
+        composite_bounding_box = np.concatenate((base, base + shape), axis=1)
+
+        self.total += composite_mean
 
         # We only add one to the denominator because we added a single object.
-        self.mean = self.total / (self.num_objs + 1)
-
-        composite_points = np.array(
-            [composite.faces[0][0], composite.faces[-1][-1]]
-        ).reshape((8, 3))
-
-        mins = [np.min(composite_points[:, i]) for i in range(3)]
-        maxes = [np.max(composite_points[:, i]) for i in range(3)]
-
-        composite_extrema = np.empty((3, 2))
-        for i, (min_dim, max_dim) in enumerate(zip(mins, maxes)):
-            composite_extrema[i] = min_dim, max_dim
+        self.mean = self.total / (self.object_counter + 1)
 
         if self.object_counter == 0:
-            dim = composite_extrema
+            dim = composite_bounding_box
         else:
             # Since there are multiple objects, ensure the resulting dimensions
             # of the surrounding box are the extrema of the objects within.
+            cbb = composite_bounding_box
             dim = np.array(
                 [
                     [
-                        min(self.dims[i][0], composite_extrema[i][0]),
-                        max(self.dims[i][1], composite_extrema[i][1]),
+                        min(self.dims[i][0], cbb[i][0], cbb[i][1]),
+                        max(self.dims[i][1], cbb[i][0], cbb[i][1]),
                     ]
-                    for i in range(len(composite_extrema))
+                    for i in range(len(cbb))
                 ]
             ).reshape((3, 2))
 
@@ -661,7 +657,7 @@ class Space:
         # Add shape data for this composite.
         self.cuboid_shapes[self.object_counter] = composite.shape()
 
-        self.base_coordinates[self.object_counter] = composite.faces[0][0][0]
+        self.base_coordinates[self.object_counter] = composite.base
 
         # Update visual metadata store
         for key, value in composite.visual_metadata().items():
@@ -730,8 +726,6 @@ class Space:
         row_vecs = (N, 3)
         coordinates = self.base_coordinates[object_ids].reshape(row_vecs)
         shapes = self.cuboid_shapes[object_ids].reshape(row_vecs)
-        # Shape is always stored in WHD order, so convert.
-        shapes = self._convert_basis(shapes)
         limits = np.concatenate((coordinates, coordinates + shapes), axis=0)
 
         given_mins = np.min(limits, axis=0)
@@ -1269,13 +1263,8 @@ class Space:
             # precedence.
             visual_metadata = visual_metadata | vis_met_data
             # We use a Cuboid for handling both Cubes and Cuboids.
-            # Swap the axes around here - otherwise you will get double-swapping
-            # of the dimensions.
-            transformed_base = self._convert_basis(
-                self.base_coordinates[primitive]
-            )
             cuboid = Cuboid(
-                transformed_base + offset,
+                self.base_coordinates[primitive] + offset,
                 *self.cuboid_shapes[primitive],
                 **visual_metadata,
                 name=None,
@@ -1293,15 +1282,10 @@ class Space:
             # Take the visual metadata, with the user-provided ones taking
             # precedence.
             visual_metadata = visual_metadata | vis_met_data
-            # Swap the axes around here - otherwise you will get double-swapping
-            # of the dimensions.
-            transformed_base = self._convert_basis(
-                self.base_coordinates[composite]
-            )
             shape = tuple(int(val) for val in self.cuboid_shapes[composite])
             new_composite_id = self._add_cuboid_composite(
                 CompositeCube(
-                    transformed_base + offset,
+                    self.base_coordinates[composite] + offset,
                     *shape,
                     **visual_metadata,
                     name=None,
@@ -1334,10 +1318,6 @@ class Space:
                 "Coordinates are three-dimensional, the input vector should be "
                 "3D."
             )
-
-        # Map the coordinate to the correct representation.
-        # TODO: Decouple the user from a fixed basis.
-        coordinate = self._convert_basis(coordinate)
 
         # First gather the IDs of primitive entries that match the coordinate.
         matching_base_vectors = []
@@ -1444,9 +1424,7 @@ class Space:
             if isinstance(operation, Addition):
                 for primitive in primitives:
                     # Change of basis to WHD/XYZ format for the base point.
-                    base_coordinate = self._convert_basis(
-                        self.base_coordinates[primitive]
-                    )
+                    base_coordinate = self.base_coordinates[primitive]
                     shape = self.cuboid_shapes[primitive]
                     visual_properties = {
                         k: self.cuboid_visual_metadata[k][primitive]
@@ -1456,9 +1434,7 @@ class Space:
                         primitive, base_coordinate, shape, visual_properties
                     )
                 for composite in composites:
-                    base_coordinate = self._convert_basis(
-                        self.base_coordinates[composite]
-                    )
+                    base_coordinate = self.base_coordinates[composite]
                     shape = self.cuboid_shapes[composite].astype(np.int32)
                     visual_properties = {
                         k: self.cuboid_visual_metadata[k][composite]

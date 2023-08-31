@@ -177,7 +177,8 @@ def test_space_creates_distinct_scenes_only() -> None:
 def test_space_creates_valid_axes_on_render() -> None:
     space = bb.Space()
 
-    cube = bb.Cube(base_vector=np.array([0, 0, 0]), scale=1.0)
+    point = np.array([0, 0, 0])
+    cube = bb.Cube(base_vector=point, scale=1.0)
     space.add_cube(cube)
     space.snapshot()
     _, ax = space.render()
@@ -185,9 +186,12 @@ def test_space_creates_valid_axes_on_render() -> None:
     plt_internal_data = ax.collections[0]._vec
     plt_internal_reshaped_data = plt_internal_data.T.reshape((6, 4, 4))
 
+    cube_shape = np.array(cube.shape())
+    cube_faces = bb.materialise_vertices_for_primitive(point, cube_shape)
+
     # Add the implicit 4th dimension to the original data - all ones.
     ones = np.ones((6, 4, 1))
-    original_augmented_data = np.concatenate([cube.faces, ones], -1)
+    original_augmented_data = np.concatenate([cube_faces, ones], -1)
 
     assert np.array_equal(original_augmented_data, plt_internal_reshaped_data)
 
@@ -199,13 +203,14 @@ def test_space_does_nothing_on_render_when_empty() -> None:
 def test_space_creates_valid_axes_on_render_multiple_scenes() -> None:
     space = bb.Space()
 
-    cube = bb.Cube(base_vector=np.array([0, 0, 0]), scale=1.0)
+    point = np.array([0, 0, 0])
+    cube = bb.Cube(base_vector=point, scale=1.0)
     space.add_cube(cube)
     space.snapshot()
     # Check this runs without issues, but we don't need the fig for this test.
     space.render()
 
-    second_cube = bb.Cube(base_vector=np.array([3, 3, 3]), scale=1.0)
+    second_cube = bb.Cube(base_vector=point + 3, scale=1.0)
     space.add_cube(second_cube)
     space.snapshot()
     _, ax2 = space.render()
@@ -217,11 +222,17 @@ def test_space_creates_valid_axes_on_render_multiple_scenes() -> None:
         axis=0,
     ).reshape((2, 6, 4, 4))
 
+    cube_shape = np.array(cube.shape())
+    cube_faces = bb.materialise_vertices_for_primitive(point, cube_shape)
+    second_cube_faces = bb.materialise_vertices_for_primitive(
+        point + 3, cube_shape
+    )
+
     # Add the implicit 4th dimension to the original data - all ones.
     ones = np.ones((6, 4, 1))
-    original_augmented_first_cube = np.concatenate([cube.faces, ones], -1)
+    original_augmented_first_cube = np.concatenate([cube_faces, ones], -1)
     original_augmented_second_cube = np.concatenate(
-        [second_cube.faces, ones], -1
+        [second_cube_faces, ones], -1
     )
 
     expected_data = np.stack(
@@ -278,8 +289,10 @@ def test_space_creates_valid_axes_on_render_multiple_cubes_single_scene() -> (
 ):
     space = bb.Space()
 
-    cube = bb.Cube(base_vector=np.array([0, 0, 0]), scale=1.0)
-    second_cube = bb.Cube(base_vector=np.array([3, 2, 1]), scale=1.0)
+    first_point = np.array([0, 0, 0])
+    second_point = np.array([3, 2, 1])
+    cube = bb.Cube(base_vector=first_point, scale=1.0)
+    second_cube = bb.Cube(base_vector=second_point, scale=1.0)
 
     space.add_cube(cube)
     space.add_cube(second_cube)
@@ -293,11 +306,19 @@ def test_space_creates_valid_axes_on_render_multiple_cubes_single_scene() -> (
         axis=0,
     ).reshape((2, 6, 4, 4))
 
+    cube_shape = np.array(cube.shape())
+    cube_faces = bb.materialise_vertices_for_primitive(first_point, cube_shape)
+    # Swap the non-symmetric ys and zs for matplotlib compatibility.
+    second_point_swapped = np.array([3, 1, 2])
+    second_cube_faces = bb.materialise_vertices_for_primitive(
+        second_point_swapped, cube_shape
+    )
+
     # Add the implicit 4th dimension to the original data - all ones.
     ones = np.ones((6, 4, 1))
-    original_augmented_first_cube = np.concatenate([cube.faces, ones], -1)
+    original_augmented_first_cube = np.concatenate([cube_faces, ones], -1)
     original_augmented_second_cube = np.concatenate(
-        [second_cube.faces, ones], -1
+        [second_cube_faces, ones], -1
     )
 
     expected_data = np.stack(
@@ -331,11 +352,23 @@ def test_space_creates_valid_axes_on_render_multiple_cubes_scenes() -> None:
         plt_internal_data_for_cubes, axis=0
     ).reshape((4, 6, 4, 4))
 
+    cube_shape = np.array(cube.shape())
+    # Swap the ys and zs for matplotlib compatibility.
+    cube_points = list(
+        map(
+            lambda arr: np.array([arr[0], arr[2], arr[1]]),
+            [cube.base, second_cube.base, third_cube.base, fourth_cube.base],
+        )
+    )
+    all_cube_faces = [
+        bb.materialise_vertices_for_primitive(cube_points[i], cube_shape)
+        for i in range(4)
+    ]
+
     # Add the implicit 4th dimension to the original data - all ones.
     ones = np.ones((6, 4, 1))
     original_augmented_cubes = [
-        np.concatenate([c.faces, ones], -1)
-        for c in [cube, second_cube, third_cube, fourth_cube]
+        np.concatenate([c, ones], -1) for c in all_cube_faces
     ]
 
     expected_data = np.stack(original_augmented_cubes, axis=0)
@@ -392,9 +425,9 @@ def test_space_can_add_composite_cube() -> None:
     space.add_composite(composite)
     space.snapshot()
 
-    assert np.array_equal(space.dims, np.array([[0, 4], [0, 2], [0, 3]]))
-    assert np.array_equal(space.mean, np.array([[2.0], [1.0], [1.5]]))
-    assert np.array_equal(space.total, np.array([[2.0], [1.0], [1.5]]))
+    assert np.array_equal(space.dims, np.array([[0, 4], [0, 3], [0, 2]]))
+    assert np.array_equal(space.mean, np.array([[2.0], [1.5], [1.0]]))
+    assert np.array_equal(space.total, np.array([[2.0], [1.5], [1.0]]))
     assert space.num_objs == 1
     assert space.object_counter == 1
     assert space.time_step == 1
@@ -430,15 +463,17 @@ def test_space_creates_valid_axes_on_render_for_composite() -> None:
     w, h, d = 4, 3, 2
     num_cubes = w * h * d
 
+    first_point = np.array([0, 0, 0])
+    second_point = np.array([w, h, d])
     composite = bb.CompositeCube(
-        base_vector=np.array([0, 0, 0]),
+        base_vector=first_point,
         w=w,
         h=h,
         d=d,
         facecolor="red",
     )
     second_composite = bb.CompositeCube(
-        base_vector=np.array([w, h, d]),
+        base_vector=second_point,
         w=w,
         h=h,
         d=d,
@@ -448,13 +483,36 @@ def test_space_creates_valid_axes_on_render_for_composite() -> None:
     space.add_composite(second_composite)
     _, ax = space.render()
 
+    composite_shape = np.array(composite.shape())
+    composite_faces = bb.materialise_vertices_for_composite(
+        first_point, composite_shape
+    )
+    # Swap the non-symmetric ys and zs for matplotlib compatibility.
+    second_point_swapped = np.array([w, d, h])
+    second_composite_faces = bb.materialise_vertices_for_composite(
+        second_point_swapped, composite_shape
+    )
+
+    # Add the implicit 4th dimension to the original data - all ones.
+    ones = np.ones((6, 4, 1))
     for i in range(num_cubes):
         plt_internal_data = ax.collections[i]._vec
         plt_internal_reshaped_data = plt_internal_data.T.reshape((6, 4, 4))
 
-        # Add the implicit 4th dimension to the original data - all ones.
-        ones = np.ones((6, 4, 1))
-        original_augmented_data = np.concatenate([composite.faces[i], ones], -1)
+        original_augmented_data = np.concatenate([composite_faces[i], ones], -1)
+
+        assert np.array_equal(
+            original_augmented_data, plt_internal_reshaped_data
+        )
+
+    for i in range(num_cubes, 2 * num_cubes):
+        plt_internal_data = ax.collections[i]._vec
+        plt_internal_reshaped_data = plt_internal_data.T.reshape((6, 4, 4))
+
+        offset = i - num_cubes
+        original_augmented_data = np.concatenate(
+            [second_composite_faces[offset], ones], -1
+        )
 
         assert np.array_equal(
             original_augmented_data, plt_internal_reshaped_data
@@ -471,9 +529,9 @@ def test_space_can_add_cuboid() -> None:
     space.add_cuboid(cuboid)
     space.snapshot()
 
-    assert np.array_equal(space.dims, np.array([[0, 4], [0, 6], [0, 2]]))
-    assert np.array_equal(space.mean, np.array([[2], [3], [1]]))
-    assert np.array_equal(space.total, np.array([[2], [3], [1]]))
+    assert np.array_equal(space.dims, np.array([[0, 4], [0, 2], [0, 6]]))
+    assert np.array_equal(space.mean, np.array([[2], [1], [3]]))
+    assert np.array_equal(space.total, np.array([[2], [1], [3]]))
     assert space.num_objs == 1
     assert space.object_counter == 1
     assert space.time_step == 1
@@ -505,7 +563,8 @@ def test_space_can_add_cuboid() -> None:
 def test_space_creates_valid_axes_on_render_for_cuboid() -> None:
     space = bb.Space()
 
-    cuboid = bb.Cuboid(base_vector=np.array([0, 0, 0]), w=4.0, h=2.0, d=6.0)
+    point = np.array([0, 0, 0])
+    cuboid = bb.Cuboid(base_vector=point, w=4.0, h=2.0, d=6.0)
     space.add_cuboid(cuboid)
     space.snapshot()
     _, ax = space.render()
@@ -513,9 +572,12 @@ def test_space_creates_valid_axes_on_render_for_cuboid() -> None:
     plt_internal_data = ax.collections[0]._vec
     plt_internal_reshaped_data = plt_internal_data.T.reshape((6, 4, 4))
 
+    cuboid_shape = np.array(cuboid.shape())
+    cuboid_faces = bb.materialise_vertices_for_primitive(point, cuboid_shape)
+
     # Add the implicit 4th dimension to the original data - all ones.
     ones = np.ones((6, 4, 1))
-    original_augmented_data = np.concatenate([cuboid.faces, ones], -1)
+    original_augmented_data = np.concatenate([cuboid_faces, ones], -1)
 
     assert np.array_equal(original_augmented_data, plt_internal_reshaped_data)
 
@@ -1131,76 +1193,44 @@ def test_space_mutates_nothing_on_empty_selection() -> None:
 
 def test_space_updates_bounds_with_cube() -> None:
     space = bb.Space()
-
     space.add_cube(bb.Cube(base_vector=np.array([-1, -2, -3]), scale=2.0))
-
-    # Remember to swap the ys and zs due to the current implementation issue
-    # with dims
-    # TODO: Have a transform for matplotlib and have your own representation
-    # instead.
-    expected_dims = np.array([[-1, 1], [-3, -1], [-2, 0]])
-
+    expected_dims = np.array([[-1, 1], [-2, 0], [-3, -1]])
     assert np.array_equal(space.dims, expected_dims)
 
 
 def test_space_updates_bounds_with_cuboid() -> None:
     space = bb.Space()
-
     space.add_cube(
         bb.Cuboid(base_vector=np.array([-3, -2, -1]), w=4.0, h=15.0, d=26.0)
     )
-
-    # Remember to swap the ys and zs due to the current implementation issue
-    # with dims
-    # TODO: Have a transform for matplotlib and have your own representation
-    # instead.
-    expected_dims = np.array([[-3, 1], [-1, 25], [-2, 13]])
-
+    expected_dims = np.array([[-3, 1], [-2, 13], [-1, 25]])
     assert np.array_equal(space.dims, expected_dims)
 
 
 def test_space_updates_bounds_with_composite() -> None:
     space = bb.Space()
-
     space.add_composite(
         bb.CompositeCube(base_vector=np.array([1, 5, 10]), w=8, h=12, d=3)
     )
-
-    # Remember to swap the ys and zs due to the current implementation issue
-    # with dims
-    # TODO: Have a transform for matplotlib and have your own representation
-    # instead.
-    expected_dims = np.array([[1, 9], [10, 13], [5, 17]])
-
+    expected_dims = np.array([[1, 9], [5, 17], [10, 13]])
     assert np.array_equal(space.dims, expected_dims)
 
 
-# TODO: This is very slow due to the composite (~14,000 cubes) - make fast.
 def test_space_updates_bounds_with_multiple_objects() -> None:
     space = bb.Space()
-
     space.add_cube(bb.Cube(base_vector=np.array([0, 0, 0]), scale=2.0))
-
-    # Remember to swap the ys and zs due to the current implementation issue
-    # with dims
-    # TODO: Have a transform for matplotlib and have your own representation
-    # instead.
     expected_dims = np.array([[0, 2], [0, 2], [0, 2]])
-
     assert np.array_equal(space.dims, expected_dims)
 
     space.add_cuboid(
         bb.Cuboid(base_vector=np.array([100, 100, 100]), w=5, h=6, d=13)
     )
-
-    expected_dims = np.array([[0, 105], [0, 113], [0, 106]])
-
+    expected_dims = np.array([[0, 105], [0, 106], [0, 113]])
     assert np.array_equal(space.dims, expected_dims)
 
     space.add_composite(
         bb.CompositeCube(base_vector=np.array([30, 30, 30]), w=40, h=30, d=12)
     )
-
     # The extrema of the space should not have changed.
     assert np.array_equal(space.dims, expected_dims)
 
@@ -1222,10 +1252,6 @@ def test_space_creates_cuboid_from_offset_with_selections() -> None:
     space.snapshot()
     space.clone_by_offset(fourth_offset, scene=0)
 
-    # Remember to swap the ys and zs due to the current implementation issue
-    # with dims
-    # TODO: Have a transform for matplotlib and have your own representation
-    # instead.
     expected_dims = np.array([[0, 46], [0, 14], [0, 14]])
     assert np.array_equal(space.dims, expected_dims)
     expected_mean = np.array([[20], [4], [4]])
@@ -1240,9 +1266,6 @@ def test_space_creates_cuboid_from_offset_with_selections() -> None:
 
     empty_entries = 2
     expected_point = base_point
-    # Swap the coordinates of the offsets, as they are swapped internally.
-    swapped_second_offset = np.array([0, 0, 12]).reshape((1, 3))
-    swapped_third_offset = np.array([0, 12, 0]).reshape((1, 3))
 
     expected_shape = np.array([2, 2, 2]).reshape((1, 3))
 
@@ -1252,12 +1275,12 @@ def test_space_creates_cuboid_from_offset_with_selections() -> None:
             (
                 expected_point,
                 expected_point + first_offset,
-                expected_point + swapped_second_offset,
-                expected_point + swapped_third_offset,
+                expected_point + second_offset,
+                expected_point + third_offset,
                 expected_point + fourth_offset,
                 expected_point + first_offset + fourth_offset,
-                expected_point + swapped_second_offset + fourth_offset,
-                expected_point + swapped_third_offset + fourth_offset,
+                expected_point + second_offset + fourth_offset,
+                expected_point + third_offset + fourth_offset,
                 np.zeros((empty_entries, 3)),
             )
         ),
@@ -1311,16 +1334,12 @@ def test_space_creates_composites_from_offset_with_selections() -> None:
     space.snapshot()
     space.clone_by_offset(fourth_offset, scene=0)
 
-    # Remember to swap the ys and zs due to the current implementation issue
-    # with dims
-    # TODO: Have a transform for matplotlib and have your own representation
-    # instead.
-    expected_dims = np.array([[0, 47], [0, 14], [0, 16]])
+    expected_dims = np.array([[0, 47], [0, 16], [0, 14]])
     assert np.array_equal(space.dims, expected_dims)
-    expected_mean = np.array([[20.5], [4], [5]])
+    expected_mean = np.array([[20.5], [5], [4]])
     assert np.array_equal(space.mean, expected_mean)
     # TODO: Remove the total field as it's not yet needed (+ probably won't be).
-    expected_total = np.array([[164], [32], [40]])
+    expected_total = np.array([[164], [40], [32]])
     assert np.array_equal(space.total, expected_total)
     assert space.num_objs == 8
     assert space.object_counter == 8
@@ -1329,10 +1348,6 @@ def test_space_creates_composites_from_offset_with_selections() -> None:
 
     empty_entries = 2
     expected_point = base_point
-    # Swap the coordinates of the offsets, as they are swapped internally.
-    swapped_second_offset = np.array([0, 0, 12]).reshape((1, 3))
-    swapped_third_offset = np.array([0, 12, 0]).reshape((1, 3))
-
     expected_shape = np.array([3, 4, 2]).reshape((1, 3))
 
     assert np.array_equal(
@@ -1341,12 +1356,12 @@ def test_space_creates_composites_from_offset_with_selections() -> None:
             (
                 expected_point,
                 expected_point + first_offset,
-                expected_point + swapped_second_offset,
-                expected_point + swapped_third_offset,
+                expected_point + second_offset,
+                expected_point + third_offset,
                 expected_point + fourth_offset,
                 expected_point + first_offset + fourth_offset,
-                expected_point + swapped_second_offset + fourth_offset,
-                expected_point + swapped_third_offset + fourth_offset,
+                expected_point + second_offset + fourth_offset,
+                expected_point + third_offset + fourth_offset,
                 np.zeros((empty_entries, 3)),
             )
         ),
@@ -1492,12 +1507,7 @@ def test_space_transforms_primitive_by_coordinate() -> None:
         ),
     ]
 
-    # Remember to swap the ys and zs due to the current implementation issue
-    # with dims
-    # TODO: Have a transform for matplotlib and have your own representation
-    # instead.
-    swapped_point = np.array([1, 3, 2])
-    expected_point = (swapped_point + translate) * reflect * scale
+    expected_point = (point + translate) * reflect * scale
     expected_point = expected_point.reshape((1, 3))
     expected_shape = np.array([[2, -2, -2]])
 
@@ -1558,12 +1568,7 @@ def test_space_transforms_composite_by_coordinate() -> None:
         ),
     ]
 
-    # Remember to swap the ys and zs due to the current implementation issue
-    # with dims
-    # TODO: Have a transform for matplotlib and have your own representation
-    # instead.
-    swapped_point = np.array([1, 3, 2])
-    expected_point = (swapped_point + translate) * reflect
+    expected_point = (point + translate) * reflect
     expected_point = expected_point.reshape((1, 3))
     expected_shape = np.array([[w, h, d]]) * reflect
 
@@ -1626,12 +1631,7 @@ def test_space_transforms_multiple_objects_by_coordinate() -> None:
         ),
     ]
 
-    # Remember to swap the ys and zs due to the current implementation issue
-    # with dims
-    # TODO: Have a transform for matplotlib and have your own representation
-    # instead.
-    swapped_point = np.array([1, 3, 2])
-    expected_point = (swapped_point + translate) * reflect
+    expected_point = (point + translate) * reflect
     expected_point = expected_point.reshape((1, 3))
 
     empty_entries = 8
@@ -1698,12 +1698,7 @@ def test_space_transforms_primitive_by_name() -> None:
         ),
     ]
 
-    # Remember to swap the ys and zs due to the current implementation issue
-    # with dims
-    # TODO: Have a transform for matplotlib and have your own representation
-    # instead.
-    swapped_point = np.array([1, 3, 2])
-    expected_point = (swapped_point + translate) * reflect * scale
+    expected_point = (point + translate) * reflect * scale
     expected_point = expected_point.reshape((1, 3))
     expected_shape = np.array([[2, -2, -2]])
 
@@ -1755,12 +1750,7 @@ def test_space_transforms_composite_by_name() -> None:
         ),
     ]
 
-    # Remember to swap the ys and zs due to the current implementation issue
-    # with dims
-    # TODO: Have a transform for matplotlib and have your own representation
-    # instead.
-    swapped_point = np.array([1, 3, 2])
-    expected_point = (swapped_point + translate) * reflect
+    expected_point = (point + translate) * reflect
     expected_point = expected_point.reshape((1, 3))
     expected_shape = np.array([[w, h, d]]) * reflect
 
@@ -1816,12 +1806,7 @@ def test_space_transforms_primitive_by_timestep_id() -> None:
         ),
     ]
 
-    # Remember to swap the ys and zs due to the current implementation issue
-    # with dims
-    # TODO: Have a transform for matplotlib and have your own representation
-    # instead.
-    swapped_point = np.array([1, 3, 2])
-    expected_point = (swapped_point + translate) * reflect * scale
+    expected_point = (point + translate) * reflect * scale
     expected_point = expected_point.reshape((1, 3))
     expected_shape = np.array([[2, -2, -2]])
 
@@ -1872,12 +1857,7 @@ def test_space_transforms_composite_by_timestep_id() -> None:
         ),
     ]
 
-    # Remember to swap the ys and zs due to the current implementation issue
-    # with dims
-    # TODO: Have a transform for matplotlib and have your own representation
-    # instead.
-    swapped_point = np.array([1, 3, 2])
-    expected_point = (swapped_point + translate) * reflect
+    expected_point = (point + translate) * reflect
     expected_point = expected_point.reshape((1, 3))
     expected_shape = np.array([[w, h, d]]) * reflect
 
@@ -1932,12 +1912,7 @@ def test_space_transforms_primitive_by_scene_id() -> None:
         ),
     ]
 
-    # Remember to swap the ys and zs due to the current implementation issue
-    # with dims
-    # TODO: Have a transform for matplotlib and have your own representation
-    # instead.
-    swapped_point = np.array([1, 3, 2])
-    expected_point = (swapped_point + translate) * reflect * scale
+    expected_point = (point + translate) * reflect * scale
     expected_point = expected_point.reshape((1, 3))
     expected_shape = np.array([[2, -2, -2]])
 
@@ -1987,12 +1962,7 @@ def test_space_transforms_composite_by_scene_id() -> None:
         ),
     ]
 
-    # Remember to swap the ys and zs due to the current implementation issue
-    # with dims
-    # TODO: Have a transform for matplotlib and have your own representation
-    # instead.
-    swapped_point = np.array([1, 3, 2])
-    expected_point = (swapped_point + translate) * reflect
+    expected_point = (point + translate) * reflect
     expected_point = expected_point.reshape((1, 3))
     expected_shape = np.array([[w, h, d]]) * reflect
 
@@ -2172,7 +2142,7 @@ def test_space_transforms_nothing_on_empty_selection() -> None:
 def test_space_transforms_nothing_with_trivial_transform() -> None:
     space = bb.Space()
 
-    point = np.array([1, 2, 3])
+    point = np.array([1, 2, 3]).reshape((1, 3))
     space.add_cube(bb.Cube(base_vector=point))
 
     translate = np.array([0, 0, 0])
@@ -2184,12 +2154,7 @@ def test_space_transforms_nothing_with_trivial_transform() -> None:
     # Check the changelog reflects no transforms.
     assert space.changelog == [bb.Addition(0, None)]
 
-    # Remember to swap the ys and zs due to the current implementation issue
-    # with dims
-    # TODO: Have a transform for matplotlib and have your own representation
-    # instead.
-    swapped_point = np.array([1, 3, 2]).reshape((1, 3))
-    expected_point = swapped_point
+    expected_point = point
     expected_shape = np.array([1, 1, 1]).reshape((1, 3))
 
     empty_entries = 9

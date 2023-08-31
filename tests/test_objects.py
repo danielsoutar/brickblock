@@ -13,7 +13,7 @@ import brickblock as bb
 def test_cube_creation() -> None:
     cube = bb.Cube(base_vector=np.array([0, 0, 0]))
 
-    assert cube.faces.shape == (6, 4, 3)
+    assert np.array_equal(cube.base, np.array([0, 0, 0]))
     assert cube.facecolor is None
     assert cube.linewidth == 0.1
     assert cube.edgecolor == "black"
@@ -39,70 +39,14 @@ def test_invalid_scale_throws_exception_making_cube() -> None:
         bb.Cube(base_vector=np.array([0, 0, 0]), scale=-1.0)
 
 
-def test_cube_creates_all_data_needed_for_visualising() -> None:
-    cube = bb.Cube(base_vector=np.array([0, 0, 0]))
-    poly = Poly3DCollection(cube.faces)
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection="3d")
-    plt_collection = ax.add_collection3d(poly).axes.collections[0]
-    # The internal vector includes all 1s in an the implicit 4th dimension
-    # TODO: Understand why this is necessary. Probably to do with 3D
-    # projections or something like that.
-    plt_internal_data = np.array([plt_collection._vec])
-    plt_internal_reshaped_data = plt_internal_data.T.reshape((6, 4, 4))
-
-    # Add the implicit 4th dimension to the original data - all ones.
-    ones = np.ones((6, 4, 1))
-    original_augmented_data = np.concatenate([cube.faces, ones], -1)
-
-    assert np.array_equal(original_augmented_data, plt_internal_reshaped_data)
-
-
-def test_cube_visualisation_can_be_customised() -> None:
-    red, green, blue = 1.0, 0.1569, 0.0
-    alpha = 0.1
-    linewidth = 0.5
-
-    cube = bb.Cube(
-        base_vector=np.array([0, 0, 0]),
-        scale=3.0,
-        facecolor=(red, green, blue),
-        linewidth=linewidth,
-        alpha=alpha,
-    )
-    poly = Poly3DCollection(cube.faces)
-    poly.set_facecolor(cube.facecolor)
-    poly.set_alpha(cube.alpha)
-    poly.set_linewidth(cube.linewidth)
-    poly.set_edgecolor(cube.edgecolor)
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection="3d")
-    plt_collection = ax.add_collection3d(poly).axes.collections[0]
-
-    # Check colours
-    expected_rgba = np.array([red, green, blue, alpha]).reshape((1, 4))
-    actual_rgba = plt_collection._facecolor3d
-    assert np.array_equal(expected_rgba, actual_rgba)
-
-    # Check lines
-    expected_linewidths = np.array([linewidth])
-    actual_linewidths = plt_collection._linewidths
-    assert np.array_equal(expected_linewidths, actual_linewidths)
-    expected_edgecolors = np.array([0.0, 0.0, 0.0, alpha]).reshape((1, 4))
-    actual_edgecolors = plt_collection._edgecolors
-    assert np.array_equal(expected_edgecolors, actual_edgecolors)
-
-
 def test_composite_cube_creation() -> None:
     w, h, d = 4, 3, 3
     composite = bb.CompositeCube(base_vector=np.array([0, 0, 0]), w=w, h=h, d=d)
 
-    num_cubes = w * h * d
-
+    assert np.array_equal(composite.base, np.array([0, 0, 0]))
     assert composite.w == w
     assert composite.h == h
     assert composite.d == d
-    assert composite.faces.shape == (num_cubes, 6, 4, 3)
     assert composite.facecolor is None
     assert composite.linewidth == 0.1
     assert composite.edgecolor == "black"
@@ -120,62 +64,10 @@ def test_invalid_dims_throws_exception_making_composite_cube() -> None:
         bb.CompositeCube(base_vector=np.array([0, 0, 0]), **invalid_dims)
 
 
-def test_all_cubes_in_composite_cube_have_same_dims() -> None:
-    w, h, d = 4, 3, 2
-    composite = bb.CompositeCube(base_vector=np.array([0, 0, 0]), w=w, h=h, d=d)
-
-    faces_per_cube = composite.faces
-
-    first_cube = faces_per_cube[0]
-
-    # If each cube is merely an offset version of the first, then they must have
-    # equal dimensions.
-    width_basis_vector = np.array([1, 0, 0])
-    height_basis_vector = np.array([0, 0, 1])
-    depth_basis_vector = np.array([0, 1, 0])
-
-    for i in range(w):
-        for j in range(h):
-            for k in range(d):
-                idx = (i * h * d) + (j * d) + k
-                current_cube = faces_per_cube[idx]
-                current_cube_offset = (
-                    current_cube
-                    - (i * width_basis_vector)
-                    - (j * height_basis_vector)
-                    - (k * depth_basis_vector)
-                )
-                assert np.array_equal(first_cube, current_cube_offset)
-
-
-def test_composite_cube_creates_all_data_needed_for_visualising() -> None:
-    w, h, d = 4, 3, 2
-    composite = bb.CompositeCube(base_vector=np.array([0, 0, 0]), w=w, h=h, d=d)
-
-    num_cubes = w * h * d
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection="3d")
-
-    ones = np.ones((6, 4, 1))
-
-    for i in range(num_cubes):
-        poly = Poly3DCollection(composite.faces[i])
-        plt_collection = ax.add_collection3d(poly).axes.collections[i]
-        plt_internal_data = np.array([plt_collection._vec])
-        plt_internal_reshaped_data = plt_internal_data.T.reshape((6, 4, 4))
-
-        original_augmented_data = np.concatenate([composite.faces[i], ones], -1)
-
-        assert np.array_equal(
-            plt_internal_reshaped_data, original_augmented_data
-        )
-
-
 def test_cuboid_creation() -> None:
     cuboid = bb.Cuboid(base_vector=np.array([0, 0, 0]), w=4.0, h=2.0, d=6.0)
 
-    assert cuboid.faces.shape == (6, 4, 3)
+    assert np.array_equal(cuboid.base, np.array([0, 0, 0]))
     assert cuboid.facecolor is None
     assert cuboid.linewidth == 0.1
     assert cuboid.edgecolor == "black"
@@ -190,25 +82,6 @@ def test_invalid_dims_throws_exception_making_cuboid() -> None:
 
     with pytest.raises(ValueError, match=expected_err_msg):
         bb.Cuboid(base_vector=np.array([0, 0, 0]), **invalid_dims)
-
-
-def test_cuboid_creates_all_data_needed_for_visualising() -> None:
-    cuboid = bb.Cuboid(base_vector=np.array([0, 0, 0]), w=4.0, h=2.0, d=6.0)
-    poly = Poly3DCollection(cuboid.faces)
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection="3d")
-    plt_collection = ax.add_collection3d(poly).axes.collections[0]
-    # The internal vector includes all 1s in an the implicit 4th dimension
-    # TODO: Understand why this is necessary. Probably to do with 3D
-    # projections or something like that.
-    plt_internal_data = np.array([plt_collection._vec])
-    plt_internal_reshaped_data = plt_internal_data.T.reshape((6, 4, 4))
-
-    # Add the implicit 4th dimension to the original data - all ones.
-    ones = np.ones((6, 4, 1))
-    original_augmented_data = np.concatenate([cuboid.faces, ones], -1)
-
-    assert np.array_equal(original_augmented_data, plt_internal_reshaped_data)
 
 
 def test_objects_can_have_names() -> None:

@@ -86,9 +86,6 @@ class Space:
             and composites each count as one object.
         time_step: The number of individual transforms done to the space.
         scene_counter: The number of scenes to render.
-        cuboid_coordinates: The dense coordinate info for each primitive in the
-            space. This has shape Nx6x4x3, where N is the number of primitives.
-            Objects are stored in order of insertion.
         cuboid_visual_metadata: The visual properties for each primitive in the
             space. Objects are stored in order of insertion.
         cuboid_index: A hierarchial index of the objects inserted into the
@@ -106,7 +103,7 @@ class Space:
     tracked_time_step: int
     scene_counter: int
     # TODO: Should these be classes?
-    cuboid_coordinates: np.ndarray
+    base_coordinates: np.ndarray
     cuboid_shapes: np.ndarray
     cuboid_visual_metadata: dict[str, list]
     cuboid_index: TemporalIndex
@@ -127,7 +124,6 @@ class Space:
         self.tracked_time_step = 0
         self.time_step = 0
         self.scene_counter = 0
-        self.cuboid_coordinates = np.zeros((10, 6, 4, 3))
         self.base_coordinates = np.zeros((10, 3))
         self.cuboid_shapes = np.zeros((10, 3))
         self.cuboid_visual_metadata = {}
@@ -218,14 +214,6 @@ class Space:
         self.dims = dim
 
         # Update the coordinate data, resizing if necessary.
-        current_no_of_entries = self.cuboid_coordinates.shape[0]
-        if self.object_counter >= current_no_of_entries:
-            # refcheck set to False since this avoids issues with the debugger
-            # referencing the array!
-            self.cuboid_coordinates.resize(
-                (2 * current_no_of_entries, *self.cuboid_coordinates.shape[1:]),
-                refcheck=False,
-            )
         current_no_of_entries = self.base_coordinates.shape[0]
         if self.object_counter >= current_no_of_entries:
             # refcheck set to False since this avoids issues with the debugger

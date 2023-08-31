@@ -1991,12 +1991,12 @@ def test_space_transforms_multiple_objects_multiple_times() -> None:
     space.transform_by_scene(scene=1, translate=second_translate)
     space.transform_by_name(name="input-tensor", translate=third_translate)
     space.transform_by_timestep(timestep=1, scale=scale)
-    cuboid_coordinates_before = np.copy(space.cuboid_coordinates)
+    coordinates_before = np.copy(space.base_coordinates)
     # Having two reflections should lead to the identity.
     space.transform_by_scene(scene=1, reflect=reflect)
     space.transform_by_scene(scene=1, reflect=reflect)
-    cuboid_coordinates_after = space.cuboid_coordinates
-    assert np.array_equal(cuboid_coordinates_before, cuboid_coordinates_after)
+    coordinates_after = space.base_coordinates
+    assert np.array_equal(coordinates_before, coordinates_after)
 
     # Check the changelog reflects the transforms, storing the previous state.
     assert space.changelog == [

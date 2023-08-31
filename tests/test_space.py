@@ -9,6 +9,7 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import numpy as np
 
 import brickblock as bb
+import brickblock.visualisation as bb_vis
 
 
 def mock_coordinates_entry() -> np.ndarray:
@@ -187,7 +188,7 @@ def test_space_creates_valid_axes_on_render() -> None:
     plt_internal_reshaped_data = plt_internal_data.T.reshape((6, 4, 4))
 
     cube_shape = np.array(cube.shape())
-    cube_faces = bb.materialise_vertices_for_primitive(point, cube_shape)
+    cube_faces = bb_vis.materialise_vertices_for_primitive(point, cube_shape)
 
     # Add the implicit 4th dimension to the original data - all ones.
     ones = np.ones((6, 4, 1))
@@ -223,8 +224,8 @@ def test_space_creates_valid_axes_on_render_multiple_scenes() -> None:
     ).reshape((2, 6, 4, 4))
 
     cube_shape = np.array(cube.shape())
-    cube_faces = bb.materialise_vertices_for_primitive(point, cube_shape)
-    second_cube_faces = bb.materialise_vertices_for_primitive(
+    cube_faces = bb_vis.materialise_vertices_for_primitive(point, cube_shape)
+    second_cube_faces = bb_vis.materialise_vertices_for_primitive(
         point + 3, cube_shape
     )
 
@@ -307,10 +308,10 @@ def test_space_creates_valid_axes_on_render_multiple_cubes_single_scene() -> (
     ).reshape((2, 6, 4, 4))
 
     cube_shape = np.array(cube.shape())
-    cube_faces = bb.materialise_vertices_for_primitive(first_point, cube_shape)
+    cube_faces = bb_vis.materialise_vertices_for_primitive(first_point, cube_shape)
     # Swap the non-symmetric ys and zs for matplotlib compatibility.
     second_point_swapped = np.array([3, 1, 2])
-    second_cube_faces = bb.materialise_vertices_for_primitive(
+    second_cube_faces = bb_vis.materialise_vertices_for_primitive(
         second_point_swapped, cube_shape
     )
 
@@ -361,7 +362,7 @@ def test_space_creates_valid_axes_on_render_multiple_cubes_scenes() -> None:
         )
     )
     all_cube_faces = [
-        bb.materialise_vertices_for_primitive(cube_points[i], cube_shape)
+        bb_vis.materialise_vertices_for_primitive(cube_points[i], cube_shape)
         for i in range(4)
     ]
 
@@ -484,12 +485,12 @@ def test_space_creates_valid_axes_on_render_for_composite() -> None:
     _, ax = space.render()
 
     composite_shape = np.array(composite.shape())
-    composite_faces = bb.materialise_vertices_for_composite(
+    composite_faces = bb_vis.materialise_vertices_for_composite(
         first_point, composite_shape
     )
     # Swap the non-symmetric ys and zs for matplotlib compatibility.
     second_point_swapped = np.array([w, d, h])
-    second_composite_faces = bb.materialise_vertices_for_composite(
+    second_composite_faces = bb_vis.materialise_vertices_for_composite(
         second_point_swapped, composite_shape
     )
 
@@ -573,7 +574,7 @@ def test_space_creates_valid_axes_on_render_for_cuboid() -> None:
     plt_internal_reshaped_data = plt_internal_data.T.reshape((6, 4, 4))
 
     cuboid_shape = np.array(cuboid.shape())
-    cuboid_faces = bb.materialise_vertices_for_primitive(point, cuboid_shape)
+    cuboid_faces = bb_vis.materialise_vertices_for_primitive(point, cuboid_shape)
 
     # Add the implicit 4th dimension to the original data - all ones.
     ones = np.ones((6, 4, 1))

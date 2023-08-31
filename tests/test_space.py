@@ -1,65 +1,13 @@
-import itertools
 import pytest
 
 import matplotlib.pyplot as plt
 
 # This import registers the 3D projection, but is otherwise unused.
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import numpy as np
 
 import brickblock as bb
 import brickblock.visualisation as bb_vis
-
-
-def mock_coordinates_entry() -> np.ndarray:
-    # Points here are in XZY order
-    point0 = np.array([0.0, 0.0, 0.0])
-    point1 = np.array([0.0, 1.0, 0.0])
-    point2 = np.array([1.0, 1.0, 0.0])
-    point3 = np.array([1.0, 0.0, 0.0])
-    point4 = np.array([0.0, 0.0, 1.0])
-    point5 = np.array([0.0, 1.0, 1.0])
-    point6 = np.array([1.0, 1.0, 1.0])
-    point7 = np.array([1.0, 0.0, 1.0])
-
-    base = np.array(
-        [
-            [point0, point1, point2, point3],
-            [point0, point4, point7, point3],
-            [point0, point1, point5, point4],
-            [point3, point7, point6, point2],
-            [point1, point5, point6, point2],
-            [point4, point5, point6, point7],
-        ]
-    ).reshape((1, 6, 4, 3))
-
-    return base
-
-
-def mock_cuboid_coordinates_entry() -> np.ndarray:
-    # Points here are in XZY order
-    point0 = np.array([0.0, 0.0, 0.0])
-    point1 = np.array([0.0, 6.0, 0.0])
-    point2 = np.array([4.0, 6.0, 0.0])
-    point3 = np.array([4.0, 0.0, 0.0])
-    point4 = np.array([0.0, 0.0, 2.0])
-    point5 = np.array([0.0, 6.0, 2.0])
-    point6 = np.array([4.0, 6.0, 2.0])
-    point7 = np.array([4.0, 0.0, 2.0])
-
-    base = np.array(
-        [
-            [point0, point1, point2, point3],
-            [point0, point4, point7, point3],
-            [point0, point1, point5, point4],
-            [point3, point7, point6, point2],
-            [point1, point5, point6, point2],
-            [point4, point5, point6, point7],
-        ]
-    ).reshape((1, 6, 4, 3))
-
-    return base
 
 
 def test_space_creation() -> None:
@@ -308,7 +256,9 @@ def test_space_creates_valid_axes_on_render_multiple_cubes_single_scene() -> (
     ).reshape((2, 6, 4, 4))
 
     cube_shape = np.array(cube.shape())
-    cube_faces = bb_vis.materialise_vertices_for_primitive(first_point, cube_shape)
+    cube_faces = bb_vis.materialise_vertices_for_primitive(
+        first_point, cube_shape
+    )
     # Swap the non-symmetric ys and zs for matplotlib compatibility.
     second_point_swapped = np.array([3, 1, 2])
     second_cube_faces = bb_vis.materialise_vertices_for_primitive(
@@ -574,7 +524,9 @@ def test_space_creates_valid_axes_on_render_for_cuboid() -> None:
     plt_internal_reshaped_data = plt_internal_data.T.reshape((6, 4, 4))
 
     cuboid_shape = np.array(cuboid.shape())
-    cuboid_faces = bb_vis.materialise_vertices_for_primitive(point, cuboid_shape)
+    cuboid_faces = bb_vis.materialise_vertices_for_primitive(
+        point, cuboid_shape
+    )
 
     # Add the implicit 4th dimension to the original data - all ones.
     ones = np.ones((6, 4, 1))

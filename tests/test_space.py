@@ -59,7 +59,14 @@ def test_space_snapshot_creates_a_scene() -> None:
         "alpha": [0.0],
     }
     assert list(space.cuboid_index.items()) == [0]
-    assert space.changelog == [bb.Addition(timestep_id=0, name=None)]
+    assert space.changelog == [
+        bb.Addition(
+            inserted_count=1,
+            object_types_inserted=["primitive"],
+            creation_type="manual",
+            object_names=None,
+        )
+    ]
 
 
 def test_space_multiple_snapshots_create_multiple_scenes() -> None:
@@ -103,8 +110,18 @@ def test_space_multiple_snapshots_create_multiple_scenes() -> None:
     assert space.cuboid_index.get_items_by_scene(0) == [0]
     assert space.cuboid_index.get_items_by_scene(1) == [1]
     assert space.changelog == [
-        bb.Addition(timestep_id=0, name=None),
-        bb.Addition(timestep_id=1, name=None),
+        bb.Addition(
+            inserted_count=1,
+            object_types_inserted=["primitive"],
+            creation_type="manual",
+            object_names=None,
+        ),
+        bb.Addition(
+            inserted_count=1,
+            object_types_inserted=["primitive"],
+            creation_type="manual",
+            object_names=None,
+        ),
     ]
 
 
@@ -228,8 +245,18 @@ def test_space_add_multiple_cubes_in_single_scene() -> None:
     assert space.cuboid_index.get_items_by_timestep(1) == [1]
     assert space.cuboid_index.get_items_by_scene(0) == [0, 1]
     assert space.changelog == [
-        bb.Addition(timestep_id=0, name=None),
-        bb.Addition(timestep_id=1, name=None),
+        bb.Addition(
+            inserted_count=1,
+            object_types_inserted=["primitive"],
+            creation_type="manual",
+            object_names=None,
+        ),
+        bb.Addition(
+            inserted_count=1,
+            object_types_inserted=["primitive"],
+            creation_type="manual",
+            object_names=None,
+        ),
     ]
 
 
@@ -405,7 +432,14 @@ def test_space_can_add_composite_cube() -> None:
     }
     assert space.composite_index.get_items_by_timestep(0) == [0]
     assert space.composite_index.get_items_by_scene(0) == [0]
-    assert space.changelog == [bb.Addition(timestep_id=0, name=None)]
+    assert space.changelog == [
+        bb.Addition(
+            inserted_count=1,
+            object_types_inserted=["composite"],
+            creation_type="manual",
+            object_names=None,
+        ),
+    ]
 
 
 def test_space_creates_valid_axes_on_render_for_composite() -> None:
@@ -508,7 +542,14 @@ def test_space_can_add_cuboid() -> None:
     assert space.cuboid_index.get_items_by_timestep(0) == [0]
     assert space.cuboid_index.get_items_by_scene(0) == [0]
 
-    assert space.changelog == [bb.Addition(timestep_id=0, name=None)]
+    assert space.changelog == [
+        bb.Addition(
+            inserted_count=1,
+            object_types_inserted=["primitive"],
+            creation_type="manual",
+            object_names=None,
+        ),
+    ]
 
 
 def test_space_creates_valid_axes_on_render_for_cuboid() -> None:
@@ -592,7 +633,12 @@ def test_space_mutates_primitive_by_coordinate() -> None:
 
     # Check the changelog reflects the mutation, storing the previous state.
     assert space.changelog == [
-        bb.Addition(0, None),
+        bb.Addition(
+            inserted_count=1,
+            object_types_inserted=["primitive"],
+            creation_type="manual",
+            object_names=None,
+        ),
         bb.Mutation(
             subject={"facecolor": [None], "alpha": [0]}, coordinate=point
         ),
@@ -630,7 +676,12 @@ def test_space_mutates_composite_by_coordinate() -> None:
 
     # Check the changelog reflects the mutation, storing the previous state.
     assert space.changelog == [
-        bb.Addition(0, None),
+        bb.Addition(
+            inserted_count=1,
+            object_types_inserted=["composite"],
+            creation_type="manual",
+            object_names=None,
+        ),
         bb.Mutation(
             subject={
                 "facecolor": ["yellow"],
@@ -678,17 +729,13 @@ def test_space_mutates_multiple_objects_by_coordinate() -> None:
     space.mutate_by_coordinate(coordinate=point, facecolor="red", alpha=1.0)
 
     # Check the changelog reflects the mutation, storing the previous state.
-    assert space.changelog == [
-        bb.Addition(0, None),
-        bb.Addition(1, None),
-        bb.Mutation(
-            subject={
-                "facecolor": [None, "yellow"],
-                "alpha": [0.0, 0.3],
-            },
-            coordinate=point,
-        ),
-    ]
+    assert space.changelog[-1] == bb.Mutation(
+        subject={
+            "facecolor": [None, "yellow"],
+            "alpha": [0.0, 0.3],
+        },
+        coordinate=point,
+    )
 
     assert space.cuboid_visual_metadata["facecolor"][0] == "red"
     assert space.cuboid_visual_metadata["alpha"][0] == 1.0
@@ -718,16 +765,13 @@ def test_space_mutates_primitive_by_name() -> None:
     space.mutate_by_name(name="my-cube", facecolor="red", alpha=0.3)
 
     # Check the changelog reflects the mutation, storing the previous state.
-    assert space.changelog == [
-        bb.Addition(0, None),
-        bb.Mutation(
-            subject={
-                "facecolor": [None],
-                "alpha": [0.0],
-            },
-            name="my-cube",
-        ),
-    ]
+    assert space.changelog[-1] == bb.Mutation(
+        subject={
+            "facecolor": [None],
+            "alpha": [0.0],
+        },
+        name="my-cube",
+    )
 
     assert space.cuboid_visual_metadata["facecolor"][0] == "red"
     assert space.cuboid_visual_metadata["alpha"][0] == 0.3
@@ -761,16 +805,13 @@ def test_space_mutates_composite_by_name() -> None:
     space.mutate_by_name(name="my-composite", facecolor=None, alpha=0.0)
 
     # Check the changelog reflects the mutation, storing the previous state.
-    assert space.changelog == [
-        bb.Addition(0, None),
-        bb.Mutation(
-            subject={
-                "facecolor": ["yellow"],
-                "alpha": [0.3],
-            },
-            name="my-composite",
-        ),
-    ]
+    assert space.changelog[-1] == bb.Mutation(
+        subject={
+            "facecolor": ["yellow"],
+            "alpha": [0.3],
+        },
+        name="my-composite",
+    )
 
     assert space.cuboid_visual_metadata["facecolor"][0] is None
     assert space.cuboid_visual_metadata["alpha"][0] == 0.0
@@ -792,16 +833,13 @@ def test_space_mutates_primitive_by_timestep_id() -> None:
     space.mutate_by_timestep(timestep=0, facecolor="red", alpha=0.3)
 
     # Check the changelog reflects the mutation, storing the previous state.
-    assert space.changelog == [
-        bb.Addition(0, None),
-        bb.Mutation(
-            subject={
-                "facecolor": [None],
-                "alpha": [0.0],
-            },
-            timestep_id=0,
-        ),
-    ]
+    assert space.changelog[-1] == bb.Mutation(
+        subject={
+            "facecolor": [None],
+            "alpha": [0.0],
+        },
+        timestep_id=0,
+    )
 
     assert space.cuboid_visual_metadata["facecolor"][0] == "red"
     assert space.cuboid_visual_metadata["alpha"][0] == 0.3
@@ -833,16 +871,13 @@ def test_space_mutates_composite_by_timestep_id() -> None:
     space.mutate_by_timestep(timestep=0, facecolor=None, alpha=0.0)
 
     # Check the changelog reflects the mutation, storing the previous state.
-    assert space.changelog == [
-        bb.Addition(0, None),
-        bb.Mutation(
-            subject={
-                "facecolor": ["yellow"],
-                "alpha": [0.3],
-            },
-            timestep_id=0,
-        ),
-    ]
+    assert space.changelog[-1] == bb.Mutation(
+        subject={
+            "facecolor": ["yellow"],
+            "alpha": [0.3],
+        },
+        timestep_id=0,
+    )
 
     assert space.cuboid_visual_metadata["facecolor"][0] is None
     assert space.cuboid_visual_metadata["alpha"][0] == 0.0
@@ -864,16 +899,13 @@ def test_space_mutates_primitive_by_scene_id() -> None:
     space.mutate_by_scene(scene=0, facecolor="red", alpha=0.3)
 
     # Check the changelog reflects the mutation, storing the previous state.
-    assert space.changelog == [
-        bb.Addition(0, None),
-        bb.Mutation(
-            subject={
-                "facecolor": [None],
-                "alpha": [0.0],
-            },
-            scene_id=0,
-        ),
-    ]
+    assert space.changelog[-1] == bb.Mutation(
+        subject={
+            "facecolor": [None],
+            "alpha": [0.0],
+        },
+        scene_id=0,
+    )
 
     assert space.cuboid_visual_metadata["facecolor"][0] == "red"
     assert space.cuboid_visual_metadata["alpha"][0] == 0.3
@@ -905,16 +937,13 @@ def test_space_mutates_composite_by_scene_id() -> None:
     space.mutate_by_scene(scene=0, facecolor=None, alpha=0.0)
 
     # Check the changelog reflects the mutation, storing the previous state.
-    assert space.changelog == [
-        bb.Addition(0, None),
-        bb.Mutation(
-            subject={
-                "facecolor": ["yellow"],
-                "alpha": [0.3],
-            },
-            scene_id=0,
-        ),
-    ]
+    assert space.changelog[-1] == bb.Mutation(
+        subject={
+            "facecolor": ["yellow"],
+            "alpha": [0.3],
+        },
+        scene_id=0,
+    )
 
     assert space.cuboid_visual_metadata["facecolor"][0] is None
     assert space.cuboid_visual_metadata["alpha"][0] == 0.0
@@ -986,20 +1015,14 @@ def test_space_mutates_multiple_objects_by_scene_id() -> None:
     # Check the changelog reflects the mutation, storing the previous state.
     # TODO: Fix the issue of unintuitive ordering in the mutation subject,
     # currently values are inserted primitives-first.
-    assert space.changelog == [
-        bb.Addition(0, None),
-        bb.Addition(1, None),
-        bb.Addition(2, None),
-        bb.Addition(3, None),
-        bb.Mutation(
-            subject={
-                "facecolor": [None, None, "red"],
-                "alpha": [0.0, 0.3, 0.5],
-                "linewidth": [0.1, 0.5, 0.7],
-            },
-            scene_id=0,
-        ),
-    ]
+    assert space.changelog[-1] == bb.Mutation(
+        subject={
+            "facecolor": [None, None, "red"],
+            "alpha": [0.0, 0.3, 0.5],
+            "linewidth": [0.1, 0.5, 0.7],
+        },
+        scene_id=0,
+    )
 
     for i in range(3):
         assert space.cuboid_visual_metadata["facecolor"][i] == "black"
@@ -1073,12 +1096,8 @@ def test_space_mutates_multiple_objects_multiple_times() -> None:
     space.mutate_by_scene(scene=1, edgecolor="red")
     space.mutate_by_name(name="input-tensor", facecolor="white")
 
-    # Check the changelog reflects the mutation, storing the previous state.
-    assert space.changelog == [
-        bb.Addition(0, None),
-        bb.Addition(1, None),
-        bb.Addition(2, None),
-        bb.Addition(3, None),
+    # Check the changelog reflects the mutations, storing previous states.
+    assert space.changelog[-3:] == [
         bb.Mutation(
             subject={
                 "facecolor": [None, None, "red"],
@@ -1139,8 +1158,18 @@ def test_space_mutates_nothing_on_empty_selection() -> None:
     # None of the above mutations have any effect and are not reflected in the
     # history.
     assert space.changelog == [
-        bb.Addition(timestep_id=0, name=None),
-        bb.Addition(timestep_id=1, name=None),
+        bb.Addition(
+            inserted_count=1,
+            object_types_inserted=["composite"],
+            creation_type="manual",
+            object_names={0: "input-tensor"},
+        ),
+        bb.Addition(
+            inserted_count=1,
+            object_types_inserted=["primitive"],
+            creation_type="manual",
+            object_names=None,
+        ),
     ]
 
 
@@ -1188,7 +1217,7 @@ def test_space_updates_bounds_with_multiple_objects() -> None:
     assert np.array_equal(space.dims, expected_dims)
 
 
-def test_space_creates_cuboid_from_offset_with_selections() -> None:
+def test_space_clones_cuboid_from_offset_with_selections() -> None:
     space = bb.Space()
 
     base_point = np.array([0, 0, 0]).reshape((1, 3))
@@ -1256,14 +1285,27 @@ def test_space_creates_cuboid_from_offset_with_selections() -> None:
         "edgecolor": ["black"] * N,
         "alpha": [0.0] * N,
     }
-    # TODO: Addition needs an optional referent - otherwise cannot distinguish
-    # between manual population or populating with clone_by.
-    assert space.changelog == [bb.Addition(i, None) for i in range(5)]
+
+    def populate_addition(count, creation_type, names=None):
+        return bb.Addition(
+            inserted_count=count,
+            object_types_inserted=["primitive"],
+            creation_type=creation_type,
+            object_names=names,
+        )
+
+    assert space.changelog == [
+        populate_addition(1, "manual", {0: "my-cube"}),
+        populate_addition(1, "ref"),
+        populate_addition(1, "ref"),
+        populate_addition(1, "ref"),
+        populate_addition(4, "ref"),
+    ]
     assert list(space.cuboid_index.items()) == [i for i in range(8)]
     assert space.cuboid_index.get_items_by_timestep(4) == [4, 5, 6, 7]
 
 
-def test_space_creates_composites_from_offset_with_selections() -> None:
+def test_space_clones_composites_from_offset_with_selections() -> None:
     space = bb.Space()
 
     base_point = np.array([0, 0, 0]).reshape((1, 3))
@@ -1336,14 +1378,27 @@ def test_space_creates_composites_from_offset_with_selections() -> None:
         "edgecolor": ["black"] * N,
         "alpha": [0.0] * N,
     }
-    # TODO: Addition needs an optional referent - otherwise cannot distinguish
-    # between manual population or populating with clone_by.
-    assert space.changelog == [bb.Addition(i, None) for i in range(5)]
+
+    def populate_addition(count, creation_type, names=None):
+        return bb.Addition(
+            inserted_count=count,
+            object_types_inserted=["composite"],
+            creation_type=creation_type,
+            object_names=names,
+        )
+
+    assert space.changelog == [
+        populate_addition(1, "manual", {0: "my-composite"}),
+        populate_addition(1, "ref"),
+        populate_addition(1, "ref"),
+        populate_addition(1, "ref"),
+        populate_addition(4, "ref"),
+    ]
     assert list(space.composite_index.items()) == [i for i in range(8)]
     assert space.composite_index.get_items_by_timestep(4) == [4, 5, 6, 7]
 
 
-def test_space_create_from_offset_only_uses_one_selection() -> None:
+def test_space_clone_from_offset_only_uses_one_selection() -> None:
     space = bb.Space()
 
     base_point = np.array([0, 0, 0])
@@ -1370,7 +1425,7 @@ def test_space_create_from_offset_only_uses_one_selection() -> None:
         )
 
 
-def test_space_creates_composites_from_offset_with_updated_visuals() -> None:
+def test_space_clones_composites_from_offset_with_updated_visuals() -> None:
     space = bb.Space()
 
     base_point = np.array([0, 0, 0])
@@ -1442,9 +1497,8 @@ def test_space_transforms_primitive_by_coordinate() -> None:
     space.transform_by_coordinate(coordinate=shifted_point, reflect=reflect)
     space.transform_by_coordinate(coordinate=reflected_point, scale=scale)
 
-    # Check the changelog reflects the transform, storing the previous state.
-    assert space.changelog == [
-        bb.Addition(0, None),
+    # Check the changelog reflects the transforms, storing previous states.
+    assert space.changelog[1:] == [
         bb.Transform(
             transform=-translate, transform_name="translation", coordinate=point
         ),
@@ -1506,9 +1560,8 @@ def test_space_transforms_composite_by_coordinate() -> None:
     space.transform_by_coordinate(coordinate=point, translate=translate)
     space.transform_by_coordinate(coordinate=shifted_point, reflect=reflect)
 
-    # Check the changelog reflects the transform, storing the previous state.
-    assert space.changelog == [
-        bb.Addition(0, None),
+    # Check the changelog reflects the transforms, storing previous states.
+    assert space.changelog[1:] == [
         bb.Transform(
             transform=-translate,
             transform_name="translation",
@@ -1568,10 +1621,8 @@ def test_space_transforms_multiple_objects_by_coordinate() -> None:
     space.transform_by_coordinate(coordinate=point, translate=translate)
     space.transform_by_coordinate(coordinate=shifted_point, reflect=reflect)
 
-    # Check the changelog reflects the transform, storing the previous state.
-    assert space.changelog == [
-        bb.Addition(0, None),
-        bb.Addition(1, None),
+    # Check the changelog reflects the transforms, storing previous states§.
+    assert space.changelog[2:] == [
         bb.Transform(
             transform=-translate,
             transform_name="translation",
@@ -1631,9 +1682,8 @@ def test_space_transforms_primitive_by_name() -> None:
     space.transform_by_name(name="my-primitive", reflect=reflect)
     space.transform_by_name(name="my-primitive", scale=scale)
 
-    # Check the changelog reflects the transform, storing the previous state.
-    assert space.changelog == [
-        bb.Addition(0, None),
+    # Check the changelog reflects the transforms, storing previous states.
+    assert space.changelog[1:] == [
         bb.Transform(
             transform=-translate,
             transform_name="translation",
@@ -1688,9 +1738,8 @@ def test_space_transforms_composite_by_name() -> None:
     space.transform_by_name(name="my-composite", translate=translate)
     space.transform_by_name(name="my-composite", reflect=reflect)
 
-    # Check the changelog reflects the transform, storing the previous state.
-    assert space.changelog == [
-        bb.Addition(0, None),
+    # Check the changelog reflects the transforms, storing previous states.
+    assert space.changelog[1:] == [
         bb.Transform(
             transform=-translate,
             transform_name="translation",
@@ -1739,9 +1788,8 @@ def test_space_transforms_primitive_by_timestep_id() -> None:
     space.transform_by_timestep(timestep=0, reflect=reflect)
     space.transform_by_timestep(timestep=0, scale=scale)
 
-    # Check the changelog reflects the transform, storing the previous state.
-    assert space.changelog == [
-        bb.Addition(0, None),
+    # Check the changelog reflects the transforms, storing previous states.
+    assert space.changelog[1:] == [
         bb.Transform(
             transform=-translate,
             transform_name="translation",
@@ -1795,9 +1843,8 @@ def test_space_transforms_composite_by_timestep_id() -> None:
     # Possibly counter-intuitive, but this is equally valid as timestep==1.
     space.transform_by_timestep(timestep=0, reflect=reflect)
 
-    # Check the changelog reflects the transform, storing the previous state.
-    assert space.changelog == [
-        bb.Addition(0, None),
+    # Check the changelog reflects the transforms, storing previous states.
+    assert space.changelog[1:] == [
         bb.Transform(
             transform=-translate,
             transform_name="translation",
@@ -1845,9 +1892,8 @@ def test_space_transforms_primitive_by_scene_id() -> None:
     space.transform_by_scene(scene=0, reflect=reflect)
     space.transform_by_scene(scene=0, scale=scale)
 
-    # Check the changelog reflects the transform, storing the previous state.
-    assert space.changelog == [
-        bb.Addition(0, None),
+    # Check the changelog reflects the transforms, storing previous states.
+    assert space.changelog[1:] == [
         bb.Transform(
             transform=-translate,
             transform_name="translation",
@@ -1900,9 +1946,8 @@ def test_space_transforms_composite_by_scene_id() -> None:
     space.transform_by_scene(scene=0, translate=translate)
     space.transform_by_scene(scene=0, reflect=reflect)
 
-    # Check the changelog reflects the transform, storing the previous state.
-    assert space.changelog == [
-        bb.Addition(0, None),
+    # Check the changelog reflects the transforms, storing previous states.
+    assert space.changelog[1:] == [
         bb.Transform(
             transform=-translate,
             transform_name="translation",
@@ -1998,12 +2043,8 @@ def test_space_transforms_multiple_objects_multiple_times() -> None:
     coordinates_after = space.base_coordinates
     assert np.array_equal(coordinates_before, coordinates_after)
 
-    # Check the changelog reflects the transforms, storing the previous state.
-    assert space.changelog == [
-        bb.Addition(0, None),
-        bb.Addition(1, None),
-        bb.Addition(2, None),
-        bb.Addition(3, None),
+    # Check the changelog reflects the transforms, storing previous states.
+    assert space.changelog[4:] == [
         bb.Transform(
             transform=-first_translate,
             transform_name="translation",
@@ -2087,8 +2128,18 @@ def test_space_transforms_nothing_on_empty_selection() -> None:
     # None of the above transforms have any effect and are not reflected in the
     # history.
     assert space.changelog == [
-        bb.Addition(timestep_id=0, name=None),
-        bb.Addition(timestep_id=1, name=None),
+        bb.Addition(
+            inserted_count=1,
+            object_types_inserted=["composite"],
+            creation_type="manual",
+            object_names={0: "input-tensor"},
+        ),
+        bb.Addition(
+            inserted_count=1,
+            object_types_inserted=["primitive"],
+            creation_type="manual",
+            object_names=None,
+        ),
     ]
 
 
@@ -2105,7 +2156,14 @@ def test_space_transforms_nothing_with_trivial_transform() -> None:
     space.transform_by_scene(scene=0, reflect=reflect)
 
     # Check the changelog reflects no transforms.
-    assert space.changelog == [bb.Addition(0, None)]
+    assert space.changelog == [
+        bb.Addition(
+            inserted_count=1,
+            object_types_inserted=["primitive"],
+            creation_type="manual",
+            object_names=None,
+        )
+    ]
 
     expected_point = point
     expected_shape = np.array([1, 1, 1]).reshape((1, 3))

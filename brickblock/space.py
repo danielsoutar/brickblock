@@ -20,8 +20,10 @@ class SpaceStateChange:
 
 @dataclass
 class Addition(SpaceStateChange):
-    timestep_id: int
-    name: str | None
+    inserted_count: int
+    object_types_inserted: list[str]
+    creation_type: str
+    object_names: dict[int, str] | None
 
 
 @dataclass
@@ -148,9 +150,17 @@ class Space:
         Add a Cube primitive to the space.
         """
         primitive_id = self._add_cuboid_primitive(cube)
-        self._add_name(cube.name, [[primitive_id], None])
+        name = self._add_name(cube.name, [[primitive_id], None])
         self.num_objs += 1
-        self.changelog.append(Addition(self.time_step, None))
+        object_name = {0: name} if name is not None else None
+        self.changelog.append(
+            Addition(
+                inserted_count=1,
+                object_types_inserted=["primitive"],
+                creation_type="manual",
+                object_names=object_name,
+            )
+        )
         self.time_step += 1
         self._update_bounds(slice(primitive_id, primitive_id + 1))
 
@@ -159,9 +169,17 @@ class Space:
         Add a Cuboid primitive to the space.
         """
         primitive_id = self._add_cuboid_primitive(cuboid)
-        self._add_name(cuboid.name, [[primitive_id], None])
+        name = self._add_name(cuboid.name, [[primitive_id], None])
         self.num_objs += 1
-        self.changelog.append(Addition(self.time_step, None))
+        object_name = {0: name} if name is not None else None
+        self.changelog.append(
+            Addition(
+                inserted_count=1,
+                object_types_inserted=["primitive"],
+                creation_type="manual",
+                object_names=object_name,
+            )
+        )
         self.time_step += 1
         self._update_bounds(slice(primitive_id, primitive_id + 1))
 
@@ -170,9 +188,17 @@ class Space:
         Add a CompositeCube object to the space.
         """
         composite_id = self._add_cuboid_composite(composite)
-        self._add_name(composite.name, [None, [composite_id]])
+        name = self._add_name(composite.name, [None, [composite_id]])
         self.num_objs += 1
-        self.changelog.append(Addition(self.time_step, None))
+        object_name = {0: name} if name is not None else None
+        self.changelog.append(
+            Addition(
+                inserted_count=1,
+                object_types_inserted=["composite"],
+                creation_type="manual",
+                object_names=object_name,
+            )
+        )
         self.time_step += 1
         self._update_bounds(slice(composite_id, composite_id + 1))
 
@@ -326,9 +352,10 @@ class Space:
         self,
         name: str | None,
         object_ids: tuple[list[int] | None, list[int] | None],
-    ) -> None:
+    ) -> str | None:
         """
-        Add an entry for `name` for the given `object_ids`, if specified.
+        Add an entry for `name` for the given `object_ids`, if specified, and
+        return the name.
 
         It is an error to add an entry for a name that already exists.
 
@@ -347,6 +374,8 @@ class Space:
                     "The entity to name has no IDs associated with it."
                 )
             self.cuboid_names[name] = object_ids
+
+        return name
 
     def _update_bounds(self, object_ids: slice) -> None:
         """
@@ -935,17 +964,30 @@ class Space:
             new_composite_ids.append(new_composite_id)
             self.num_objs += 1
 
-        if len(new_primitive_ids) > 0:
+        primitives_inserted = len(new_primitive_ids) > 0
+        if primitives_inserted:
             min_id = new_primitive_ids[0]
         else:
             min_id = new_composite_ids[0]
 
-        if len(new_composite_ids) == 0:
-            max_id = new_primitive_ids[-1]
-        else:
+        composites_inserted = len(new_composite_ids) > 0
+        if composites_inserted:
             max_id = new_composite_ids[-1]
+        else:
+            max_id = new_primitive_ids[-1]
 
-        self.changelog.append(Addition(self.time_step, None))
+        primitive_type = ["primitive"] if primitives_inserted else []
+        composite_type = ["composite"] if composites_inserted else []
+
+        self.changelog.append(
+            Addition(
+                inserted_count=total_number_of_ids,
+                object_types_inserted=primitive_type + composite_type,
+                creation_type="ref",
+                object_names=None,
+            )
+        )
+
         self.time_step += 1
         self._update_bounds(slice(min_id, max_id + 1))
 

@@ -78,8 +78,6 @@ class Space:
     matplotlib.
 
     # Attributes
-        dims: The dimensions of the space. This is stored for potential use with
-            the camera when rendering a scene.
         mean: The mean point of the space. This is stored for potential use with
             the camera when rendering a scene.
         total: The total value per dimension of all objects. This is stored for
@@ -97,7 +95,6 @@ class Space:
     """
 
     # TODO: Clarify dimensions for things being WHD or XYZ (or a mix).
-    dims: np.ndarray
     mean: np.ndarray
     total: np.ndarray
     num_objs: int
@@ -118,7 +115,6 @@ class Space:
     visualisation_backend: VisualisationBackend
 
     def __init__(self) -> None:
-        self.dims = np.zeros((3, 2))
         self.mean = np.zeros((3, 1))
         self.total = np.zeros((3, 1))
         self.num_objs = 0
@@ -162,7 +158,6 @@ class Space:
             )
         )
         self.time_step += 1
-        self._update_bounds(slice(primitive_id, primitive_id + 1))
 
     def add_cuboid(self, cuboid: Cuboid) -> None:
         """
@@ -181,7 +176,6 @@ class Space:
             )
         )
         self.time_step += 1
-        self._update_bounds(slice(primitive_id, primitive_id + 1))
 
     def add_composite(self, composite: CompositeCube) -> None:
         """
@@ -200,7 +194,6 @@ class Space:
             )
         )
         self.time_step += 1
-        self._update_bounds(slice(composite_id, composite_id + 1))
 
     def _add_cuboid_primitive(self, cuboid: Cube | Cuboid) -> int:
         """
@@ -214,30 +207,11 @@ class Space:
         base = cuboid.base.reshape((3, 1))
         shape = np.array(cuboid.shape()).reshape((3, 1))
         cuboid_mean = (base + (base + shape)) / 2
-        cuboid_bounding_box = np.concatenate((base, base + shape), axis=1)
 
-        # Update the bounding box - via total, mean, and dims.
+        # Update the bounding box - via total and mean.
         self.total += cuboid_mean
 
         self.mean = self.total / (self.object_counter + 1)
-
-        if self.object_counter == 0:
-            dim = cuboid_bounding_box
-        else:
-            # Since there are multiple objects, ensure the resulting dimensions
-            # of the surrounding box are the extrema of the objects within.
-            cbb = cuboid_bounding_box
-            dim = np.array(
-                [
-                    [
-                        min(self.dims[i][0], cbb[i][0], cbb[i][1]),
-                        max(self.dims[i][1], cbb[i][0], cbb[i][1]),
-                    ]
-                    for i in range(len(cbb))
-                ]
-            ).reshape((3, 2))
-
-        self.dims = dim
 
         # Update the coordinate data, resizing if necessary.
         current_no_of_entries = self.base_coordinates.shape[0]
@@ -281,30 +255,11 @@ class Space:
         base = composite.base.reshape((3, 1))
         shape = np.array(composite.shape()).reshape((3, 1))
         composite_mean = (base + (base + shape)) / 2
-        composite_bounding_box = np.concatenate((base, base + shape), axis=1)
 
         self.total += composite_mean
 
         # We only add one to the denominator because we added a single object.
         self.mean = self.total / (self.object_counter + 1)
-
-        if self.object_counter == 0:
-            dim = composite_bounding_box
-        else:
-            # Since there are multiple objects, ensure the resulting dimensions
-            # of the surrounding box are the extrema of the objects within.
-            cbb = composite_bounding_box
-            dim = np.array(
-                [
-                    [
-                        min(self.dims[i][0], cbb[i][0], cbb[i][1]),
-                        max(self.dims[i][1], cbb[i][0], cbb[i][1]),
-                    ]
-                    for i in range(len(cbb))
-                ]
-            ).reshape((3, 2))
-
-        self.dims = dim
 
         # Update coordinate array
         current_no_of_entries = self.base_coordinates.shape[0]
@@ -376,33 +331,6 @@ class Space:
             self.cuboid_names[name] = object_ids
 
         return name
-
-    def _update_bounds(self, object_ids: slice) -> None:
-        """
-        Update the bounding box of the space, based on the objects given by
-        `object_ids`.
-
-        Whether one or more objects are given, the space will update its bounds
-        over the extrema in both cases.
-
-        The bounds of the space are updated regardless of whether or not the
-        provided objects are visible.
-
-        # Args
-            object_ids: The objects for which coordinate data is used to update
-                the bounding box of this space.
-        """
-        N = object_ids.stop - object_ids.start
-        row_vecs = (N, 3)
-        coordinates = self.base_coordinates[object_ids].reshape(row_vecs)
-        shapes = self.cuboid_shapes[object_ids].reshape(row_vecs)
-        limits = np.concatenate((coordinates, coordinates + shapes), axis=0)
-
-        given_mins = np.min(limits, axis=0)
-        given_maxes = np.max(limits, axis=0)
-
-        self.dims[:, 0] = np.minimum(self.dims[:, 0], given_mins.T)
-        self.dims[:, 1] = np.maximum(self.dims[:, 1], given_maxes.T)
 
     # TODO: Decide how deletion should be implemented. Masking columns seem the
     # most logical, but this could be an issue for memory consumption. On the
@@ -964,20 +892,8 @@ class Space:
             new_composite_ids.append(new_composite_id)
             self.num_objs += 1
 
-        primitives_inserted = len(new_primitive_ids) > 0
-        if primitives_inserted:
-            min_id = new_primitive_ids[0]
-        else:
-            min_id = new_composite_ids[0]
-
-        composites_inserted = len(new_composite_ids) > 0
-        if composites_inserted:
-            max_id = new_composite_ids[-1]
-        else:
-            max_id = new_primitive_ids[-1]
-
-        primitive_type = ["primitive"] if primitives_inserted else []
-        composite_type = ["composite"] if composites_inserted else []
+        primitive_type = ["primitive"] if len(new_primitive_ids) > 0 else []
+        composite_type = ["composite"] if len(new_composite_ids) > 0 else []
 
         self.changelog.append(
             Addition(
@@ -989,7 +905,6 @@ class Space:
         )
 
         self.time_step += 1
-        self._update_bounds(slice(min_id, max_id + 1))
 
     def _select_by_coordinate(
         self, coordinate: np.ndarray
@@ -1175,7 +1090,9 @@ class Space:
         # everything and b) would mean the user cannot turn on the axes to debug
         # things as effectively. Potentially this could be explained in some
         # docs though.
-        max_val = max(list(self.dims.flatten()))
+        base_max = np.max(self.base_coordinates)
+        shape_max = np.max((self.base_coordinates + self.cuboid_shapes))
+        max_val = max(base_max, shape_max)
 
         fig, ax = self.visualisation_backend.fig, self.visualisation_backend.ax
 

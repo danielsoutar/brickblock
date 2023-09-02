@@ -13,7 +13,6 @@ import brickblock.visualisation as bb_vis
 def test_space_creation() -> None:
     space = bb.Space()
 
-    assert np.array_equal(space.dims, np.zeros((3, 2)))
     assert np.array_equal(space.mean, np.zeros((3, 1)))
     assert np.array_equal(space.total, np.zeros((3, 1)))
     assert space.num_objs == 0
@@ -36,7 +35,6 @@ def test_space_snapshot_creates_a_scene() -> None:
     space.add_cube(cube)
     space.snapshot()
 
-    assert np.array_equal(space.dims, np.array([[0, 1], [0, 1], [0, 1]]))
     assert np.array_equal(space.mean, np.array([[0.5], [0.5], [0.5]]))
     assert np.array_equal(space.total, np.array([[0.5], [0.5], [0.5]]))
     assert space.num_objs == 1
@@ -81,7 +79,6 @@ def test_space_multiple_snapshots_create_multiple_scenes() -> None:
     space.add_cube(second_cube)
     space.snapshot()
 
-    assert np.array_equal(space.dims, np.array([[0, 4], [0, 4], [0, 4]]))
     assert np.array_equal(space.mean, np.array([[2.0], [2.0], [2.0]]))
     assert np.array_equal(space.total, np.array([[4.0], [4.0], [4.0]]))
     assert space.num_objs == 2
@@ -149,6 +146,11 @@ def test_space_creates_valid_axes_on_render() -> None:
     space.snapshot()
     _, ax = space.render()
 
+    # Check view limits are correctly calculated with the extrema of the space.
+    assert (ax.axes.xy_viewLim.x0, ax.axes.xy_viewLim.x1) == (-1, 1)
+    assert (ax.axes.xy_viewLim.y0, ax.axes.xy_viewLim.y1) == (-1, 1)
+    assert (ax.axes.zz_viewLim.x0, ax.axes.zz_viewLim.x1) == (-1, 1)
+
     plt_internal_data = ax.collections[0]._vec
     plt_internal_reshaped_data = plt_internal_data.T.reshape((6, 4, 4))
 
@@ -180,6 +182,11 @@ def test_space_creates_valid_axes_on_render_multiple_scenes() -> None:
     space.add_cube(second_cube)
     space.snapshot()
     _, ax2 = space.render()
+
+    # Check view limits are correctly calculated with the extrema of the space.
+    assert (ax2.axes.xy_viewLim.x0, ax2.axes.xy_viewLim.x1) == (-4, 4)
+    assert (ax2.axes.xy_viewLim.y0, ax2.axes.xy_viewLim.y1) == (-4, 4)
+    assert (ax2.axes.zz_viewLim.x0, ax2.axes.zz_viewLim.x1) == (-4, 4)
 
     plt_internal_data_for_first_cube = ax2.collections[0]._vec.T
     plt_internal_data_for_second_cube = ax2.collections[1]._vec.T
@@ -403,7 +410,6 @@ def test_space_can_add_composite_cube() -> None:
     space.add_composite(composite)
     space.snapshot()
 
-    assert np.array_equal(space.dims, np.array([[0, 4], [0, 3], [0, 2]]))
     assert np.array_equal(space.mean, np.array([[2.0], [1.5], [1.0]]))
     assert np.array_equal(space.total, np.array([[2.0], [1.5], [1.0]]))
     assert space.num_objs == 1
@@ -514,7 +520,6 @@ def test_space_can_add_cuboid() -> None:
     space.add_cuboid(cuboid)
     space.snapshot()
 
-    assert np.array_equal(space.dims, np.array([[0, 4], [0, 2], [0, 6]]))
     assert np.array_equal(space.mean, np.array([[2], [1], [3]]))
     assert np.array_equal(space.total, np.array([[2], [1], [3]]))
     assert space.num_objs == 1
@@ -1173,50 +1178,6 @@ def test_space_mutates_nothing_on_empty_selection() -> None:
     ]
 
 
-def test_space_updates_bounds_with_cube() -> None:
-    space = bb.Space()
-    space.add_cube(bb.Cube(base_vector=np.array([-1, -2, -3]), scale=2.0))
-    expected_dims = np.array([[-1, 1], [-2, 0], [-3, -1]])
-    assert np.array_equal(space.dims, expected_dims)
-
-
-def test_space_updates_bounds_with_cuboid() -> None:
-    space = bb.Space()
-    space.add_cube(
-        bb.Cuboid(base_vector=np.array([-3, -2, -1]), w=4.0, h=15.0, d=26.0)
-    )
-    expected_dims = np.array([[-3, 1], [-2, 13], [-1, 25]])
-    assert np.array_equal(space.dims, expected_dims)
-
-
-def test_space_updates_bounds_with_composite() -> None:
-    space = bb.Space()
-    space.add_composite(
-        bb.CompositeCube(base_vector=np.array([1, 5, 10]), w=8, h=12, d=3)
-    )
-    expected_dims = np.array([[1, 9], [5, 17], [10, 13]])
-    assert np.array_equal(space.dims, expected_dims)
-
-
-def test_space_updates_bounds_with_multiple_objects() -> None:
-    space = bb.Space()
-    space.add_cube(bb.Cube(base_vector=np.array([0, 0, 0]), scale=2.0))
-    expected_dims = np.array([[0, 2], [0, 2], [0, 2]])
-    assert np.array_equal(space.dims, expected_dims)
-
-    space.add_cuboid(
-        bb.Cuboid(base_vector=np.array([100, 100, 100]), w=5, h=6, d=13)
-    )
-    expected_dims = np.array([[0, 105], [0, 106], [0, 113]])
-    assert np.array_equal(space.dims, expected_dims)
-
-    space.add_composite(
-        bb.CompositeCube(base_vector=np.array([30, 30, 30]), w=40, h=30, d=12)
-    )
-    # The extrema of the space should not have changed.
-    assert np.array_equal(space.dims, expected_dims)
-
-
 def test_space_clones_cuboid_from_offset_with_selections() -> None:
     space = bb.Space()
 
@@ -1234,8 +1195,6 @@ def test_space_clones_cuboid_from_offset_with_selections() -> None:
     space.snapshot()
     space.clone_by_offset(fourth_offset, scene=0)
 
-    expected_dims = np.array([[0, 46], [0, 14], [0, 14]])
-    assert np.array_equal(space.dims, expected_dims)
     expected_mean = np.array([[20], [4], [4]])
     assert np.array_equal(space.mean, expected_mean)
     # TODO: Remove the total field as it's not yet needed (+ probably won't be).
@@ -1329,8 +1288,6 @@ def test_space_clones_composites_from_offset_with_selections() -> None:
     space.snapshot()
     space.clone_by_offset(fourth_offset, scene=0)
 
-    expected_dims = np.array([[0, 47], [0, 16], [0, 14]])
-    assert np.array_equal(space.dims, expected_dims)
     expected_mean = np.array([[20.5], [5], [4]])
     assert np.array_equal(space.mean, expected_mean)
     # TODO: Remove the total field as it's not yet needed (+ probably won't be).

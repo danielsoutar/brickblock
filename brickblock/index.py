@@ -132,3 +132,72 @@ class TemporalIndex:
             id=scene_id, index=self._item_scene_index
         )
         return self._item_buffer[subset]
+
+    def clear_items_in_latest_timestep(self, timestep_id: int) -> list[int]:
+        """
+        Clear all items in the index with timestep equal to `timestep_id`.
+
+        `timestep_id` is provided to ensure it is valid for this index - this
+        function only supports removing items in the latest timestep.
+
+        The scene index will also be updated - in particular, if removing the
+        latest timestep means the latest scene is now empty, it is invalid and
+        will be removed as well.
+
+        If the given timestep has no items, return an empty list.
+
+        # Args
+            timestep_id: The ID of the timestep to query over. Should be the
+            latest timestep.
+        """
+        # Case where this index may not have the requisite number of entries.
+        if timestep_id >= len(self._item_timestep_index):
+            return []
+
+        # Otherwise it should be the last index only.
+        if timestep_id != (len(self._item_timestep_index) - 1):
+            raise ValueError(
+                "This function only supports removing items for the latest "
+                "timestep."
+            )
+
+        # Fetch the indices of the cleared items to return.
+        subset = self._extract_objects_by_id(
+            id=timestep_id, index=self._item_timestep_index
+        )
+        cleared_items = self._item_buffer[subset]
+
+        # Need to delete stuff in the buffer, not just remove offsets in the
+        # timestep and scene indices. This is because adding items appends to
+        # the buffer, which means there are assumptions about the buffer's size.
+        k = subset.stop - subset.start
+        for _ in range(k):
+            self._item_buffer.pop()
+        self._item_timestep_index.pop()
+
+        if len(self._item_timestep_index) == 0:
+            # First case - where the timestep index is now empty.
+            self._item_scene_index.pop()
+            # This should be empty - otherwise bug in the logic somewhere.
+            assert len(self._item_scene_index) == 0
+            return cleared_items
+
+        if len(self._item_scene_index) == 1:
+            # Second case - where there's only a single scene, so just set the
+            # value to the value of the now-latest timestep.
+            self._item_scene_index[0] = self._item_timestep_index[-1]
+            return cleared_items
+
+        # General case - latest timestep should align with latest scene.
+
+        # If the second-latest scene is equal to the now-latest timestep, then
+        # the latest scene is now empty (and invalid) and should be popped.
+        if self._item_scene_index[-2] == self._item_timestep_index[-1]:
+            self._item_scene_index.pop()
+            return cleared_items
+
+        # Otherwise it's not the only timestep for this scene - the scene just
+        # needs to have its value set to the value of the now-latest timestep.
+        self._item_scene_index[-1] = self._item_timestep_index[-1]
+
+        return cleared_items

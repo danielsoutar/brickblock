@@ -736,8 +736,8 @@ def test_space_mutates_multiple_objects_by_coordinate() -> None:
     # Check the changelog reflects the mutation, storing the previous state.
     assert space.changelog[-1] == bb.Mutation(
         subject={
-            "facecolor": [None, "yellow"],
-            "alpha": [0.0, 0.3],
+            "facecolor": ["yellow", None],
+            "alpha": [0.3, 0.0],
         },
         coordinate=point,
     )
@@ -1023,8 +1023,8 @@ def test_space_mutates_multiple_objects_by_scene_id() -> None:
     assert space.changelog[-1] == bb.Mutation(
         subject={
             "facecolor": [None, None, "red"],
-            "alpha": [0.0, 0.3, 0.5],
-            "linewidth": [0.1, 0.5, 0.7],
+            "alpha": [0.3, 0.0, 0.5],
+            "linewidth": [0.5, 0.1, 0.7],
         },
         scene_id=0,
     )
@@ -1106,8 +1106,8 @@ def test_space_mutates_multiple_objects_multiple_times() -> None:
         bb.Mutation(
             subject={
                 "facecolor": [None, None, "red"],
-                "alpha": [0.0, 0.3, 0.5],
-                "linewidth": [0.1, 0.5, 0.7],
+                "alpha": [0.3, 0.0, 0.5],
+                "linewidth": [0.5, 0.1, 0.7],
             },
             scene_id=0,
         ),
@@ -2161,6 +2161,150 @@ def test_space_scale_cannot_be_non_positive() -> None:
     expected_err_msg = "Scale may only contain positive values."
     with pytest.raises(ValueError, match=expected_err_msg):
         space.transform_by_coordinate(coordinate=np.array([1, 2, 3]), scale=s)
+
+
+def test_space_supports_undo_by_last_timestep() -> None:
+    space = bb.Space()
+
+    space.add_composite(
+        bb.CompositeCube(
+            base_vector=np.array([0, 0, 0]),
+            w=4,
+            h=3,
+            d=2,
+            facecolor=None,
+            alpha=0.3,
+            linewidth=0.5,
+            name="input-tensor",
+        )
+    )
+
+    space.add_cube(bb.Cube(base_vector=np.array([12, 14, 3]), facecolor="pink"))
+
+    space.add_composite(
+        bb.CompositeCube(
+            base_vector=np.array([0, 0, 0]),
+            w=3,
+            h=3,
+            d=2,
+            facecolor="red",
+            alpha=0.5,
+            linewidth=0.7,
+            name="filter-tensor",
+        )
+    )
+
+    # Check that only the first scene is affected.
+    space.snapshot()
+
+    space.add_composite(
+        bb.CompositeCube(
+            base_vector=np.array([3, 3, 3]),
+            w=5,
+            h=5,
+            d=2,
+            facecolor="orange",
+            alpha=0.6,
+            linewidth=0.8,
+            name="unchanged-tensor",
+        )
+    )
+
+    first_translate = np.array([4, 5, 6])
+    second_translate = np.array([10, 14, 2])
+    third_translate = np.array([3, 2, 1])
+    reflect = np.array([1, -1, -1])
+    scale = np.array([2, 2, 2])
+    space.transform_by_scene(scene=0, translate=first_translate)
+    space.transform_by_scene(scene=1, translate=second_translate)
+    space.transform_by_name(name="input-tensor", translate=third_translate)
+    space.transform_by_timestep(timestep=1, scale=scale)
+    # Having two reflections should lead to the identity.
+    space.transform_by_scene(scene=1, reflect=reflect)
+    space.transform_by_scene(scene=1, reflect=reflect)
+
+    # This will undo the last reflection.
+    space.undo_last_timestep()
+
+    assert len(space.changelog) == 9
+    assert space.changelog[-2:] == [
+        bb.Transform(
+            transform=1 / scale,
+            transform_name="scale",
+            timestep_id=1,
+        ),
+        bb.Transform(
+            transform=reflect,
+            transform_name="reflection",
+            scene_id=1,
+        ),
+    ]
+
+    num_objs_before = space.object_counter
+    coordinates_before = np.copy(space.base_coordinates[:num_objs_before])
+    shapes_before = np.copy(space.cuboid_shapes[:num_objs_before])
+    vis_metadata_before = {
+        k: v[:num_objs_before]
+        for (k, v) in space.cuboid_visual_metadata.items()
+    }
+
+    # Add some cubes...
+    space.add_cube(bb.Cube(base_vector=np.array([1, 2, 3]), facecolor="red"))
+    space.add_cube(bb.Cube(base_vector=np.array([2, 3, 1]), facecolor="green"))
+    space.add_cube(bb.Cube(base_vector=np.array([3, 1, 2]), facecolor="blue"))
+
+    # And undo all of them.
+    space.undo_last_timestep()
+    space.undo_last_timestep()
+    space.undo_last_timestep()
+
+    # Changelog should be the same.
+    assert len(space.changelog) == 9
+    assert space.changelog[-2:] == [
+        bb.Transform(
+            transform=1 / scale,
+            transform_name="scale",
+            timestep_id=1,
+        ),
+        bb.Transform(
+            transform=reflect,
+            transform_name="reflection",
+            scene_id=1,
+        ),
+    ]
+
+    # The base coordinate and shape data should be equivalent to before adding
+    # and undoing the additions.
+    num_objs_after_adds = space.object_counter
+    coordinates_now = np.copy(space.base_coordinates[:num_objs_after_adds])
+    shapes_now = np.copy(space.cuboid_shapes[:num_objs_after_adds])
+    assert np.array_equal(coordinates_before, coordinates_now)
+    assert np.array_equal(shapes_before, shapes_now)
+    vis_metadata_after_undone_adds = {
+        k: v[:num_objs_after_adds]
+        for (k, v) in space.cuboid_visual_metadata.items()
+    }
+    assert vis_metadata_before == vis_metadata_after_undone_adds
+
+    # Finally mutate objects from the first scene...
+    space.mutate_by_scene(scene=0, facecolor="cyan")
+
+    # And undo the mutation.
+    space.undo_last_timestep()
+
+    num_objs_after_mutation = space.object_counter
+    assert num_objs_after_mutation == num_objs_after_adds
+    vis_metadata_after_undone_mutation = {
+        k: v[:num_objs_after_mutation]
+        for (k, v) in space.cuboid_visual_metadata.items()
+    }
+    assert vis_metadata_before == vis_metadata_after_undone_mutation
+
+
+def test_space_supports_undo_by_last_timestep_when_space_is_empty() -> None:
+    space = bb.Space()
+    # This should be valid and do nothing - no exceptions/errors.
+    space.undo_last_timestep()
 
 
 def test_space_supports_composites_with_classic_style() -> None:

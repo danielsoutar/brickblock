@@ -34,6 +34,20 @@ class Mutation(SpaceStateChange):
     timestep_id: int | None = None
     scene_id: int | None = None
 
+    def __eq__(self, __value: object) -> bool:
+        vals_except_coordinate_match = (
+            self.subject == __value.subject
+            and self.name == __value.name
+            and self.timestep_id == __value.timestep_id
+            and self.scene_id == __value.scene_id
+        )
+        coordinates_match = (
+            np.array_equal(self.coordinate, __value.coordinate)
+            if self.coordinate is not None
+            else __value.coordinate is None
+        )
+        return vals_except_coordinate_match and coordinates_match
+
 
 @dataclass
 class Transform(SpaceStateChange):
@@ -499,14 +513,12 @@ class Space:
                     "The provided key doesn't match any valid visual property."
                 )
             before_mutation_kwargs[key] = []
-            for primitive_id in primitive_ids:
-                old_val = self.cuboid_visual_metadata[key][primitive_id]
+            joined_ids = sorted(primitive_ids + composite_ids)
+
+            for id in joined_ids:
+                old_val = self.cuboid_visual_metadata[key][id]
                 before_mutation_kwargs[key].append(old_val)
-                self.cuboid_visual_metadata[key][primitive_id] = kwargs[key]
-            for composite_id in composite_ids:
-                old_val = self.cuboid_visual_metadata[key][composite_id]
-                before_mutation_kwargs[key].append(old_val)
-                self.cuboid_visual_metadata[key][composite_id] = kwargs[key]
+                self.cuboid_visual_metadata[key][id] = kwargs[key]
 
         for primitive_id in primitive_ids:
             self.cuboid_index.add_item_to_index(
@@ -739,16 +751,28 @@ class Space:
         if not (non_zero_selection and non_zero_transform):
             return None
 
+        joined_ids = primitive_ids + composite_ids
+
+        bases = self.base_coordinates[joined_ids]
+        shapes = self.cuboid_shapes[joined_ids]
+        object_means = (bases + (bases + shapes)) / 2
+        # Subtract from the total.
+        self.total -= np.sum(object_means, axis=0).reshape((3, 1))
+
         if coord_func is not None:
-            joined_ids = primitive_ids + composite_ids
             self.base_coordinates[joined_ids] = coord_func(
                 self.base_coordinates[joined_ids]
             )
         if shape_func is not None:
-            joined_ids = primitive_ids + composite_ids
             self.cuboid_shapes[joined_ids] = shape_func(
                 self.cuboid_shapes[joined_ids]
             )
+
+        bases = self.base_coordinates[joined_ids]
+        shapes = self.cuboid_shapes[joined_ids]
+        object_means = (bases + (bases + shapes)) / 2
+        # Add to the total.
+        self.total += np.sum(object_means, axis=0).reshape((3, 1))
 
         for primitive_id in primitive_ids:
             self.cuboid_index.add_item_to_index(
@@ -905,6 +929,87 @@ class Space:
         )
 
         self.time_step += 1
+
+    def undo_last_timestep(self) -> None:
+        # Do nothing if space is empty.
+        if self.time_step == 0:
+            return
+        # Remove the latest operation in the changelog.
+        operation = self.changelog.pop()
+        # Subtract one since the counter will be for the new timestep.
+        t = self.time_step - 1
+
+        if isinstance(operation, Addition):
+            primitives = self.cuboid_index.clear_items_in_latest_timestep(t)
+            composites = self.composite_index.clear_items_in_latest_timestep(t)
+            ids = primitives + composites
+
+            names = operation.object_names
+            names = names.values if names is not None else {}
+            for name in names:
+                del self.cuboid_names[name]
+
+            bases = self.base_coordinates[ids]
+            shapes = self.cuboid_shapes[ids]
+            # Compute means for objects
+            object_means = (bases + (bases + shapes)) / 2
+            # Subtract from the total.
+            self.total -= np.sum(object_means, axis=0).reshape((3, 1))
+
+            self.object_counter -= operation.inserted_count
+            self.mean = self.total / self.object_counter
+        elif isinstance(operation, Mutation):
+            primitives = self.cuboid_index.clear_items_in_latest_timestep(t)
+            composites = self.composite_index.clear_items_in_latest_timestep(t)
+            joined_ids = sorted(primitives + composites)
+
+            prior_state = operation.subject
+            for key in prior_state.keys():
+                before_val = prior_state[key]
+                for id in joined_ids:
+                    self.cuboid_visual_metadata[key][id] = before_val[id]
+        elif isinstance(operation, Transform):
+            primitives = self.cuboid_index.clear_items_in_latest_timestep(t)
+            composites = self.composite_index.clear_items_in_latest_timestep(t)
+            ids = primitives + composites
+
+            bases = self.base_coordinates[ids]
+            shapes = self.cuboid_shapes[ids]
+            # Compute means for objects
+            object_means = (bases + (bases + shapes)) / 2
+            # Subtract from the total.
+            self.total -= np.sum(object_means, axis=0).reshape((3, 1))
+
+            # TODO: Decide whether the inverse transform in Transform objects
+            # should be a function (allows consolidating checks, avoids annoying
+            # switch statements).
+            inverse_transform = operation.transform
+            if operation.transform_name == "translation":
+                self.base_coordinates[ids] += inverse_transform
+            elif operation.transform_name == "reflection":
+                self.base_coordinates[ids] *= inverse_transform
+                self.cuboid_shapes[ids] *= inverse_transform
+            elif operation.transform_name == "scale":
+                self.base_coordinates[ids] *= inverse_transform
+                self.cuboid_shapes[ids] *= inverse_transform
+            else:
+                transform_name = operation.transform_name
+                raise ValueError(
+                    f"Unrecognised transform with name {transform_name}"
+                )
+
+            bases = self.base_coordinates[ids]
+            shapes = self.cuboid_shapes[ids]
+            # Compute means for objects
+            object_means = (bases + (bases + shapes)) / 2
+            # Add to the total.
+            self.total += np.sum(object_means, axis=0).reshape((3, 1))
+
+            self.mean = self.total / self.object_counter
+        else:
+            raise ValueError("Unsupported operation")
+
+        self.time_step -= 1
 
     def _select_by_coordinate(
         self, coordinate: np.ndarray

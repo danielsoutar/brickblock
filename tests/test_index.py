@@ -1,3 +1,5 @@
+import pytest
+
 import brickblock as bb
 
 
@@ -110,3 +112,94 @@ def test_index_can_get_items_by_scene() -> None:
 
     # Check for empty result with a valid scene with no items.
     assert [] == index.get_items_by_scene(2)
+
+
+def test_index_clears_items_by_latest_timestep() -> None:
+    index = bb.TemporalIndex()
+
+    objects = mock_arbitrary_objects()
+    timesteps = [0, 1, 2, 3] + [19 + i for i in range(len(objects) - 4)]
+
+    for t, obj in zip(timesteps, objects):
+        scene_id = 1 if t >= 7 else 0
+        index.add_item_to_index(obj, timestep_id=t, scene_id=scene_id)
+
+    # Although only 14 items were added into the buffer, the timestep indices
+    # used indicate that the last 10 values were 15 timesteps into the future.
+    # This gives 29 elements, so the last timestep is index 28.
+    popped_item = index.clear_items_in_latest_timestep(28)
+
+    assert popped_item == [13]
+    assert index._item_buffer == [i for i in range(13)]
+    assert index.get_items_by_scene(1) == [i for i in range(4, 13)]
+
+    # Check that popping until hitting the first scene is supported.
+    id = 27
+    while len(index.get_items_by_scene(1)) > 0:
+        popped_item = index.clear_items_in_latest_timestep(id)
+
+        assert popped_item == [id - 15]
+        assert index._item_buffer == [i for i in range(id - 15)]
+        assert index.get_items_by_scene(1) == [i for i in range(4, id - 15)]
+
+        id -= 1
+
+    assert index._item_timestep_index == [1, 2, 3, 4] + [4] * 15
+    assert index._item_scene_index == [4]
+
+    # Then check that we can fully remove everything and still be valid.
+
+    while id > 3:
+        # These are dummy values - timesteps that are valid but no items of
+        # the given kind were referenced.
+        index.clear_items_in_latest_timestep(id)
+        assert popped_item == [4]
+        assert index.get_items_by_scene(0) == [0, 1, 2, 3]
+        assert index.get_items_by_scene(1) == []
+
+        id -= 1
+
+    index.clear_items_in_latest_timestep(3)
+    index.clear_items_in_latest_timestep(2)
+    index.clear_items_in_latest_timestep(1)
+    popped_item = index.clear_items_in_latest_timestep(0)
+
+    assert popped_item == [0]
+    assert index._item_buffer == []
+    assert index._item_timestep_index == []
+    assert index._item_scene_index == []
+
+
+def test_index_clears_items_by_latest_timestep_nothing_on_empty_index() -> None:
+    index = bb.TemporalIndex()
+    popped_item = index.clear_items_in_latest_timestep(0)
+    assert popped_item == []
+
+
+def test_index_clears_items_by_latest_timestep_on_single_item_index() -> None:
+    index = bb.TemporalIndex()
+    index.add_item_to_index(0, timestep_id=0, scene_id=0)
+    popped_item = index.clear_items_in_latest_timestep(0)
+    assert popped_item == [0]
+    assert index._item_buffer == []
+    assert index._item_timestep_index == []
+    assert index._item_scene_index == []
+
+
+def test_index_clears_items_by_latest_timestep_error_on_invalid_timestep() -> (
+    None
+):
+    index = bb.TemporalIndex()
+
+    objects = mock_arbitrary_objects()
+    timesteps = [0, 1, 2, 3] + [19 + i for i in range(len(objects) - 4)]
+
+    for t, obj in zip(timesteps, objects):
+        scene_id = 1 if t >= 7 else 0
+        index.add_item_to_index(obj, timestep_id=t, scene_id=scene_id)
+
+    expected_name_err_msg = (
+        "This function only supports removing items for the latest timestep."
+    )
+    with pytest.raises(ValueError, match=expected_name_err_msg):
+        index.clear_items_in_latest_timestep(5)

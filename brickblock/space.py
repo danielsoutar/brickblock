@@ -1020,7 +1020,7 @@ class Space:
 
         if isinstance(operation, Addition):
             names = operation.object_names
-            names = names.values if names is not None else {}
+            names = names.values() if names is not None else {}
             for name in names:
                 del self.cuboid_names[name]
 
@@ -1079,6 +1079,83 @@ class Space:
             raise ValueError("Unsupported operation")
 
         self.time_step -= 1
+
+    def undo_last_scene(self) -> None:
+        # Do nothing if space is empty.
+        if self.time_step == 0:
+            return
+        s = self.scene_counter
+        operations = self.changelog.clear_items_in_latest_scene(s)
+
+        for offset, operation in enumerate(reversed(operations)):
+            # Subtract one since the counter will be for the new timestep.
+            t = self.time_step - offset - 1
+            primitives = self.cuboid_index.clear_items_in_latest_timestep(t)
+            composites = self.composite_index.clear_items_in_latest_timestep(t)
+            ids = primitives + composites
+
+            if isinstance(operation, Addition):
+                names = operation.object_names
+                names = names.values() if names is not None else {}
+                for name in names:
+                    del self.cuboid_names[name]
+
+                bases = self.base_coordinates[ids]
+                shapes = self.cuboid_shapes[ids]
+                # Compute means for objects
+                object_means = (bases + (bases + shapes)) / 2
+                # Subtract from the total.
+                self.total -= np.sum(object_means, axis=0).reshape((3, 1))
+
+                self.object_counter -= operation.inserted_count
+                self.mean = self.total / self.object_counter
+            elif isinstance(operation, Mutation):
+                joined_ids = sorted(ids)
+
+                prior_state = operation.subject
+                for key in prior_state.keys():
+                    before_val = prior_state[key]
+                    for id in joined_ids:
+                        self.cuboid_visual_metadata[key][id] = before_val[id]
+            elif isinstance(operation, Transform):
+                bases = self.base_coordinates[ids]
+                shapes = self.cuboid_shapes[ids]
+                # Compute means for objects
+                object_means = (bases + (bases + shapes)) / 2
+                # Subtract from the total.
+                self.total -= np.sum(object_means, axis=0).reshape((3, 1))
+
+                # TODO: Decide whether the inverse transform in Transform
+                # objects should be a function (allows consolidating checks,
+                # avoids annoying switch statements).
+                inverse_transform = operation.transform
+                if operation.transform_name == "translation":
+                    self.base_coordinates[ids] += inverse_transform
+                elif operation.transform_name == "reflection":
+                    self.base_coordinates[ids] *= inverse_transform
+                    self.cuboid_shapes[ids] *= inverse_transform
+                elif operation.transform_name == "scale":
+                    self.base_coordinates[ids] *= inverse_transform
+                    self.cuboid_shapes[ids] *= inverse_transform
+                else:
+                    transform_name = operation.transform_name
+                    raise ValueError(
+                        f"Unrecognised transform with name {transform_name}"
+                    )
+
+                bases = self.base_coordinates[ids]
+                shapes = self.cuboid_shapes[ids]
+                # Compute means for objects
+                object_means = (bases + (bases + shapes)) / 2
+                # Add to the total.
+                self.total += np.sum(object_means, axis=0).reshape((3, 1))
+
+                self.mean = self.total / self.object_counter
+            else:
+                raise ValueError("Unsupported operation")
+
+        self.time_step -= len(operations)
+        self.scene_counter = max(0, self.scene_counter - 1)
 
     def _select_by_coordinate(
         self, coordinate: np.ndarray

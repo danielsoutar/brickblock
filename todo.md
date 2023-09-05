@@ -4,7 +4,7 @@ V1
 
 DOD for each of these: unit tests (visualisation involves manually checking in matplotlib)
 
-28/34 done
+30/34 done
 
 - [X] Create basic `Cube` object
 - [X] Correctly visualise a `Cube` in matplotlib
@@ -40,7 +40,7 @@ DOD for each of these: unit tests (visualisation involves manually checking in m
   - Shuffle matplotlib materialisation of data into a 'backend' and out of objects.py/space.py
 - [X] Distinguish between 'scene' and 'non-scene' timesteps/have timestep tracking logic
 - [X] Support undo() operation for timesteps
-- [ ] Support undo() operation for scenes
+- [X] Support undo() operation for scenes
 - [ ] Support rewinding logic
 - [ ] Decide whether to support undo() operation for named objects (probably not)
 - [ ] Create GIF from a multi-scene `Space`

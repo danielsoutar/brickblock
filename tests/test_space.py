@@ -2271,6 +2271,12 @@ def test_space_supports_undo_by_last_timestep() -> None:
     space.undo_last_timestep()
 
     assert len(space.changelog) == 9
+    assert space.changelog[0] == bb.Addition(
+        inserted_count=1,
+        object_types_inserted=["composite"],
+        creation_type="manual",
+        object_names={0: "input-tensor"},
+    )
     assert space.changelog[-2:] == [
         bb.Transform(
             transformed_count=1,
@@ -2353,6 +2359,116 @@ def test_space_supports_undo_by_last_timestep_when_space_is_empty() -> None:
     space = bb.Space()
     # This should be valid and do nothing - no exceptions/errors.
     space.undo_last_timestep()
+
+
+def test_space_supports_undo_by_last_scene() -> None:
+    space = bb.Space()
+
+    space.add_composite(
+        bb.CompositeCube(
+            base_vector=np.array([0, 0, 0]),
+            w=4,
+            h=3,
+            d=2,
+            facecolor=None,
+            alpha=0.3,
+            linewidth=0.5,
+            name="input-tensor",
+        )
+    )
+
+    space.add_cube(bb.Cube(base_vector=np.array([12, 14, 3]), facecolor="pink"))
+
+    space.add_composite(
+        bb.CompositeCube(
+            base_vector=np.array([0, 0, 0]),
+            w=3,
+            h=3,
+            d=2,
+            facecolor="red",
+            alpha=0.5,
+            linewidth=0.7,
+            name="filter-tensor",
+        )
+    )
+
+    # Check that only the first scene is affected.
+    space.snapshot()
+
+    space.add_composite(
+        bb.CompositeCube(
+            base_vector=np.array([3, 3, 3]),
+            w=5,
+            h=5,
+            d=2,
+            facecolor="orange",
+            alpha=0.6,
+            linewidth=0.8,
+            name="unchanged-tensor",
+        )
+    )
+
+    first_translate = np.array([4, 5, 6])
+    second_translate = np.array([10, 14, 2])
+    third_translate = np.array([3, 2, 1])
+    reflect = np.array([1, -1, -1])
+    scale = np.array([2, 2, 2])
+    space.transform_by_scene(scene=0, translate=first_translate)
+    space.transform_by_scene(scene=1, translate=second_translate)
+    space.transform_by_name(name="input-tensor", translate=third_translate)
+    space.transform_by_timestep(timestep=1, scale=scale)
+    # Having two reflections should lead to the identity.
+    space.transform_by_scene(scene=1, reflect=reflect)
+    space.transform_by_scene(scene=1, reflect=reflect)
+
+    # This will undo the transforms and the last addition.
+    space.undo_last_scene()
+
+    assert space.object_counter == 3
+    assert space.time_step == 3
+    assert space.scene_counter == 0
+    assert len(space.changelog) == 3
+    assert list(space.changelog.items()) == [
+        bb.Addition(
+            inserted_count=1,
+            object_types_inserted=["composite"],
+            creation_type="manual",
+            object_names={0: "input-tensor"},
+        ),
+        bb.Addition(
+            inserted_count=1,
+            object_types_inserted=["primitive"],
+            creation_type="manual",
+            object_names=None,
+        ),
+        bb.Addition(
+            inserted_count=1,
+            object_types_inserted=["composite"],
+            creation_type="manual",
+            object_names={0: "filter-tensor"},
+        ),
+    ]
+
+    # Add some cubes...
+    space.add_cube(bb.Cube(base_vector=np.array([1, 2, 3]), facecolor="red"))
+    space.add_cube(bb.Cube(base_vector=np.array([2, 3, 1]), facecolor="green"))
+    space.add_cube(bb.Cube(base_vector=np.array([3, 1, 2]), facecolor="blue"))
+
+    # And remove everything! We didn't snapshot, so everything gets cleared.
+    space.undo_last_scene()
+
+    assert space.object_counter == 0
+    assert space.time_step == 0
+    assert space.scene_counter == 0
+    assert space.changelog == bb.TemporalIndex()
+    assert space.cuboid_index == bb.TemporalIndex()
+    assert space.composite_index == bb.TemporalIndex()
+
+
+def test_space_supports_undo_by_last_scene_when_space_is_empty() -> None:
+    space = bb.Space()
+    # This should be valid and do nothing - no exceptions/errors.
+    space.undo_last_scene()
 
 
 def test_space_supports_composites_with_classic_style() -> None:

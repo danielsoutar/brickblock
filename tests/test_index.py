@@ -203,3 +203,65 @@ def test_index_clears_items_by_latest_timestep_error_on_invalid_timestep() -> (
     )
     with pytest.raises(ValueError, match=expected_name_err_msg):
         index.clear_items_in_latest_timestep(5)
+
+
+def test_index_clears_items_by_latest_scene() -> None:
+    index = bb.TemporalIndex()
+
+    objects = mock_arbitrary_objects()
+    timesteps = [0, 1, 2, 3] + [19 + i for i in range(len(objects) - 4)]
+
+    for t, obj in zip(timesteps, objects):
+        scene_id = 1 if t >= 7 else 0
+        index.add_item_to_index(obj, timestep_id=t, scene_id=scene_id)
+
+    # Only two scenes (with indices 0/1) are present. scene[1] is not contiguous
+    # (since we need dummy timesteps in order for the indexing to work for it).
+    # So if we remove scene[1], we need to remove those dummy timesteps as well.
+    # scenes encompass timesteps, so we can't have this situation in reverse.
+    popped_items = index.clear_items_in_latest_scene(1)
+
+    assert popped_items == [i for i in range(4, 14)]
+    assert index._item_buffer == [0, 1, 2, 3]
+    # Dummy timesteps should be removed as well.
+    assert index._item_timestep_index == [1, 2, 3, 4]
+
+    popped_items = index.clear_items_in_latest_scene(0)
+
+    assert popped_items == [0, 1, 2, 3]
+    assert index._item_buffer == []
+    assert index._item_timestep_index == []
+    assert index._item_scene_index == []
+
+
+def test_index_clears_items_by_latest_scene_nothing_on_empty_index() -> None:
+    index = bb.TemporalIndex()
+    popped_item = index.clear_items_in_latest_scene(0)
+    assert popped_item == []
+
+
+def test_index_clears_items_by_latest_scene_on_single_item_index() -> None:
+    index = bb.TemporalIndex()
+    index.add_item_to_index(0, timestep_id=0, scene_id=0)
+    popped_item = index.clear_items_in_latest_scene(0)
+    assert popped_item == [0]
+    assert index._item_buffer == []
+    assert index._item_timestep_index == []
+    assert index._item_scene_index == []
+
+
+def test_index_clears_items_by_latest_scene_error_on_invalid_scene() -> None:
+    index = bb.TemporalIndex()
+
+    objects = mock_arbitrary_objects()
+    timesteps = [0, 1, 2, 3] + [19 + i for i in range(len(objects) - 4)]
+
+    for t, obj in zip(timesteps, objects):
+        scene_id = 1 if t >= 7 else 0
+        index.add_item_to_index(obj, timestep_id=t, scene_id=scene_id)
+
+    expected_name_err_msg = (
+        "This function only supports removing items for the latest scene."
+    )
+    with pytest.raises(ValueError, match=expected_name_err_msg):
+        index.clear_items_in_latest_scene(0)

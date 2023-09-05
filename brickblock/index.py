@@ -1,8 +1,9 @@
 from collections.abc import Iterator
+from typing import Any
 
 
 class TemporalIndex:
-    _item_buffer: list[int]
+    _item_buffer: list[Any]
     _item_timestep_index: list[int]
     _item_scene_index: list[int]
 
@@ -39,10 +40,10 @@ class TemporalIndex:
             index.append(val + 1)
 
     def add_item_to_index(
-        self, id: int, timestep_id: int, scene_id: int
+        self, item: Any, timestep_id: int, scene_id: int
     ) -> None:
         """
-        Add an `id` to the item buffer, along with relevant timestep and scene
+        Add an `item` to the item buffer, along with relevant timestep and scene
         information.
 
         This will update the timestep and scene indices accordingly. If the
@@ -53,11 +54,11 @@ class TemporalIndex:
         zero-length sequences when indexing into the item buffer.
 
         # Args
-            id: The ID to add into the item buffer.
+            item: The item to add into the item buffer.
             timestep_id: The ID of the timestep this item is in.
             scene_id: The ID of the scene this item is in.
         """
-        self._item_buffer.append(id)
+        self._item_buffer.append(item)
 
         self._add_entry_to_offset_index(
             id=timestep_id, index=self._item_timestep_index
@@ -73,7 +74,7 @@ class TemporalIndex:
         """
         return len(self._item_scene_index) == expected_num_scenes
 
-    def items(self) -> Iterator[int]:
+    def items(self) -> Iterator[Any]:
         """
         Get all distinct items in the index.
         """
@@ -103,7 +104,7 @@ class TemporalIndex:
         stop = 0 if is_empty else index[id]
         return slice(start, stop)
 
-    def get_items_by_timestep(self, timestep_id: int) -> list[int]:
+    def get_items_by_timestep(self, timestep_id: int) -> list[Any]:
         """
         Get all items in the index with timestep equal to `timestep_id`, in
         order of insertion.
@@ -118,7 +119,7 @@ class TemporalIndex:
         )
         return self._item_buffer[subset]
 
-    def get_items_by_scene(self, scene_id: int) -> list[int]:
+    def get_items_by_scene(self, scene_id: int) -> list[Any]:
         """
         Get all items in the index with scene equal to `scene_id`, in order of
         of insertion.
@@ -133,7 +134,7 @@ class TemporalIndex:
         )
         return self._item_buffer[subset]
 
-    def clear_items_in_latest_timestep(self, timestep_id: int) -> list[int]:
+    def clear_items_in_latest_timestep(self, timestep_id: int) -> list[Any]:
         """
         Clear all items in the index with timestep equal to `timestep_id`.
 
@@ -148,7 +149,7 @@ class TemporalIndex:
 
         # Args
             timestep_id: The ID of the timestep to query over. Should be the
-            latest timestep.
+                latest timestep.
         """
         # Case where this index may not have the requisite number of entries.
         if timestep_id >= len(self._item_timestep_index):
@@ -200,4 +201,74 @@ class TemporalIndex:
         # needs to have its value set to the value of the now-latest timestep.
         self._item_scene_index[-1] = self._item_timestep_index[-1]
 
+        return cleared_items
+
+    def clear_items_in_latest_scene(self, scene_id: int) -> list[Any]:
+        """
+        Clear all items in the index with scene equal to `scene_id`.
+
+        `scene_id` is provided to ensure it is valid for this index - this
+        function only supports removing items in the latest scene.
+
+        The timestep index will also be updated - in particular, if removing the
+        latest scene leads to dummy timestep offsets that span more than the new
+        latest scene, those are invalid and will be removed as well.
+
+        If the given scene has no items, return an empty list.
+
+        # Args
+            scene_id: The ID of the scene to query over. Should be the latest
+                scene.
+        """
+        # Case where this index may not have the requisite number of entries.
+        if scene_id >= len(self._item_scene_index):
+            return []
+
+        # Otherwise it should be the last index only.
+        if scene_id != (len(self._item_scene_index) - 1):
+            raise ValueError(
+                "This function only supports removing items for the latest "
+                "scene."
+            )
+
+        # Fetch the indices of the cleared items to return.
+        subset = self._extract_objects_by_id(
+            id=scene_id, index=self._item_scene_index
+        )
+        cleared_items = self._item_buffer[subset]
+
+        # Need to delete stuff in the buffer, not just remove offsets in the
+        # timestep and scene indices. This is because adding items appends to
+        # the buffer, which means there are assumptions about the buffer's size.
+        k = subset.stop - subset.start
+        for _ in range(k):
+            self._item_buffer.pop()
+        self._item_scene_index.pop()
+
+        if len(self._item_scene_index) == 0:
+            # First case - where the scene index is now empty. So no timesteps
+            # can be present.
+            self._item_timestep_index.clear()
+            return cleared_items
+
+        # General case - just iterate through the timesteps until one matches
+        # the new latest scene.
+        while self._item_timestep_index[-1] != self._item_scene_index[-1]:
+            self._item_timestep_index.pop()
+
+        # Then remove dummy timesteps - which is checked by seeing if
+        # successive timestep offsets have the same value.
+        # Account for the case where only one timestep remains.
+        second_last_timestep = (
+            self._item_timestep_index[-2]
+            if len(self._item_timestep_index) > 1
+            else self._item_timestep_index[-1] - 1
+        )
+        while second_last_timestep == self._item_timestep_index[-1]:
+            self._item_timestep_index.pop()
+            second_last_timestep = (
+                self._item_timestep_index[-2]
+                if len(self._item_timestep_index) > 1
+                else self._item_timestep_index[-1] - 1
+            )
         return cleared_items

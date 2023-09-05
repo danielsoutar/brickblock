@@ -12,6 +12,20 @@ class TemporalIndex:
         self._item_timestep_index = []
         self._item_scene_index = []
 
+    def __eq__(self, __value: object) -> bool:
+        return (
+            self._item_buffer == __value._item_buffer
+            and self._item_timestep_index == __value._item_timestep_index
+            and self._item_scene_index == __value._item_scene_index
+        )
+
+    def __len__(self) -> int:
+        # This returns the length of the *item buffer, not the indices!
+        return len(self._item_buffer)
+
+    def __getitem__(self, idx: int) -> Any:
+        return self._item_buffer[idx]
+
     # TODO: Improve docstring for this function - likely worth adding examples.
     def _add_entry_to_offset_index(self, id: int, index: list[int]) -> None:
         """

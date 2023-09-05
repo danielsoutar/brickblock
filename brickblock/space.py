@@ -123,9 +123,8 @@ class Space:
     cuboid_visual_metadata: dict[str, list]
     cuboid_index: TemporalIndex
     cuboid_names: dict[str, tuple[list[int], list[slice]]]
-    # TODO: Document the changelog structure (mutations are stored as primitives
-    # then composites per updated field).
-    changelog: list[SpaceStateChange]
+    # TODO: Document the changelog structure.
+    changelog: TemporalIndex
     dimensions: dict[str, int]
     basis: np.ndarray
     visualisation_backend: VisualisationBackend
@@ -144,7 +143,7 @@ class Space:
         self.cuboid_index = TemporalIndex()
         self.composite_index = TemporalIndex()
         self.cuboid_names = {}
-        self.changelog = []
+        self.changelog = TemporalIndex()
         # The default mapping is W -> x-axis, H -> z-axis, D -> y-axis.
         # TODO: Decouple from this fixed basis - should swap height/depth.
         self.dimensions = {"width": 0, "height": 2, "depth": 1}
@@ -165,13 +164,15 @@ class Space:
         name = self._add_name(cube.name, [[primitive_id], None])
         self.num_objs += 1
         object_name = {0: name} if name is not None else None
-        self.changelog.append(
+        self.changelog.add_item_to_index(
             Addition(
                 inserted_count=1,
                 object_types_inserted=["primitive"],
                 creation_type="manual",
                 object_names=object_name,
-            )
+            ),
+            timestep_id=self.time_step,
+            scene_id=self.scene_counter,
         )
         self.time_step += 1
 
@@ -183,13 +184,15 @@ class Space:
         name = self._add_name(cuboid.name, [[primitive_id], None])
         self.num_objs += 1
         object_name = {0: name} if name is not None else None
-        self.changelog.append(
+        self.changelog.add_item_to_index(
             Addition(
                 inserted_count=1,
                 object_types_inserted=["primitive"],
                 creation_type="manual",
                 object_names=object_name,
-            )
+            ),
+            timestep_id=self.time_step,
+            scene_id=self.scene_counter,
         )
         self.time_step += 1
 
@@ -201,13 +204,15 @@ class Space:
         name = self._add_name(composite.name, [None, [composite_id]])
         self.num_objs += 1
         object_name = {0: name} if name is not None else None
-        self.changelog.append(
+        self.changelog.add_item_to_index(
             Addition(
                 inserted_count=1,
                 object_types_inserted=["composite"],
                 creation_type="manual",
                 object_names=object_name,
-            )
+            ),
+            timestep_id=self.time_step,
+            scene_id=self.scene_counter,
         )
         self.time_step += 1
 
@@ -397,13 +402,16 @@ class Space:
         previous_state = self._mutate_by_ids(
             primitives_to_update, composites_to_update, **kwargs
         )
-        self.changelog.append(
+        self.changelog.add_item_to_index(
             Mutation(
                 mutated_count=num_mutated,
                 subject=previous_state,
                 coordinate=coordinate,
-            )
+            ),
+            timestep_id=self.time_step,
+            scene_id=self.scene_counter,
         )
+        self.time_step += 1
 
     def mutate_by_name(self, name: str, **kwargs) -> None:
         """
@@ -432,11 +440,14 @@ class Space:
         previous_state = self._mutate_by_ids(
             primitives_to_update, composites_to_update, **kwargs
         )
-        self.changelog.append(
+        self.changelog.add_item_to_index(
             Mutation(
                 mutated_count=num_mutated, subject=previous_state, name=name
-            )
+            ),
+            timestep_id=self.time_step,
+            scene_id=self.scene_counter,
         )
+        self.time_step += 1
 
     def mutate_by_timestep(self, timestep: int, **kwargs) -> None:
         """
@@ -468,13 +479,16 @@ class Space:
         previous_state = self._mutate_by_ids(
             primitives_to_update, composites_to_update, **kwargs
         )
-        self.changelog.append(
+        self.changelog.add_item_to_index(
             Mutation(
                 mutated_count=num_mutated,
                 subject=previous_state,
                 timestep_id=timestep,
-            )
+            ),
+            timestep_id=self.time_step,
+            scene_id=self.scene_counter,
         )
+        self.time_step += 1
 
     def mutate_by_scene(self, scene: int, **kwargs) -> None:
         """
@@ -505,13 +519,16 @@ class Space:
         previous_state = self._mutate_by_ids(
             primitives_to_update, composites_to_update, **kwargs
         )
-        self.changelog.append(
+        self.changelog.add_item_to_index(
             Mutation(
                 mutated_count=num_mutated,
                 subject=previous_state,
                 scene_id=scene,
-            )
+            ),
+            timestep_id=self.time_step,
+            scene_id=self.scene_counter,
         )
+        self.time_step += 1
 
     def _mutate_by_ids(
         self, primitive_ids: list[int], composite_ids: list[int], **kwargs
@@ -557,7 +574,6 @@ class Space:
                 scene_id=self.scene_counter,
             )
 
-        self.time_step += 1
         return before_mutation_kwargs
 
     def transform_by_coordinate(
@@ -602,12 +618,14 @@ class Space:
             primitive_ids, composite_ids, translate, reflect, scale
         )
         if transform_kwargs is not None:
-            self.changelog.append(
+            self.changelog.add_item_to_index(
                 Transform(
                     transformed_count=num_transformed,
                     coordinate=coordinate,
                     **transform_kwargs,
-                )
+                ),
+                timestep_id=self.time_step,
+                scene_id=self.scene_counter,
             )
             self.time_step += 1
 
@@ -645,12 +663,14 @@ class Space:
             primitive_ids, composite_ids, translate, reflect, scale
         )
         if transform_kwargs is not None:
-            self.changelog.append(
+            self.changelog.add_item_to_index(
                 Transform(
                     transformed_count=num_transformed,
                     name=name,
                     **transform_kwargs,
-                )
+                ),
+                timestep_id=self.time_step,
+                scene_id=self.scene_counter,
             )
             self.time_step += 1
 
@@ -688,12 +708,14 @@ class Space:
             primitive_ids, composite_ids, translate, reflect, scale
         )
         if transform_kwargs is not None:
-            self.changelog.append(
+            self.changelog.add_item_to_index(
                 Transform(
                     transformed_count=num_transformed,
                     timestep_id=timestep,
                     **transform_kwargs,
-                )
+                ),
+                timestep_id=self.time_step,
+                scene_id=self.scene_counter,
             )
             self.time_step += 1
 
@@ -736,12 +758,14 @@ class Space:
             primitive_ids, composite_ids, translate, reflect, scale
         )
         if transform_kwargs is not None:
-            self.changelog.append(
+            self.changelog.add_item_to_index(
                 Transform(
                     transformed_count=num_transformed,
                     scene_id=scene,
                     **transform_kwargs,
-                )
+                ),
+                timestep_id=self.time_step,
+                scene_id=self.scene_counter,
             )
             self.time_step += 1
 
@@ -967,13 +991,15 @@ class Space:
         primitive_type = ["primitive"] if len(new_primitive_ids) > 0 else []
         composite_type = ["composite"] if len(new_composite_ids) > 0 else []
 
-        self.changelog.append(
+        self.changelog.add_item_to_index(
             Addition(
                 inserted_count=total_number_of_ids,
                 object_types_inserted=primitive_type + composite_type,
                 creation_type="ref",
                 object_names=None,
-            )
+            ),
+            timestep_id=self.time_step,
+            scene_id=self.scene_counter,
         )
 
         self.time_step += 1
@@ -982,16 +1008,17 @@ class Space:
         # Do nothing if space is empty.
         if self.time_step == 0:
             return
-        # Remove the latest operation in the changelog.
-        operation = self.changelog.pop()
         # Subtract one since the counter will be for the new timestep.
         t = self.time_step - 1
+        # Remove the latest operation in the changelog.
+        operations = self.changelog.clear_items_in_latest_timestep(t)
+        assert len(operations) == 1
+        operation = operations[0]
+        primitives = self.cuboid_index.clear_items_in_latest_timestep(t)
+        composites = self.composite_index.clear_items_in_latest_timestep(t)
+        ids = primitives + composites
 
         if isinstance(operation, Addition):
-            primitives = self.cuboid_index.clear_items_in_latest_timestep(t)
-            composites = self.composite_index.clear_items_in_latest_timestep(t)
-            ids = primitives + composites
-
             names = operation.object_names
             names = names.values if names is not None else {}
             for name in names:
@@ -1007,9 +1034,7 @@ class Space:
             self.object_counter -= operation.inserted_count
             self.mean = self.total / self.object_counter
         elif isinstance(operation, Mutation):
-            primitives = self.cuboid_index.clear_items_in_latest_timestep(t)
-            composites = self.composite_index.clear_items_in_latest_timestep(t)
-            joined_ids = sorted(primitives + composites)
+            joined_ids = sorted(ids)
 
             prior_state = operation.subject
             for key in prior_state.keys():
@@ -1017,10 +1042,6 @@ class Space:
                 for id in joined_ids:
                     self.cuboid_visual_metadata[key][id] = before_val[id]
         elif isinstance(operation, Transform):
-            primitives = self.cuboid_index.clear_items_in_latest_timestep(t)
-            composites = self.composite_index.clear_items_in_latest_timestep(t)
-            ids = primitives + composites
-
             bases = self.base_coordinates[ids]
             shapes = self.cuboid_shapes[ids]
             # Compute means for objects
@@ -1167,9 +1188,11 @@ class Space:
         # from the coordinates and visual_metadata.
 
         # We start from where the time step was last tracked.
-        time_slice = slice(self.tracked_time_step, len(self.changelog))
-        time_range = range(self.tracked_time_step, len(self.changelog))
-        for timestep, operation in zip(time_range, self.changelog[time_slice]):
+        time_range = range(self.tracked_time_step, self.time_step)
+        for timestep in time_range:
+            operations = self.changelog.get_items_by_timestep(timestep)
+            assert len(operations) == 1
+            operation = operations[0]
             primitives = self.cuboid_index.get_items_by_timestep(timestep)
             composites = self.composite_index.get_items_by_timestep(timestep)
             if isinstance(operation, Addition):

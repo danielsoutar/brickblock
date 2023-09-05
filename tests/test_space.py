@@ -22,9 +22,9 @@ def test_space_creation() -> None:
     assert np.array_equal(space.base_coordinates, np.zeros((10, 3)))
     assert np.array_equal(space.cuboid_shapes, np.zeros((10, 3)))
     assert space.cuboid_visual_metadata == {}
-    assert space.cuboid_index is not None
-    assert space.composite_index is not None
-    assert space.changelog == []
+    assert space.cuboid_index == bb.TemporalIndex()
+    assert space.composite_index == bb.TemporalIndex()
+    assert space.changelog == bb.TemporalIndex()
 
 
 def test_space_snapshot_creates_a_scene() -> None:
@@ -57,7 +57,7 @@ def test_space_snapshot_creates_a_scene() -> None:
         "alpha": [0.0],
     }
     assert list(space.cuboid_index.items()) == [0]
-    assert space.changelog == [
+    assert space.changelog._item_buffer == [
         bb.Addition(
             inserted_count=1,
             object_types_inserted=["primitive"],
@@ -106,7 +106,7 @@ def test_space_multiple_snapshots_create_multiple_scenes() -> None:
     assert space.cuboid_index.get_items_by_timestep(1) == [1]
     assert space.cuboid_index.get_items_by_scene(0) == [0]
     assert space.cuboid_index.get_items_by_scene(1) == [1]
-    assert space.changelog == [
+    assert space.changelog._item_buffer == [
         bb.Addition(
             inserted_count=1,
             object_types_inserted=["primitive"],
@@ -251,7 +251,7 @@ def test_space_add_multiple_cubes_in_single_scene() -> None:
     assert space.cuboid_index.get_items_by_timestep(0) == [0]
     assert space.cuboid_index.get_items_by_timestep(1) == [1]
     assert space.cuboid_index.get_items_by_scene(0) == [0, 1]
-    assert space.changelog == [
+    assert space.changelog._item_buffer == [
         bb.Addition(
             inserted_count=1,
             object_types_inserted=["primitive"],
@@ -438,7 +438,7 @@ def test_space_can_add_composite_cube() -> None:
     }
     assert space.composite_index.get_items_by_timestep(0) == [0]
     assert space.composite_index.get_items_by_scene(0) == [0]
-    assert space.changelog == [
+    assert space.changelog._item_buffer == [
         bb.Addition(
             inserted_count=1,
             object_types_inserted=["composite"],
@@ -547,7 +547,7 @@ def test_space_can_add_cuboid() -> None:
     assert space.cuboid_index.get_items_by_timestep(0) == [0]
     assert space.cuboid_index.get_items_by_scene(0) == [0]
 
-    assert space.changelog == [
+    assert space.changelog._item_buffer == [
         bb.Addition(
             inserted_count=1,
             object_types_inserted=["primitive"],
@@ -637,7 +637,7 @@ def test_space_mutates_primitive_by_coordinate() -> None:
     space.mutate_by_coordinate(coordinate=point, facecolor="red", alpha=0.3)
 
     # Check the changelog reflects the mutation, storing the previous state.
-    assert space.changelog == [
+    assert space.changelog._item_buffer == [
         bb.Addition(
             inserted_count=1,
             object_types_inserted=["primitive"],
@@ -682,7 +682,7 @@ def test_space_mutates_composite_by_coordinate() -> None:
     space.mutate_by_coordinate(coordinate=point, facecolor=None, alpha=0.0)
 
     # Check the changelog reflects the mutation, storing the previous state.
-    assert space.changelog == [
+    assert space.changelog._item_buffer == [
         bb.Addition(
             inserted_count=1,
             object_types_inserted=["composite"],
@@ -1176,7 +1176,7 @@ def test_space_mutates_nothing_on_empty_selection() -> None:
 
     # None of the above mutations have any effect and are not reflected in the
     # history.
-    assert space.changelog == [
+    assert space.changelog._item_buffer == [
         bb.Addition(
             inserted_count=1,
             object_types_inserted=["composite"],
@@ -1267,7 +1267,7 @@ def test_space_clones_cuboid_from_offset_with_selections() -> None:
             object_names=names,
         )
 
-    assert space.changelog == [
+    assert space.changelog._item_buffer == [
         populate_addition(1, "manual", {0: "my-cube"}),
         populate_addition(1, "ref"),
         populate_addition(1, "ref"),
@@ -1358,7 +1358,7 @@ def test_space_clones_composites_from_offset_with_selections() -> None:
             object_names=names,
         )
 
-    assert space.changelog == [
+    assert space.changelog._item_buffer == [
         populate_addition(1, "manual", {0: "my-composite"}),
         populate_addition(1, "ref"),
         populate_addition(1, "ref"),
@@ -2128,7 +2128,7 @@ def test_space_transforms_nothing_on_empty_selection() -> None:
 
     # None of the above transforms have any effect and are not reflected in the
     # history.
-    assert space.changelog == [
+    assert space.changelog._item_buffer == [
         bb.Addition(
             inserted_count=1,
             object_types_inserted=["composite"],
@@ -2157,7 +2157,7 @@ def test_space_transforms_nothing_with_trivial_transform() -> None:
     space.transform_by_scene(scene=0, reflect=reflect)
 
     # Check the changelog reflects no transforms.
-    assert space.changelog == [
+    assert space.changelog._item_buffer == [
         bb.Addition(
             inserted_count=1,
             object_types_inserted=["primitive"],

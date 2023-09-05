@@ -645,7 +645,9 @@ def test_space_mutates_primitive_by_coordinate() -> None:
             object_names=None,
         ),
         bb.Mutation(
-            subject={"facecolor": [None], "alpha": [0]}, coordinate=point
+            mutated_count=1,
+            subject={"facecolor": [None], "alpha": [0]},
+            coordinate=point,
         ),
     ]
 
@@ -688,6 +690,7 @@ def test_space_mutates_composite_by_coordinate() -> None:
             object_names=None,
         ),
         bb.Mutation(
+            mutated_count=1,
             subject={
                 "facecolor": ["yellow"],
                 "alpha": [0.3],
@@ -735,6 +738,7 @@ def test_space_mutates_multiple_objects_by_coordinate() -> None:
 
     # Check the changelog reflects the mutation, storing the previous state.
     assert space.changelog[-1] == bb.Mutation(
+        mutated_count=2,
         subject={
             "facecolor": ["yellow", None],
             "alpha": [0.3, 0.0],
@@ -771,6 +775,7 @@ def test_space_mutates_primitive_by_name() -> None:
 
     # Check the changelog reflects the mutation, storing the previous state.
     assert space.changelog[-1] == bb.Mutation(
+        mutated_count=1,
         subject={
             "facecolor": [None],
             "alpha": [0.0],
@@ -811,6 +816,7 @@ def test_space_mutates_composite_by_name() -> None:
 
     # Check the changelog reflects the mutation, storing the previous state.
     assert space.changelog[-1] == bb.Mutation(
+        mutated_count=1,
         subject={
             "facecolor": ["yellow"],
             "alpha": [0.3],
@@ -839,6 +845,7 @@ def test_space_mutates_primitive_by_timestep_id() -> None:
 
     # Check the changelog reflects the mutation, storing the previous state.
     assert space.changelog[-1] == bb.Mutation(
+        mutated_count=1,
         subject={
             "facecolor": [None],
             "alpha": [0.0],
@@ -877,6 +884,7 @@ def test_space_mutates_composite_by_timestep_id() -> None:
 
     # Check the changelog reflects the mutation, storing the previous state.
     assert space.changelog[-1] == bb.Mutation(
+        mutated_count=1,
         subject={
             "facecolor": ["yellow"],
             "alpha": [0.3],
@@ -905,6 +913,7 @@ def test_space_mutates_primitive_by_scene_id() -> None:
 
     # Check the changelog reflects the mutation, storing the previous state.
     assert space.changelog[-1] == bb.Mutation(
+        mutated_count=1,
         subject={
             "facecolor": [None],
             "alpha": [0.0],
@@ -943,6 +952,7 @@ def test_space_mutates_composite_by_scene_id() -> None:
 
     # Check the changelog reflects the mutation, storing the previous state.
     assert space.changelog[-1] == bb.Mutation(
+        mutated_count=1,
         subject={
             "facecolor": ["yellow"],
             "alpha": [0.3],
@@ -1021,6 +1031,7 @@ def test_space_mutates_multiple_objects_by_scene_id() -> None:
     # TODO: Fix the issue of unintuitive ordering in the mutation subject,
     # currently values are inserted primitives-first.
     assert space.changelog[-1] == bb.Mutation(
+        mutated_count=3,
         subject={
             "facecolor": [None, None, "red"],
             "alpha": [0.3, 0.0, 0.5],
@@ -1104,6 +1115,7 @@ def test_space_mutates_multiple_objects_multiple_times() -> None:
     # Check the changelog reflects the mutations, storing previous states.
     assert space.changelog[-3:] == [
         bb.Mutation(
+            mutated_count=3,
             subject={
                 "facecolor": [None, None, "red"],
                 "alpha": [0.3, 0.0, 0.5],
@@ -1112,10 +1124,12 @@ def test_space_mutates_multiple_objects_multiple_times() -> None:
             scene_id=0,
         ),
         bb.Mutation(
+            mutated_count=4,
             subject={"edgecolor": ["black", "black", "black", "black"]},
             scene_id=1,
         ),
         bb.Mutation(
+            mutated_count=1,
             subject={"facecolor": ["black"]},
             name="input-tensor",
         ),
@@ -1457,14 +1471,19 @@ def test_space_transforms_primitive_by_coordinate() -> None:
     # Check the changelog reflects the transforms, storing previous states.
     assert space.changelog[1:] == [
         bb.Transform(
-            transform=-translate, transform_name="translation", coordinate=point
+            transformed_count=1,
+            transform=-translate,
+            transform_name="translation",
+            coordinate=point,
         ),
         bb.Transform(
+            transformed_count=1,
             transform=reflect,
             transform_name="reflection",
             coordinate=shifted_point,
         ),
         bb.Transform(
+            transformed_count=1,
             transform=1 / scale,
             transform_name="scale",
             coordinate=reflected_point,
@@ -1520,11 +1539,13 @@ def test_space_transforms_composite_by_coordinate() -> None:
     # Check the changelog reflects the transforms, storing previous states.
     assert space.changelog[1:] == [
         bb.Transform(
+            transformed_count=1,
             transform=-translate,
             transform_name="translation",
             coordinate=point,
         ),
         bb.Transform(
+            transformed_count=1,
             transform=reflect,
             transform_name="reflection",
             coordinate=shifted_point,
@@ -1581,11 +1602,13 @@ def test_space_transforms_multiple_objects_by_coordinate() -> None:
     # Check the changelog reflects the transforms, storing previous states§.
     assert space.changelog[2:] == [
         bb.Transform(
+            transformed_count=2,
             transform=-translate,
             transform_name="translation",
             coordinate=point,
         ),
         bb.Transform(
+            transformed_count=2,
             transform=reflect,
             transform_name="reflection",
             coordinate=shifted_point,
@@ -1642,16 +1665,19 @@ def test_space_transforms_primitive_by_name() -> None:
     # Check the changelog reflects the transforms, storing previous states.
     assert space.changelog[1:] == [
         bb.Transform(
+            transformed_count=1,
             transform=-translate,
             transform_name="translation",
             name="my-primitive",
         ),
         bb.Transform(
+            transformed_count=1,
             transform=reflect,
             transform_name="reflection",
             name="my-primitive",
         ),
         bb.Transform(
+            transformed_count=1,
             transform=1 / scale,
             transform_name="scale",
             name="my-primitive",
@@ -1698,11 +1724,13 @@ def test_space_transforms_composite_by_name() -> None:
     # Check the changelog reflects the transforms, storing previous states.
     assert space.changelog[1:] == [
         bb.Transform(
+            transformed_count=1,
             transform=-translate,
             transform_name="translation",
             name="my-composite",
         ),
         bb.Transform(
+            transformed_count=1,
             transform=reflect,
             transform_name="reflection",
             name="my-composite",
@@ -1748,16 +1776,19 @@ def test_space_transforms_primitive_by_timestep_id() -> None:
     # Check the changelog reflects the transforms, storing previous states.
     assert space.changelog[1:] == [
         bb.Transform(
+            transformed_count=1,
             transform=-translate,
             transform_name="translation",
             timestep_id=0,
         ),
         bb.Transform(
+            transformed_count=1,
             transform=reflect,
             transform_name="reflection",
             timestep_id=0,
         ),
         bb.Transform(
+            transformed_count=1,
             transform=1 / scale,
             transform_name="scale",
             timestep_id=0,
@@ -1803,11 +1834,13 @@ def test_space_transforms_composite_by_timestep_id() -> None:
     # Check the changelog reflects the transforms, storing previous states.
     assert space.changelog[1:] == [
         bb.Transform(
+            transformed_count=1,
             transform=-translate,
             transform_name="translation",
             timestep_id=0,
         ),
         bb.Transform(
+            transformed_count=1,
             transform=reflect,
             transform_name="reflection",
             timestep_id=0,
@@ -1852,16 +1885,19 @@ def test_space_transforms_primitive_by_scene_id() -> None:
     # Check the changelog reflects the transforms, storing previous states.
     assert space.changelog[1:] == [
         bb.Transform(
+            transformed_count=1,
             transform=-translate,
             transform_name="translation",
             scene_id=0,
         ),
         bb.Transform(
+            transformed_count=1,
             transform=reflect,
             transform_name="reflection",
             scene_id=0,
         ),
         bb.Transform(
+            transformed_count=1,
             transform=1 / scale,
             transform_name="scale",
             scene_id=0,
@@ -1906,11 +1942,13 @@ def test_space_transforms_composite_by_scene_id() -> None:
     # Check the changelog reflects the transforms, storing previous states.
     assert space.changelog[1:] == [
         bb.Transform(
+            transformed_count=1,
             transform=-translate,
             transform_name="translation",
             scene_id=0,
         ),
         bb.Transform(
+            transformed_count=1,
             transform=reflect,
             transform_name="reflection",
             scene_id=0,
@@ -2003,31 +2041,37 @@ def test_space_transforms_multiple_objects_multiple_times() -> None:
     # Check the changelog reflects the transforms, storing previous states.
     assert space.changelog[4:] == [
         bb.Transform(
+            transformed_count=3,
             transform=-first_translate,
             transform_name="translation",
             scene_id=0,
         ),
         bb.Transform(
+            transformed_count=4,
             transform=-second_translate,
             transform_name="translation",
             scene_id=1,
         ),
         bb.Transform(
+            transformed_count=1,
             transform=-third_translate,
             transform_name="translation",
             name="input-tensor",
         ),
         bb.Transform(
+            transformed_count=1,
             transform=1 / scale,
             transform_name="scale",
             timestep_id=1,
         ),
         bb.Transform(
+            transformed_count=4,
             transform=reflect,
             transform_name="reflection",
             scene_id=1,
         ),
         bb.Transform(
+            transformed_count=4,
             transform=reflect,
             transform_name="reflection",
             scene_id=1,
@@ -2229,11 +2273,13 @@ def test_space_supports_undo_by_last_timestep() -> None:
     assert len(space.changelog) == 9
     assert space.changelog[-2:] == [
         bb.Transform(
+            transformed_count=1,
             transform=1 / scale,
             transform_name="scale",
             timestep_id=1,
         ),
         bb.Transform(
+            transformed_count=4,
             transform=reflect,
             transform_name="reflection",
             scene_id=1,
@@ -2262,11 +2308,13 @@ def test_space_supports_undo_by_last_timestep() -> None:
     assert len(space.changelog) == 9
     assert space.changelog[-2:] == [
         bb.Transform(
+            transformed_count=1,
             transform=1 / scale,
             transform_name="scale",
             timestep_id=1,
         ),
         bb.Transform(
+            transformed_count=4,
             transform=reflect,
             transform_name="reflection",
             scene_id=1,

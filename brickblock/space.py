@@ -28,6 +28,7 @@ class Addition(SpaceStateChange):
 
 @dataclass
 class Mutation(SpaceStateChange):
+    mutated_count: int
     subject: dict[str, Any]
     name: str | None = None
     coordinate: np.ndarray | None = None
@@ -51,6 +52,7 @@ class Mutation(SpaceStateChange):
 
 @dataclass
 class Transform(SpaceStateChange):
+    transformed_count: int
     transform: np.ndarray
     transform_name: str
     name: str | None = None
@@ -382,6 +384,7 @@ class Space:
         primitives_to_update, composites_to_update = self._select_by_coordinate(
             coordinate
         )
+        num_mutated = len(primitives_to_update) + len(composites_to_update)
         non_zero_selection = (
             len(primitives_to_update) > 0 or len(composites_to_update) > 0
         )
@@ -395,7 +398,11 @@ class Space:
             primitives_to_update, composites_to_update, **kwargs
         )
         self.changelog.append(
-            Mutation(subject=previous_state, coordinate=coordinate)
+            Mutation(
+                mutated_count=num_mutated,
+                subject=previous_state,
+                coordinate=coordinate,
+            )
         )
 
     def mutate_by_name(self, name: str, **kwargs) -> None:
@@ -412,6 +419,7 @@ class Space:
                 property values.
         """
         primitives_to_update, composites_to_update = self._select_by_name(name)
+        num_mutated = len(primitives_to_update) + len(composites_to_update)
         non_zero_selection = (
             len(primitives_to_update) > 0 or len(composites_to_update) > 0
         )
@@ -424,7 +432,11 @@ class Space:
         previous_state = self._mutate_by_ids(
             primitives_to_update, composites_to_update, **kwargs
         )
-        self.changelog.append(Mutation(subject=previous_state, name=name))
+        self.changelog.append(
+            Mutation(
+                mutated_count=num_mutated, subject=previous_state, name=name
+            )
+        )
 
     def mutate_by_timestep(self, timestep: int, **kwargs) -> None:
         """
@@ -443,6 +455,7 @@ class Space:
         primitives_to_update, composites_to_update = self._select_by_timestep(
             timestep
         )
+        num_mutated = len(primitives_to_update) + len(composites_to_update)
         non_zero_selection = (
             len(primitives_to_update) > 0 or len(composites_to_update) > 0
         )
@@ -456,7 +469,11 @@ class Space:
             primitives_to_update, composites_to_update, **kwargs
         )
         self.changelog.append(
-            Mutation(subject=previous_state, timestep_id=timestep)
+            Mutation(
+                mutated_count=num_mutated,
+                subject=previous_state,
+                timestep_id=timestep,
+            )
         )
 
     def mutate_by_scene(self, scene: int, **kwargs) -> None:
@@ -475,6 +492,7 @@ class Space:
         primitives_to_update, composites_to_update = self._select_by_scene(
             scene
         )
+        num_mutated = len(primitives_to_update) + len(composites_to_update)
         non_zero_selection = (
             len(primitives_to_update) > 0 or len(composites_to_update) > 0
         )
@@ -487,7 +505,13 @@ class Space:
         previous_state = self._mutate_by_ids(
             primitives_to_update, composites_to_update, **kwargs
         )
-        self.changelog.append(Mutation(subject=previous_state, scene_id=scene))
+        self.changelog.append(
+            Mutation(
+                mutated_count=num_mutated,
+                subject=previous_state,
+                scene_id=scene,
+            )
+        )
 
     def _mutate_by_ids(
         self, primitive_ids: list[int], composite_ids: list[int], **kwargs
@@ -573,12 +597,17 @@ class Space:
                 can be scaled. All other cases are no-ops.
         """
         primitive_ids, composite_ids = self._select_by_coordinate(coordinate)
+        num_transformed = len(primitive_ids) + len(composite_ids)
         transform_kwargs = self._transform_by_ids(
             primitive_ids, composite_ids, translate, reflect, scale
         )
         if transform_kwargs is not None:
             self.changelog.append(
-                Transform(coordinate=coordinate, **transform_kwargs)
+                Transform(
+                    transformed_count=num_transformed,
+                    coordinate=coordinate,
+                    **transform_kwargs,
+                )
             )
             self.time_step += 1
 
@@ -611,11 +640,18 @@ class Space:
                 can be scaled. All other cases are no-ops.
         """
         primitive_ids, composite_ids = self._select_by_name(name)
+        num_transformed = len(primitive_ids) + len(composite_ids)
         transform_kwargs = self._transform_by_ids(
             primitive_ids, composite_ids, translate, reflect, scale
         )
         if transform_kwargs is not None:
-            self.changelog.append(Transform(name=name, **transform_kwargs))
+            self.changelog.append(
+                Transform(
+                    transformed_count=num_transformed,
+                    name=name,
+                    **transform_kwargs,
+                )
+            )
             self.time_step += 1
 
     def transform_by_timestep(
@@ -647,12 +683,17 @@ class Space:
                 can be scaled. All other cases are no-ops.
         """
         primitive_ids, composite_ids = self._select_by_timestep(timestep)
+        num_transformed = len(primitive_ids) + len(composite_ids)
         transform_kwargs = self._transform_by_ids(
             primitive_ids, composite_ids, translate, reflect, scale
         )
         if transform_kwargs is not None:
             self.changelog.append(
-                Transform(timestep_id=timestep, **transform_kwargs)
+                Transform(
+                    transformed_count=num_transformed,
+                    timestep_id=timestep,
+                    **transform_kwargs,
+                )
             )
             self.time_step += 1
 
@@ -689,12 +730,19 @@ class Space:
                 can be scaled. All other cases are no-ops.
         """
         primitive_ids, composite_ids = self._select_by_scene(scene)
+        num_transformed = len(primitive_ids) + len(composite_ids)
 
         transform_kwargs = self._transform_by_ids(
             primitive_ids, composite_ids, translate, reflect, scale
         )
         if transform_kwargs is not None:
-            self.changelog.append(Transform(scene_id=scene, **transform_kwargs))
+            self.changelog.append(
+                Transform(
+                    transformed_count=num_transformed,
+                    scene_id=scene,
+                    **transform_kwargs,
+                )
+            )
             self.time_step += 1
 
     def _transform_by_ids(
